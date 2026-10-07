@@ -88,7 +88,7 @@ impl Mul<f32> for Vec3 {
 impl Div<f32> for Vec3 {
     type Output = Self;
 
-    fn mul(self, scalar: f32) -> Self {
+    fn div(self, scalar: f32) -> Self {
         Self {
             x: self.x / scalar,
             y: self.y / scalar,
