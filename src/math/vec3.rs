@@ -1,21 +1,30 @@
 use std::ops::{Add, Div, Mul, Sub};
 
+/// A 3-dimensional vector
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Vec3 {
+    /// The X component of the vector
     pub x: f32,
+
+    /// The Y component of the vector
     pub y: f32,
+
+    /// The Y component of the vector
     pub z: f32,
 }
 
 impl Vec3 {
+    /// Creates a new vector with the given components
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
     }
 
+    /// Returns the magnitude of this vector
     pub fn length(&self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
+    /// Returns a new vector which is a normalized copy of this vector
     pub fn normalized(&self) -> Self {
         let length = self.length();
 
@@ -26,6 +35,7 @@ impl Vec3 {
         }
     }
 
+    /// Normalizes this vector in-place
     pub fn normalize(&mut self) {
         let length = self.length();
 
@@ -34,12 +44,14 @@ impl Vec3 {
         self.z /= length;
     }
 
+    /// Returns the dot product of 2 vectors
     pub fn dot(&self, other: &Self) -> f32 {
         self.x * other.x
             + self.y * other.y
             + self.z * other.z
     }
 
+    /// Returns the cross product of 2 vectors
     pub fn cross(&self, other: &Self) -> Self {
         Self {
             x: self.y * other.z - self.z * other.y,
