@@ -1,7 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 
 /// A 3-dimensional vector
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Vec3 {
     /// The X component of the vector
     pub x: f32,
@@ -28,6 +28,10 @@ impl Vec3 {
     pub fn normalized(&self) -> Self {
         let length = self.length();
 
+        if length == 0.0 {
+            return Self::default();
+        }
+
         Self {
             x: self.x / length,
             y: self.y / length,
@@ -38,6 +42,10 @@ impl Vec3 {
     /// Normalizes this vector in-place
     pub fn normalize(&mut self) {
         let length = self.length();
+
+        if length == 0.0 {
+            return;
+        }
 
         self.x /= length;
         self.y /= length;
