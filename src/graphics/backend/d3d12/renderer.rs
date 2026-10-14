@@ -155,23 +155,6 @@ impl D3D12Renderer {
 
         let render_target = swap_chain.current_render_target();
 
-        let mut to_render_target = D3D12_RESOURCE_BARRIER {
-            Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            Anonymous: D3D12_RESOURCE_BARRIER_0 {
-                Transition: std::mem::ManuallyDrop::new(
-                    D3D12_RESOURCE_TRANSITION_BARRIER {
-                        pResource: std::mem::ManuallyDrop::new(
-                            Some(render_target.clone())
-                        ),
-                        Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                        StateBefore: D3D12_RESOURCE_STATE_PRESENT,
-                        StateAfter: D3D12_RESOURCE_STATE_RENDER_TARGET,
-                    },
-                ),
-            },
-        };
-
         transition_resource(
             &self.command_list,
             render_target,
@@ -193,23 +176,6 @@ impl D3D12Renderer {
                 None,
             );
         }
-
-        let mut to_present = D3D12_RESOURCE_BARRIER {
-            Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            Anonymous: D3D12_RESOURCE_BARRIER_0 {
-                Transition: std::mem::ManuallyDrop::new(
-                    D3D12_RESOURCE_TRANSITION_BARRIER {
-                        pResource: std::mem::ManuallyDrop::new(
-                            Some(render_target.clone())
-                        ),
-                        Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                        StateBefore: D3D12_RESOURCE_STATE_RENDER_TARGET,
-                        StateAfter: D3D12_RESOURCE_STATE_PRESENT,
-                    },
-                ),
-            },
-        };
 
         transition_resource(
             &self.command_list,

@@ -1,1 +1,4 @@
-pub(crate)mod backend;
+pub(crate) mod backend;
+mod graphics;
+
+pub(crate) use graphics::Graphics;

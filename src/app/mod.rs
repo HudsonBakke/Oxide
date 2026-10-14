@@ -8,19 +8,13 @@ use winit::{
 use std::time::Instant;
 
 use crate::platform::window::PlatformWindow;
-use crate::graphics::backend::d3d12::{
-    D3D12Device,
-    D3D12Renderer,
-    D3D12SwapChain,
-};
+use crate::graphics::Graphics;
 
 struct App<G: Game> {
     game: G,
     config: AppConfig,
     window: Option<PlatformWindow>,
-    graphics_device: Option<D3D12Device>,
-    swap_chain: Option<D3D12SwapChain>,
-    renderer: Option<D3D12Renderer>,
+    graphics: Option<Graphics>,
     start_time: Option<Instant>,
     last_frame_time: Option<Instant>,
 }
@@ -47,18 +41,10 @@ impl<G: Game> App<G> {
         self.game.update(&time);
         self.game.draw();
 
-        if let (
-            Some(device),
-            Some(swap_chain),
-            Some(renderer),
-        ) = (
-            &self.graphics_device,
-            &self.swap_chain,
-            &mut self.renderer,
-        ) {
-            renderer
-                .render(device, swap_chain)
-                .expect("Direct3D 12 rendering failed");
+        if let Some(graphics) = &mut self.graphics {
+            graphics
+                .render()
+                .expect("Oxide graphics rendering failed");
         }
 
         if let Some(window) = &self.window {
@@ -67,26 +53,10 @@ impl<G: Game> App<G> {
     }
 
     fn resize(&mut self, width: u32, height: u32) {
-        if width == 0 || height == 0 {
-            return;
-        }
-
-        if let (
-            Some(device),
-            Some(renderer),
-            Some(swap_chain),
-        ) = (
-            &self.graphics_device,
-            &mut self.renderer,
-            &mut self.swap_chain,
-        ) {
-            renderer
-                .prepare_for_resize(device)
-                .expect("failed to prepare graphics system for resize");
-
-            swap_chain
-                .resize(device, width, height)
-                .expect("failed to resize Direct3D 12 swap chain");
+        if let Some(graphics) = &mut self.graphics {
+            graphics
+                .resize(width, height)
+                .expect("failed to resize Oxide graphics");
         }
     }
 }
@@ -108,28 +78,13 @@ impl<G: Game> ApplicationHandler for App<G> {
             .create_window(attributes)
             .expect("failed to create Oxide window");
 
-        let physical_size = window.inner_size();
-
         let platform_window = PlatformWindow::new(window);
 
-        let graphics_device =
-            D3D12Device::new().expect("failed to create Direct3D 12 device");
-
-        let renderer = D3D12Renderer::new(&graphics_device)
-            .expect("failed to create Direct3D 12 renderer");
-
-        let swap_chain = D3D12SwapChain::new(
-            &graphics_device,
-            platform_window.hwnd(),
-            physical_size.width,
-            physical_size.height,
-        )
-        .expect("failed to create Direct3D 12 swap chain");
+        let graphics = Graphics::new(&platform_window)
+            .expect("failed to initialize Oxide graphics");
 
         self.window = Some(platform_window);
-        self.graphics_device = Some(graphics_device);
-        self.swap_chain = Some(swap_chain);
-        self.renderer = Some(renderer);
+        self.graphics = Some(graphics);
 
         let now = Instant::now();
 
@@ -176,9 +131,7 @@ pub fn run<G: Game>(game: G, config: AppConfig) {
         game,
         config,
         window: None,
-        graphics_device: None,
-        swap_chain: None,
-        renderer: None,
+        graphics: None,
         start_time: None,
         last_frame_time: None,
     };
