@@ -108,6 +108,8 @@ impl<G: Game> ApplicationHandler for App<G> {
             .create_window(attributes)
             .expect("failed to create Oxide window");
 
+        let physical_size = window.inner_size();
+
         let platform_window = PlatformWindow::new(window);
 
         let graphics_device =
@@ -119,8 +121,8 @@ impl<G: Game> ApplicationHandler for App<G> {
         let swap_chain = D3D12SwapChain::new(
             &graphics_device,
             platform_window.hwnd(),
-            self.config.width,
-            self.config.height,
+            physical_size.width,
+            physical_size.height,
         )
         .expect("failed to create Direct3D 12 swap chain");
 

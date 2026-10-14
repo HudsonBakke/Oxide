@@ -35,13 +35,16 @@ use windows::{
 
 use super::D3D12Device;
 
-const FRAME_COUNT: usize = 2;
+pub(crate) const FRAME_COUNT: usize = 2;
 
 pub(crate) struct D3D12SwapChain {
     swap_chain: IDXGISwapChain3,
     render_targets: [Option<ID3D12Resource>; FRAME_COUNT],
     rtv_heap: ID3D12DescriptorHeap,
     rtv_descriptor_size: u32,
+
+    width: u32,
+    height: u32,
 }
 
 impl D3D12SwapChain {
@@ -146,6 +149,8 @@ impl D3D12SwapChain {
             render_targets,
             rtv_heap,
             rtv_descriptor_size,
+            width,
+            height,
         })
     }
 
@@ -224,10 +229,17 @@ impl D3D12SwapChain {
         width: u32,
         height: u32,
     ) -> Result<()> {
+        // A minimized window can have a zero-sized client area.
         if width == 0 || height == 0 {
             return Ok(());
         }
 
+        // Don't rebuild the swap chain if its dimensions have not changed.
+        if width == self.width && height == self.height {
+            return Ok(());
+        }
+
+        // Release every reference we own to the old swap-chain buffers.
         for render_target in &mut self.render_targets {
             *render_target = None;
         }
@@ -241,6 +253,10 @@ impl D3D12SwapChain {
                 DXGI_SWAP_CHAIN_FLAG(0),
             )?;
         }
+
+        // Only update our stored dimensions AFTER ResizeBuffers succeeds.
+        self.width = width;
+        self.height = height;
 
         self.create_render_target_views(device)?;
 

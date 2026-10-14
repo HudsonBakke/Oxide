@@ -13,6 +13,8 @@ use windows::{
         D3D12_RESOURCE_STATE_PRESENT,
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_TRANSITION_BARRIER,
+        ID3D12Resource,
+        D3D12_RESOURCE_STATES,
     },
     Win32::{
         Foundation::{CloseHandle, HANDLE},
@@ -31,10 +33,45 @@ use windows::{
 use super::{
     D3D12Device,
     D3D12SwapChain,
+    swap_chain::FRAME_COUNT,
 };
 
+fn transition_resource(
+    command_list: &ID3D12GraphicsCommandList,
+    resource: &ID3D12Resource,
+    before: D3D12_RESOURCE_STATES,
+    after: D3D12_RESOURCE_STATES,
+) {
+    let mut barrier = D3D12_RESOURCE_BARRIER {
+        Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+        Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
+        Anonymous: D3D12_RESOURCE_BARRIER_0 {
+            Transition: std::mem::ManuallyDrop::new(
+                D3D12_RESOURCE_TRANSITION_BARRIER {
+                    pResource: std::mem::ManuallyDrop::new(
+                        Some(resource.clone())
+                    ),
+                    Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                    StateBefore: before,
+                    StateAfter: after,
+                },
+            ),
+        },
+    };
+
+    unsafe {
+        command_list.ResourceBarrier(
+            std::slice::from_ref(&barrier)
+        );
+
+        std::mem::ManuallyDrop::drop(
+            &mut (*barrier.Anonymous.Transition).pResource
+        );
+    }
+}
+
 pub(crate) struct D3D12Renderer {
-    command_allocator: ID3D12CommandAllocator,
+    command_allocators: [ID3D12CommandAllocator; FRAME_COUNT],
     command_list: ID3D12GraphicsCommandList,
 
     fence: ID3D12Fence,
@@ -44,17 +81,28 @@ pub(crate) struct D3D12Renderer {
 
 impl D3D12Renderer {
     pub(crate) fn new(device: &D3D12Device) -> Result<Self> {
-        let command_allocator: ID3D12CommandAllocator = unsafe {
+        let allocator_0: ID3D12CommandAllocator = unsafe {
             device
                 .device()
                 .CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT)?
         };
 
+        let allocator_1: ID3D12CommandAllocator = unsafe {
+            device
+                .device()
+                .CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT)?
+        };
+
+        let command_allocators = [
+            allocator_0,
+            allocator_1,
+        ];
+
         let command_list: ID3D12GraphicsCommandList = unsafe {
             device.device().CreateCommandList(
                 0,
                 D3D12_COMMAND_LIST_TYPE_DIRECT,
-                &command_allocator,
+                &command_allocators[0],
                 None,
             )?
         };
@@ -80,7 +128,7 @@ impl D3D12Renderer {
         };
 
         Ok(Self {
-            command_allocator,
+            command_allocators,
             command_list,
             fence,
             fence_value: 0,
@@ -93,18 +141,21 @@ impl D3D12Renderer {
         device: &D3D12Device,
         swap_chain: &D3D12SwapChain,
     ) -> Result<()> {
+        let frame_index = swap_chain.current_frame_index();
+        let command_allocator = &self.command_allocators[frame_index];
+        
         unsafe {
-            self.command_allocator.Reset()?;
+            command_allocator.Reset()?;
 
             self.command_list.Reset(
-                &self.command_allocator,
+                command_allocator,
                 None,
             )?;
         }
 
         let render_target = swap_chain.current_render_target();
 
-        let to_render_target = D3D12_RESOURCE_BARRIER {
+        let mut to_render_target = D3D12_RESOURCE_BARRIER {
             Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
             Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
             Anonymous: D3D12_RESOURCE_BARRIER_0 {
@@ -121,11 +172,12 @@ impl D3D12Renderer {
             },
         };
 
-        unsafe {
-            self.command_list.ResourceBarrier(&[
-                to_render_target
-            ]);
-        }
+        transition_resource(
+            &self.command_list,
+            render_target,
+            D3D12_RESOURCE_STATE_PRESENT,
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+        );
 
         let clear_color = [
             0.10,
@@ -142,7 +194,7 @@ impl D3D12Renderer {
             );
         }
 
-        let to_present = D3D12_RESOURCE_BARRIER {
+        let mut to_present = D3D12_RESOURCE_BARRIER {
             Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
             Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
             Anonymous: D3D12_RESOURCE_BARRIER_0 {
@@ -159,13 +211,12 @@ impl D3D12Renderer {
             },
         };
 
-        unsafe {
-            self.command_list.ResourceBarrier(&[
-                to_present
-            ]);
-
-            self.command_list.Close()?;
-        }
+        transition_resource(
+            &self.command_list,
+            render_target,
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_PRESENT,
+        );
 
         let command_list: ID3D12CommandList =
             self.command_list.cast()?;
@@ -223,13 +274,21 @@ impl D3D12Renderer {
         &mut self,
         device: &D3D12Device,
     ) -> Result<()> {
+        // Ensure the GPU has completely finished all submitted work.
         self.wait_for_gpu(device)?;
 
-        unsafe {
-            self.command_allocator.Reset()?;
+        // Reset every allocator now that the GPU is finished with them.
+        for allocator in &self.command_allocators {
+            unsafe {
+                allocator.Reset()?;
+            }
+        }
 
+        // Reset and immediately close the command list so its previous
+        // recorded command stream is discarded.
+        unsafe {
             self.command_list.Reset(
-                &self.command_allocator,
+                &self.command_allocators[0],
                 None,
             )?;
 
