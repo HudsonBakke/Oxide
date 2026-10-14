@@ -32,9 +32,12 @@ use windows::{
 
 use super::{
     D3D12Device,
+    D3D12Shader,
     D3D12SwapChain,
     swap_chain::FRAME_COUNT,
 };
+
+use crate::graphics::GraphicsResult;
 
 fn transition_resource(
     command_list: &ID3D12GraphicsCommandList,
@@ -74,13 +77,16 @@ pub(crate) struct D3D12Renderer {
     command_allocators: [ID3D12CommandAllocator; FRAME_COUNT],
     command_list: ID3D12GraphicsCommandList,
 
+    vertex_shader: D3D12Shader,
+    pixel_shader: D3D12Shader,
+
     fence: ID3D12Fence,
     fence_value: u64,
     fence_event: HANDLE,
 }
 
 impl D3D12Renderer {
-    pub(crate) fn new(device: &D3D12Device) -> Result<Self> {
+    pub(crate) fn new(device: &D3D12Device) -> GraphicsResult<Self> {
         let allocator_0: ID3D12CommandAllocator = unsafe {
             device
                 .device()
@@ -127,9 +133,21 @@ impl D3D12Renderer {
             )?
         };
 
+        let vertex_shader = D3D12Shader::load(
+            "shaders/compiled/triangle_vs.dxil"
+        )?;
+
+        let pixel_shader = D3D12Shader::load(
+            "shaders/compiled/triangle_ps.dxil"
+        )?;
+
         Ok(Self {
             command_allocators,
             command_list,
+
+            vertex_shader,
+            pixel_shader,
+
             fence,
             fence_value: 0,
             fence_event,

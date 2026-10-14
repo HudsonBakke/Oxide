@@ -1,11 +1,12 @@
-use windows::core::Result;
-
 use crate::platform::window::PlatformWindow;
 
-use super::backend::d3d12::{
-    D3D12Device,
-    D3D12Renderer,
-    D3D12SwapChain,
+use super::{
+    GraphicsResult,
+    backend::d3d12::{
+        D3D12Device,
+        D3D12Renderer,
+        D3D12SwapChain,
+    }
 };
 
 /// Oxide's internal graphics subsystem.
@@ -20,7 +21,7 @@ pub(crate) struct Graphics {
 
 impl Graphics {
     /// Creates the graphics subsystem for the given window.
-    pub(crate) fn new(window: &PlatformWindow) -> Result<Self> {
+    pub(crate) fn new(window: &PlatformWindow) -> GraphicsResult<Self> {
         let size = window.inner().inner_size();
 
         let device = D3D12Device::new()?;
@@ -42,11 +43,13 @@ impl Graphics {
     }
 
     /// Renders and presents one frame.
-    pub(crate) fn render(&mut self) -> Result<()> {
+    pub(crate) fn render(&mut self) -> GraphicsResult<()> {
         self.renderer.render(
             &self.device,
             &self.swap_chain,
-        )
+        )?;
+
+        Ok(())
     }
 
     /// Resizes the graphics presentation surface.
@@ -54,7 +57,7 @@ impl Graphics {
         &mut self,
         width: u32,
         height: u32,
-    ) -> Result<()> {
+    ) -> GraphicsResult<()> {
         if width == 0 || height == 0 {
             return Ok(());
         }
@@ -66,6 +69,8 @@ impl Graphics {
             &self.device,
             width,
             height,
-        )
+        )?;
+
+        Ok(())
     }
 }
