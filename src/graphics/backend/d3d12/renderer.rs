@@ -184,6 +184,10 @@ impl D3D12Renderer {
             D3D12_RESOURCE_STATE_PRESENT,
         );
 
+        unsafe {
+            self.command_list.Close()?;
+        }
+
         let command_list: ID3D12CommandList =
             self.command_list.cast()?;
 
