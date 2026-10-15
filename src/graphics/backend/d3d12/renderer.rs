@@ -17,10 +17,14 @@ use windows::{
         D3D12_RESOURCE_STATES,
     },
     Win32::{
-        Foundation::{CloseHandle, HANDLE},
-        Graphics::Direct3D12::{
-            ID3D12Fence,
-            D3D12_FENCE_FLAG_NONE,
+        Foundation::{CloseHandle, HANDLE, RECT},
+        Graphics::{
+            Direct3D::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+            Direct3D12::{
+                D3D12_VIEWPORT,
+                ID3D12Fence,
+                D3D12_FENCE_FLAG_NONE,
+            },
         },
         System::Threading::{
             CreateEventW,
@@ -32,6 +36,7 @@ use windows::{
 
 use super::{
     D3D12Device,
+    D3D12Pipeline,
     D3D12Shader,
     D3D12SwapChain,
     swap_chain::FRAME_COUNT,
@@ -79,6 +84,7 @@ pub(crate) struct D3D12Renderer {
 
     vertex_shader: D3D12Shader,
     pixel_shader: D3D12Shader,
+    pipeline: D3D12Pipeline,
 
     fence: ID3D12Fence,
     fence_value: u64,
@@ -141,12 +147,19 @@ impl D3D12Renderer {
             "shaders/compiled/triangle_ps.dxil"
         )?;
 
+        let pipeline = D3D12Pipeline::new(
+            device,
+            &vertex_shader,
+            &pixel_shader,
+        )?;
+
         Ok(Self {
             command_allocators,
             command_list,
 
             vertex_shader,
             pixel_shader,
+            pipeline,
 
             fence,
             fence_value: 0,
@@ -161,7 +174,9 @@ impl D3D12Renderer {
     ) -> Result<()> {
         let frame_index = swap_chain.current_frame_index();
         let command_allocator = &self.command_allocators[frame_index];
-        
+
+        // Reset the command allocator and command list for this frame,
+        // then bind the graphics pipeline.
         unsafe {
             command_allocator.Reset()?;
 
@@ -169,10 +184,19 @@ impl D3D12Renderer {
                 command_allocator,
                 None,
             )?;
+
+            self.command_list.SetGraphicsRootSignature(
+                self.pipeline.root_signature()
+            );
+
+            self.command_list.SetPipelineState(
+                self.pipeline.pipeline_state()
+            );
         }
 
         let render_target = swap_chain.current_render_target();
 
+        // The back buffer must be in RENDER_TARGET state before we draw to it.
         transition_resource(
             &self.command_list,
             render_target,
@@ -180,6 +204,36 @@ impl D3D12Renderer {
             D3D12_RESOURCE_STATE_RENDER_TARGET,
         );
 
+        // Configure the viewport to cover the entire swap-chain surface.
+        let viewport = D3D12_VIEWPORT {
+            TopLeftX: 0.0,
+            TopLeftY: 0.0,
+            Width: swap_chain.width() as f32,
+            Height: swap_chain.height() as f32,
+            MinDepth: 0.0,
+            MaxDepth: 1.0,
+        };
+
+        // Configure the scissor rectangle to allow rendering over the
+        // entire swap-chain surface.
+        let scissor = RECT {
+            left: 0,
+            top: 0,
+            right: swap_chain.width() as i32,
+            bottom: swap_chain.height() as i32,
+        };
+
+        unsafe {
+            self.command_list.RSSetViewports(&[
+                viewport
+            ]);
+
+            self.command_list.RSSetScissorRects(&[
+                scissor
+            ]);
+        }
+
+        // Clear the back buffer.
         let clear_color = [
             0.10,
             0.15,
@@ -187,14 +241,42 @@ impl D3D12Renderer {
             1.0,
         ];
 
+        let rtv = swap_chain.current_rtv();
+
         unsafe {
             self.command_list.ClearRenderTargetView(
-                swap_chain.current_rtv(),
+                rtv,
                 &clear_color,
                 None,
             );
+
+            // Bind the current back buffer as our render target.
+            self.command_list.OMSetRenderTargets(
+                1,
+                Some(&rtv),
+                false,
+                None,
+            );
+
+            // We're drawing independent triangles.
+            self.command_list.IASetPrimitiveTopology(
+                D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+            );
+
+            // Three vertices, one instance.
+            //
+            // There is no vertex buffer yet. The vertex shader generates
+            // the positions from SV_VertexID.
+            self.command_list.DrawInstanced(
+                3,
+                1,
+                0,
+                0,
+            );
         }
 
+        // Rendering is complete, so return the back buffer to the state
+        // required by DXGI presentation.
         transition_resource(
             &self.command_list,
             render_target,

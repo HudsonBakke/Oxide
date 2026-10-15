@@ -262,4 +262,12 @@ impl D3D12SwapChain {
 
         Ok(())
     }
+
+    pub(crate) fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub(crate) fn height(&self) -> u32 {
+        self.height
+    }
 }
