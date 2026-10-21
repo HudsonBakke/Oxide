@@ -23,9 +23,8 @@ use super::D3D12Device;
 use crate::graphics::Vertex;
 
 pub(crate) struct D3D12VertexBuffer {
-    resource: ID3D12Resource,
+    _resource: ID3D12Resource,
     view: D3D12_VERTEX_BUFFER_VIEW,
-    vertex_count: u32,
 }
 
 impl D3D12VertexBuffer {
@@ -105,17 +104,12 @@ impl D3D12VertexBuffer {
         };
 
         Ok(Self {
-            resource,
+            _resource: resource,
             view,
-            vertex_count: vertices.len() as u32,
         })
     }
 
     pub(crate) fn view(&self) -> &D3D12_VERTEX_BUFFER_VIEW {
         &self.view
-    }
-
-    pub(crate) fn vertex_count(&self) -> u32 {
-        self.vertex_count
     }
 }

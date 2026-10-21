@@ -5,7 +5,7 @@ use std::{
 };
 
 #[derive(Debug)]
-pub(crate) enum GraphicsError {
+pub enum GraphicsError {
     Windows(windows::core::Error),
     Io(io::Error),
 }
@@ -38,4 +38,4 @@ impl From<io::Error> for GraphicsError {
     }
 }
 
-pub(crate) type GraphicsResult<T> = Result<T, GraphicsError>;
+pub type GraphicsResult<T> = Result<T, GraphicsError>;

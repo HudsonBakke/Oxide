@@ -39,12 +39,17 @@ impl<G: Game> App<G> {
         self.last_frame_time = Some(now);
 
         self.game.update(&time);
-        self.game.draw();
 
         if let Some(graphics) = &mut self.graphics {
             graphics
-                .render()
-                .expect("Oxide graphics rendering failed");
+                .begin_frame()
+                .expect("failed to begin Oxide graphics frame");
+
+            self.game.draw(graphics);
+
+            graphics
+                .end_frame()
+                .expect("failed to finish Oxide graphics frame");
         }
 
         if let Some(window) = &self.window {
@@ -161,7 +166,7 @@ impl Default for AppConfig {
 pub trait Game {
     fn initialize(&mut self) {}
     fn update(&mut self, _time: &GameTime) {}
-    fn draw(&mut self) {}
+    fn draw(&mut self, _graphics: &mut Graphics) {}
 }
 
 /// Timing information for the current frame.

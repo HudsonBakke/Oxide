@@ -44,16 +44,9 @@ use super::{
     swap_chain::FRAME_COUNT,
 };
 
-use crate::{
-    graphics::{
-        GraphicsResult,
-        Mesh,
-        Vertex,
-    },
-    math::{
-        Vec2,
-        Vec3,
-    },
+use crate::graphics::{
+    GraphicsResult,
+    Mesh,
 };
 
 fn transition_resource(
@@ -94,11 +87,10 @@ pub(crate) struct D3D12Renderer {
     command_allocators: [ID3D12CommandAllocator; FRAME_COUNT],
     command_list: ID3D12GraphicsCommandList,
 
-    vertex_shader: D3D12Shader,
-    pixel_shader: D3D12Shader,
     pipeline: D3D12Pipeline,
-    vertex_buffer: D3D12VertexBuffer,
-    index_buffer: D3D12IndexBuffer,
+
+    frame_vertex_buffers: Vec<D3D12VertexBuffer>,
+    frame_index_buffers: Vec<D3D12IndexBuffer>,
 
     fence: ID3D12Fence,
     fence_value: u64,
@@ -167,51 +159,14 @@ impl D3D12Renderer {
             &pixel_shader,
         )?;
 
-        let mesh = Mesh::new(
-            vec![
-                Vertex::new(
-                    Vec3::new(0.0, 0.5, 0.0),
-                    Vec3::new(0.0, 0.0, -1.0),
-                    Vec2::new(0.5, 0.0),
-                ),
-                Vertex::new(
-                    Vec3::new(0.5, -0.5, 0.0),
-                    Vec3::new(0.0, 0.0, -1.0),
-                    Vec2::new(1.0, 1.0),
-                ),
-                Vertex::new(
-                    Vec3::new(-0.5, -0.5, 0.0),
-                    Vec3::new(0.0, 0.0, -1.0),
-                    Vec2::new(0.0, 1.0),
-                ),
-            ],
-            vec![
-                0,
-                1,
-                2,
-            ],
-        );
-
-        let vertex_buffer = D3D12VertexBuffer::new(
-            device,
-            mesh.vertices(),
-        )?;
-
-        let index_buffer = D3D12IndexBuffer::new(
-            device,
-            mesh.indices(),
-        )?;
-
         Ok(Self {
             command_allocators,
             command_list,
 
-            vertex_shader,
-            pixel_shader,
             pipeline,
 
-            vertex_buffer,
-            index_buffer,
+            frame_vertex_buffers: Vec::new(),
+            frame_index_buffers: Vec::new(),
 
             fence,
             fence_value: 0,
@@ -219,16 +174,14 @@ impl D3D12Renderer {
         })
     }
 
-    pub(crate) fn render(
+    pub(crate) fn begin_frame(
         &mut self,
-        device: &D3D12Device,
+        _device: &D3D12Device,
         swap_chain: &D3D12SwapChain,
     ) -> Result<()> {
         let frame_index = swap_chain.current_frame_index();
         let command_allocator = &self.command_allocators[frame_index];
 
-        // Reset the command allocator and command list for this frame,
-        // then bind the graphics pipeline.
         unsafe {
             command_allocator.Reset()?;
 
@@ -248,7 +201,6 @@ impl D3D12Renderer {
 
         let render_target = swap_chain.current_render_target();
 
-        // The back buffer must be in RENDER_TARGET state before we draw to it.
         transition_resource(
             &self.command_list,
             render_target,
@@ -256,7 +208,6 @@ impl D3D12Renderer {
             D3D12_RESOURCE_STATE_RENDER_TARGET,
         );
 
-        // Configure the viewport to cover the entire swap-chain surface.
         let viewport = D3D12_VIEWPORT {
             TopLeftX: 0.0,
             TopLeftY: 0.0,
@@ -266,8 +217,6 @@ impl D3D12Renderer {
             MaxDepth: 1.0,
         };
 
-        // Configure the scissor rectangle to allow rendering over the
-        // entire swap-chain surface.
         let scissor = RECT {
             left: 0,
             top: 0,
@@ -275,17 +224,6 @@ impl D3D12Renderer {
             bottom: swap_chain.height() as i32,
         };
 
-        unsafe {
-            self.command_list.RSSetViewports(&[
-                viewport
-            ]);
-
-            self.command_list.RSSetScissorRects(&[
-                scissor
-            ]);
-        }
-
-        // Clear the back buffer.
         let clear_color = [
             0.10,
             0.15,
@@ -296,13 +234,20 @@ impl D3D12Renderer {
         let rtv = swap_chain.current_rtv();
 
         unsafe {
+            self.command_list.RSSetViewports(&[
+                viewport
+            ]);
+
+            self.command_list.RSSetScissorRects(&[
+                scissor
+            ]);
+
             self.command_list.ClearRenderTargetView(
                 rtv,
                 &clear_color,
                 None,
             );
 
-            // Bind the current back buffer as our render target.
             self.command_list.OMSetRenderTargets(
                 1,
                 Some(&rtv),
@@ -310,28 +255,43 @@ impl D3D12Renderer {
                 None,
             );
 
+            self.command_list.IASetPrimitiveTopology(
+                D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+            );
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn draw_mesh(
+        &mut self,
+        device: &D3D12Device,
+        mesh: &Mesh,
+    ) -> Result<()> {
+        let vertex_buffer = D3D12VertexBuffer::new(
+            device,
+            mesh.vertices(),
+        )?;
+
+        let index_buffer = D3D12IndexBuffer::new(
+            device,
+            mesh.indices(),
+        )?;
+
+        unsafe {
             self.command_list.IASetVertexBuffers(
                 0,
                 Some(std::slice::from_ref(
-                    self.vertex_buffer.view()
+                    vertex_buffer.view()
                 )),
             );
 
             self.command_list.IASetIndexBuffer(
-                Some(self.index_buffer.view())
+                Some(index_buffer.view())
             );
 
-            // We're drawing independent triangles.
-            self.command_list.IASetPrimitiveTopology(
-                D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
-            );
-
-            // Three vertices, one instance.
-            //
-            // There is no vertex buffer yet. The vertex shader generates
-            // the positions from SV_VertexID.
             self.command_list.DrawIndexedInstanced(
-                self.index_buffer.index_count(),
+                index_buffer.index_count(),
                 1,
                 0,
                 0,
@@ -339,8 +299,19 @@ impl D3D12Renderer {
             );
         }
 
-        // Rendering is complete, so return the back buffer to the state
-        // required by DXGI presentation.
+        self.frame_vertex_buffers.push(vertex_buffer);
+        self.frame_index_buffers.push(index_buffer);
+
+        Ok(())
+    }
+
+    pub(crate) fn end_frame(
+        &mut self,
+        device: &D3D12Device,
+        swap_chain: &D3D12SwapChain,
+    ) -> Result<()> {
+        let render_target = swap_chain.current_render_target();
+
         transition_resource(
             &self.command_list,
             render_target,
@@ -366,6 +337,10 @@ impl D3D12Renderer {
         swap_chain.present()?;
 
         self.wait_for_gpu(device)?;
+
+        // GPU is finished, so temporary per-frame resources can now die.
+        self.frame_vertex_buffers.clear();
+        self.frame_index_buffers.clear();
 
         Ok(())
     }
