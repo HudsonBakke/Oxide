@@ -39,10 +39,22 @@ use super::{
     D3D12Pipeline,
     D3D12Shader,
     D3D12SwapChain,
+    D3D12VertexBuffer,
+    D3D12IndexBuffer,
     swap_chain::FRAME_COUNT,
 };
 
-use crate::graphics::GraphicsResult;
+use crate::{
+    graphics::{
+        GraphicsResult,
+        Mesh,
+        Vertex,
+    },
+    math::{
+        Vec2,
+        Vec3,
+    },
+};
 
 fn transition_resource(
     command_list: &ID3D12GraphicsCommandList,
@@ -85,6 +97,8 @@ pub(crate) struct D3D12Renderer {
     vertex_shader: D3D12Shader,
     pixel_shader: D3D12Shader,
     pipeline: D3D12Pipeline,
+    vertex_buffer: D3D12VertexBuffer,
+    index_buffer: D3D12IndexBuffer,
 
     fence: ID3D12Fence,
     fence_value: u64,
@@ -153,6 +167,41 @@ impl D3D12Renderer {
             &pixel_shader,
         )?;
 
+        let mesh = Mesh::new(
+            vec![
+                Vertex::new(
+                    Vec3::new(0.0, 0.5, 0.0),
+                    Vec3::new(0.0, 0.0, -1.0),
+                    Vec2::new(0.5, 0.0),
+                ),
+                Vertex::new(
+                    Vec3::new(0.5, -0.5, 0.0),
+                    Vec3::new(0.0, 0.0, -1.0),
+                    Vec2::new(1.0, 1.0),
+                ),
+                Vertex::new(
+                    Vec3::new(-0.5, -0.5, 0.0),
+                    Vec3::new(0.0, 0.0, -1.0),
+                    Vec2::new(0.0, 1.0),
+                ),
+            ],
+            vec![
+                0,
+                1,
+                2,
+            ],
+        );
+
+        let vertex_buffer = D3D12VertexBuffer::new(
+            device,
+            mesh.vertices(),
+        )?;
+
+        let index_buffer = D3D12IndexBuffer::new(
+            device,
+            mesh.indices(),
+        )?;
+
         Ok(Self {
             command_allocators,
             command_list,
@@ -160,6 +209,9 @@ impl D3D12Renderer {
             vertex_shader,
             pixel_shader,
             pipeline,
+
+            vertex_buffer,
+            index_buffer,
 
             fence,
             fence_value: 0,
@@ -258,6 +310,17 @@ impl D3D12Renderer {
                 None,
             );
 
+            self.command_list.IASetVertexBuffers(
+                0,
+                Some(std::slice::from_ref(
+                    self.vertex_buffer.view()
+                )),
+            );
+
+            self.command_list.IASetIndexBuffer(
+                Some(self.index_buffer.view())
+            );
+
             // We're drawing independent triangles.
             self.command_list.IASetPrimitiveTopology(
                 D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
@@ -267,9 +330,10 @@ impl D3D12Renderer {
             //
             // There is no vertex buffer yet. The vertex shader generates
             // the positions from SV_VertexID.
-            self.command_list.DrawInstanced(
-                3,
+            self.command_list.DrawIndexedInstanced(
+                self.index_buffer.index_count(),
                 1,
+                0,
                 0,
                 0,
             );

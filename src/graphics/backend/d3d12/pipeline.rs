@@ -22,11 +22,15 @@ use windows::{
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
             D3D_ROOT_SIGNATURE_VERSION_1,
             D3D12_SHADER_BYTECODE,
+            D3D12_INPUT_ELEMENT_DESC,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
         },
         Dxgi::Common::{
             DXGI_FORMAT_R8G8B8A8_UNORM,
             DXGI_FORMAT_UNKNOWN,
             DXGI_SAMPLE_DESC,
+            DXGI_FORMAT_R32G32B32_FLOAT,
+            DXGI_FORMAT_R32G32_FLOAT,
         },
     },
 };
@@ -138,6 +142,51 @@ impl D3D12Pipeline {
         let mut rtv_formats = [DXGI_FORMAT_UNKNOWN; 8];
         rtv_formats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
+        let position_semantic = b"POSITION\0";
+        let normal_semantic = b"NORMAL\0";
+        let tex_coord_semantic = b"TEXCOORD\0";
+
+        let input_elements = [
+            D3D12_INPUT_ELEMENT_DESC {
+                SemanticName: windows::core::PCSTR(
+                    position_semantic.as_ptr()
+                ),
+                SemanticIndex: 0,
+                Format: DXGI_FORMAT_R32G32B32_FLOAT,
+                InputSlot: 0,
+                AlignedByteOffset: 0,
+                InputSlotClass:
+                    D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InstanceDataStepRate: 0,
+            },
+
+            D3D12_INPUT_ELEMENT_DESC {
+                SemanticName: windows::core::PCSTR(
+                    normal_semantic.as_ptr()
+                ),
+                SemanticIndex: 0,
+                Format: DXGI_FORMAT_R32G32B32_FLOAT,
+                InputSlot: 0,
+                AlignedByteOffset: 12,
+                InputSlotClass:
+                    D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InstanceDataStepRate: 0,
+            },
+
+            D3D12_INPUT_ELEMENT_DESC {
+                SemanticName: windows::core::PCSTR(
+                    tex_coord_semantic.as_ptr()
+                ),
+                SemanticIndex: 0,
+                Format: DXGI_FORMAT_R32G32_FLOAT,
+                InputSlot: 0,
+                AlignedByteOffset: 24,
+                InputSlotClass:
+                    D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InstanceDataStepRate: 0,
+            },
+        ];
+
         let mut pipeline_desc = D3D12_GRAPHICS_PIPELINE_STATE_DESC {
             pRootSignature: std::mem::ManuallyDrop::new(
                 Some(root_signature.clone())
@@ -152,8 +201,8 @@ impl D3D12Pipeline {
             DepthStencilState: depth_stencil,
 
             InputLayout: D3D12_INPUT_LAYOUT_DESC {
-                pInputElementDescs: std::ptr::null(),
-                NumElements: 0,
+                pInputElementDescs: input_elements.as_ptr(),
+                NumElements: input_elements.len() as u32,
             },
 
             PrimitiveTopologyType:

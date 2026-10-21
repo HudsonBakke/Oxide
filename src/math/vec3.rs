@@ -1,6 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 
 /// A 3-dimensional vector
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Vec3 {
     /// The X component of the vector
