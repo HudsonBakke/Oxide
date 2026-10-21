@@ -2,7 +2,7 @@ pub(crate) mod backend;
 
 mod error;
 mod graphics;
-mod mesh;
+pub(crate) mod mesh;
 mod vertex;
 
 pub use error::{

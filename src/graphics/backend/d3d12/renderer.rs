@@ -34,6 +34,8 @@ use windows::{
     },
 };
 
+use std::collections::HashMap;
+
 use super::{
     D3D12Device,
     D3D12Pipeline,
@@ -47,6 +49,7 @@ use super::{
 use crate::graphics::{
     GraphicsResult,
     Mesh,
+    mesh::MeshId,
 };
 
 fn transition_resource(
@@ -83,14 +86,19 @@ fn transition_resource(
     }
 }
 
+struct CachedMesh {
+    generation: u64,
+    vertex_buffer: D3D12VertexBuffer,
+    index_buffer: D3D12IndexBuffer,
+}
+
 pub(crate) struct D3D12Renderer {
     command_allocators: [ID3D12CommandAllocator; FRAME_COUNT],
     command_list: ID3D12GraphicsCommandList,
 
     pipeline: D3D12Pipeline,
 
-    frame_vertex_buffers: Vec<D3D12VertexBuffer>,
-    frame_index_buffers: Vec<D3D12IndexBuffer>,
+    mesh_cache: HashMap<MeshId, CachedMesh>,
 
     fence: ID3D12Fence,
     fence_value: u64,
@@ -165,8 +173,7 @@ impl D3D12Renderer {
 
             pipeline,
 
-            frame_vertex_buffers: Vec::new(),
-            frame_index_buffers: Vec::new(),
+            mesh_cache: HashMap::new(),
 
             fence,
             fence_value: 0,
@@ -268,39 +275,63 @@ impl D3D12Renderer {
         device: &D3D12Device,
         mesh: &Mesh,
     ) -> Result<()> {
-        let vertex_buffer = D3D12VertexBuffer::new(
-            device,
-            mesh.vertices(),
-        )?;
+        let mesh_id = mesh.id();
+        let generation = mesh.generation();
 
-        let index_buffer = D3D12IndexBuffer::new(
-            device,
-            mesh.indices(),
-        )?;
+        let needs_upload = match self.mesh_cache.get(&mesh_id) {
+            Some(cached) => {
+                cached.generation != generation
+            }
+
+            None => true,
+        };
+
+        if needs_upload {
+            let vertex_buffer = D3D12VertexBuffer::new(
+                device,
+                mesh.vertices(),
+            )?;
+
+            let index_buffer = D3D12IndexBuffer::new(
+                device,
+                mesh.indices(),
+            )?;
+
+            self.mesh_cache.insert(
+                mesh_id,
+                CachedMesh {
+                    generation,
+                    vertex_buffer,
+                    index_buffer,
+                },
+            );
+        }
+
+        let cached = self
+            .mesh_cache
+            .get(&mesh_id)
+            .expect("mesh should be cached after upload");
 
         unsafe {
             self.command_list.IASetVertexBuffers(
                 0,
                 Some(std::slice::from_ref(
-                    vertex_buffer.view()
+                    cached.vertex_buffer.view()
                 )),
             );
 
             self.command_list.IASetIndexBuffer(
-                Some(index_buffer.view())
+                Some(cached.index_buffer.view())
             );
 
             self.command_list.DrawIndexedInstanced(
-                index_buffer.index_count(),
+                cached.index_buffer.index_count(),
                 1,
                 0,
                 0,
                 0,
             );
         }
-
-        self.frame_vertex_buffers.push(vertex_buffer);
-        self.frame_index_buffers.push(index_buffer);
 
         Ok(())
     }
@@ -337,10 +368,6 @@ impl D3D12Renderer {
         swap_chain.present()?;
 
         self.wait_for_gpu(device)?;
-
-        // GPU is finished, so temporary per-frame resources can now die.
-        self.frame_vertex_buffers.clear();
-        self.frame_index_buffers.clear();
 
         Ok(())
     }
