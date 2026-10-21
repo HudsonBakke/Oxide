@@ -113,6 +113,16 @@ impl Transform {
 
         translation * yaw * pitch * roll * scale
     }
+
+    pub(crate) fn matrix_around(&self, pivot: Vec3) -> Mat4 {
+        let to_origin = Mat4::translation(
+            -pivot.x,
+            -pivot.y,
+            -pivot.z,
+        );
+
+        self.matrix() * to_origin
+    }
 }
 
 impl Default for Transform {

@@ -24,6 +24,11 @@ use windows::{
             D3D12_SHADER_BYTECODE,
             D3D12_INPUT_ELEMENT_DESC,
             D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            D3D12_ROOT_PARAMETER,
+            D3D12_ROOT_PARAMETER_0,
+            D3D12_ROOT_PARAMETER_TYPE_CBV,
+            D3D12_ROOT_DESCRIPTOR,
+            D3D12_SHADER_VISIBILITY_VERTEX,
         },
         Dxgi::Common::{
             DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -51,9 +56,24 @@ impl D3D12Pipeline {
         vertex_shader: &D3D12Shader,
         pixel_shader: &D3D12Shader,
     ) -> Result<Self> {
+        let root_parameters = [
+            D3D12_ROOT_PARAMETER {
+                ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
+
+                Anonymous: D3D12_ROOT_PARAMETER_0 {
+                    Descriptor: D3D12_ROOT_DESCRIPTOR {
+                        ShaderRegister: 0,
+                        RegisterSpace: 0,
+                    },
+                },
+
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_VERTEX,
+            },
+        ];
+
         let root_desc = D3D12_ROOT_SIGNATURE_DESC {
-            NumParameters: 0,
-            pParameters: std::ptr::null(),
+            NumParameters: root_parameters.len() as u32,
+            pParameters: root_parameters.as_ptr(),
             NumStaticSamplers: 0,
             pStaticSamplers: std::ptr::null(),
             Flags: D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,

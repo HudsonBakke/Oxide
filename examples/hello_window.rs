@@ -13,11 +13,14 @@ use oxide::{
     math::{
         Vec2,
         Vec3,
+        Transform,
+        Angle,
     },
 };
 
 struct HelloGame {
     triangle: Mesh,
+    transform: Transform,
     elapsed: f64,
 }
 
@@ -29,9 +32,11 @@ impl Game for HelloGame {
     fn update(&mut self, time: &GameTime) {
         self.elapsed += time.delta_seconds();
 
-        // Move the top vertex back and forth.
-        self.triangle.vertices_mut()[0].position.x =
-            (time.total_seconds() as f32).sin() * 0.5;
+        self.transform.set_roll(
+            Angle::radians(
+                time.total_seconds() as f32
+            )
+        );
 
         if self.elapsed >= 1.0 {
             println!(
@@ -45,7 +50,10 @@ impl Game for HelloGame {
 
     fn draw(&mut self, graphics: &mut Graphics) {
         graphics
-            .draw_mesh(&self.triangle)
+            .draw_mesh(
+                &self.triangle,
+                &self.transform,
+            )
             .expect("failed to draw triangle");
     }
 }
@@ -72,6 +80,7 @@ fn main() {
             ],
             vec![0, 1, 2],
         ),
+        transform: Transform::new(),
         elapsed: 0.0
     };
 

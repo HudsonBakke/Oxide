@@ -113,6 +113,22 @@ impl Mat4 {
             ],
         }
     }
+
+    pub(crate) fn as_array(&self) -> [[f32; 4]; 4] {
+        self.m
+    }
+
+    pub fn transposed(&self) -> Self {
+        let mut result = Self::default();
+
+        for row in 0..4 {
+            for column in 0..4 {
+                result.m[row][column] = self.m[column][row];
+            }
+        }
+
+        result
+    }
 }
 
 impl Mul<Vec4> for Mat4 {

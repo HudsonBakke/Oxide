@@ -1,4 +1,7 @@
-use crate::platform::window::PlatformWindow;
+use crate::{
+    platform::window::PlatformWindow,
+    math::Transform,
+};
 
 use super::{
     GraphicsResult,
@@ -62,10 +65,15 @@ impl Graphics {
     }
 
     /// Draws a mesh during the current frame.
-    pub fn draw_mesh(&mut self, mesh: &Mesh) -> GraphicsResult<()> {
+    pub fn draw_mesh(
+        &mut self,
+        mesh: &Mesh,
+        transform: &Transform,
+    ) -> GraphicsResult<()> {
         self.renderer.draw_mesh(
             &self.device,
             mesh,
+            transform,
         )?;
 
         Ok(())

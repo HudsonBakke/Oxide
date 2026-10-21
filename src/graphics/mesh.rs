@@ -5,6 +5,8 @@ use std::sync::atomic::{
 
 use super::Vertex;
 
+use crate::math::Vec3;
+
 static NEXT_MESH_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Internal unique identifier for a mesh.
@@ -27,11 +29,28 @@ fn next_mesh_id() -> MeshId {
 #[derive(Debug)]
 pub struct Mesh {
     id: MeshId,
+
     vertex_generation: u64,
     index_generation: u64,
 
     vertices: Vec<Vertex>,
     indices: Vec<u32>,
+
+    pivot: Vec3,
+}
+
+fn calculate_vertex_average(vertices: &[Vertex]) -> Vec3 {
+    if vertices.is_empty() {
+        return Vec3::default();
+    }
+
+    let mut sum = Vec3::default();
+
+    for vertex in vertices {
+        sum = sum + vertex.position;
+    }
+
+    sum / vertices.len() as f32
 }
 
 impl Mesh {
@@ -40,13 +59,35 @@ impl Mesh {
         vertices: Vec<Vertex>,
         indices: Vec<u32>,
     ) -> Self {
+        let pivot = calculate_vertex_average(&vertices);
+
         Self {
             id: next_mesh_id(),
+
             vertex_generation: 0,
             index_generation: 0,
+
             vertices,
             indices,
+
+            pivot,
         }
+    }
+
+    /// Returns the mesh's model-space pivot point.
+    pub fn pivot(&self) -> Vec3 {
+        self.pivot
+    }
+
+    /// Sets the mesh's model-space pivot point.
+    pub fn set_pivot(&mut self, pivot: Vec3) {
+        self.pivot = pivot;
+    }
+
+    /// Recalculates the pivot using the average position of all vertices.
+    pub fn recalculate_pivot(&mut self) {
+        self.pivot =
+            calculate_vertex_average(&self.vertices);
     }
 
     /// Returns the mesh's vertices.
@@ -106,10 +147,14 @@ impl Clone for Mesh {
     fn clone(&self) -> Self {
         Self {
             id: next_mesh_id(),
+
             vertex_generation: 0,
             index_generation: 0,
+
             vertices: self.vertices.clone(),
             indices: self.indices.clone(),
+
+            pivot: self.pivot,
         }
     }
 }

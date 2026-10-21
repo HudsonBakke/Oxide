@@ -1,3 +1,8 @@
+cbuffer ObjectConstants : register(b0)
+{
+    float4x4 model;
+};
+
 struct VertexInput
 {
     float3 position  : POSITION;
@@ -16,7 +21,10 @@ VertexOutput vs_main(VertexInput input)
 {
     VertexOutput output;
 
-    output.position = float4(input.position, 1.0);
+    output.position = mul(
+        model,
+        float4(input.position, 1.0)
+    );
     output.normal = input.normal;
     output.tex_coord = input.tex_coord;
 

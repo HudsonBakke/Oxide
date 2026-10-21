@@ -43,13 +43,17 @@ use super::{
     D3D12SwapChain,
     D3D12VertexBuffer,
     D3D12IndexBuffer,
+    D3D12ConstantBuffer,
     swap_chain::FRAME_COUNT,
 };
 
-use crate::graphics::{
-    GraphicsResult,
-    Mesh,
-    mesh::MeshId,
+use crate::{
+    graphics::{
+        GraphicsResult,
+        Mesh,
+        mesh::MeshId,
+    },
+    math::Transform,
 };
 
 fn transition_resource(
@@ -153,6 +157,8 @@ pub(crate) struct D3D12Renderer {
     fence: ID3D12Fence,
     fence_value: u64,
     fence_event: HANDLE,
+
+    model_constant_buffer: D3D12ConstantBuffer,
 }
 
 impl D3D12Renderer {
@@ -217,6 +223,9 @@ impl D3D12Renderer {
             &pixel_shader,
         )?;
 
+        let model_constant_buffer =
+            D3D12ConstantBuffer::new(device)?;
+
         Ok(Self {
             command_allocators,
             command_list,
@@ -228,6 +237,8 @@ impl D3D12Renderer {
             fence,
             fence_value: 0,
             fence_event,
+
+            model_constant_buffer,
         })
     }
 
@@ -324,7 +335,14 @@ impl D3D12Renderer {
         &mut self,
         device: &D3D12Device,
         mesh: &Mesh,
+        transform: &Transform,
     ) -> Result<()> {
+        let model_matrix =
+            transform.matrix_around(mesh.pivot());
+
+        self.model_constant_buffer
+            .write_matrix(&model_matrix);
+
         let mesh_id = mesh.id();
 
         if !self.mesh_cache.contains_key(&mesh_id) {
@@ -359,6 +377,11 @@ impl D3D12Renderer {
 
             self.command_list.IASetIndexBuffer(
                 Some(cached.index_buffer.view())
+            );
+
+            self.command_list.SetGraphicsRootConstantBufferView(
+                0,
+                self.model_constant_buffer.gpu_address(),
             );
 
             self.command_list.DrawIndexedInstanced(

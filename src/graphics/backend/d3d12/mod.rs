@@ -5,6 +5,7 @@ pub(crate) mod shader;
 pub(crate) mod swap_chain;
 pub(crate) mod vertex_buffer;
 pub(crate) mod index_buffer;
+pub(crate) mod constant_buffer;
 
 pub(crate) use device::D3D12Device;
 pub(crate) use pipeline::D3D12Pipeline;
@@ -15,3 +16,4 @@ pub(crate) use vertex_buffer::{
     D3D12VertexBuffer,
 };
 pub(crate) use index_buffer::D3D12IndexBuffer;
+pub(crate) use constant_buffer::D3D12ConstantBuffer;
