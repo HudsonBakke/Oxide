@@ -29,6 +29,10 @@ impl Game for HelloGame {
     fn update(&mut self, time: &GameTime) {
         self.elapsed += time.delta_seconds();
 
+        // Move the top vertex back and forth.
+        self.triangle.vertices_mut()[0].position.x =
+            (time.total_seconds() as f32).sin() * 0.5;
+
         if self.elapsed >= 1.0 {
             println!(
                 "Oxide has been running for {:.2} seconds",

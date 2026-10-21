@@ -87,9 +87,59 @@ fn transition_resource(
 }
 
 struct CachedMesh {
-    generation: u64,
+    vertex_generation: u64,
+    index_generation: u64,
+
     vertex_buffer: D3D12VertexBuffer,
     index_buffer: D3D12IndexBuffer,
+}
+
+impl CachedMesh {
+    fn new(
+        device: &D3D12Device,
+        mesh: &Mesh,
+    ) -> Result<Self> {
+        Ok(Self {
+            vertex_generation: mesh.vertex_generation(),
+            index_generation: mesh.index_generation(),
+
+            vertex_buffer: D3D12VertexBuffer::new(
+                device,
+                mesh.vertices(),
+            )?,
+
+            index_buffer: D3D12IndexBuffer::new(
+                device,
+                mesh.indices(),
+            )?,
+        })
+    }
+
+    fn synchronize(
+        &mut self,
+        device: &D3D12Device,
+        mesh: &Mesh,
+    ) -> Result<()> {
+        if self.vertex_generation != mesh.vertex_generation() {
+            self.vertex_buffer = D3D12VertexBuffer::new(
+                device,
+                mesh.vertices(),
+            )?;
+
+            self.vertex_generation = mesh.vertex_generation();
+        }
+
+        if self.index_generation != mesh.index_generation() {
+            self.index_buffer = D3D12IndexBuffer::new(
+                device,
+                mesh.indices(),
+            )?;
+
+            self.index_generation = mesh.index_generation();
+        }
+
+        Ok(())
+    }
 }
 
 pub(crate) struct D3D12Renderer {
@@ -276,41 +326,28 @@ impl D3D12Renderer {
         mesh: &Mesh,
     ) -> Result<()> {
         let mesh_id = mesh.id();
-        let generation = mesh.generation();
 
-        let needs_upload = match self.mesh_cache.get(&mesh_id) {
-            Some(cached) => {
-                cached.generation != generation
-            }
-
-            None => true,
-        };
-
-        if needs_upload {
-            let vertex_buffer = D3D12VertexBuffer::new(
+        if !self.mesh_cache.contains_key(&mesh_id) {
+            let cached = CachedMesh::new(
                 device,
-                mesh.vertices(),
-            )?;
-
-            let index_buffer = D3D12IndexBuffer::new(
-                device,
-                mesh.indices(),
+                mesh,
             )?;
 
             self.mesh_cache.insert(
                 mesh_id,
-                CachedMesh {
-                    generation,
-                    vertex_buffer,
-                    index_buffer,
-                },
+                cached,
             );
         }
 
         let cached = self
             .mesh_cache
-            .get(&mesh_id)
-            .expect("mesh should be cached after upload");
+            .get_mut(&mesh_id)
+            .expect("mesh should be cached after insertion");
+
+        cached.synchronize(
+            device,
+            mesh,
+        )?;
 
         unsafe {
             self.command_list.IASetVertexBuffers(

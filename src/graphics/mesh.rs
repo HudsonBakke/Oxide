@@ -27,7 +27,8 @@ fn next_mesh_id() -> MeshId {
 #[derive(Debug)]
 pub struct Mesh {
     id: MeshId,
-    generation: u64,
+    vertex_generation: u64,
+    index_generation: u64,
 
     vertices: Vec<Vertex>,
     indices: Vec<u32>,
@@ -41,7 +42,8 @@ impl Mesh {
     ) -> Self {
         Self {
             id: next_mesh_id(),
-            generation: 0,
+            vertex_generation: 0,
+            index_generation: 0,
             vertices,
             indices,
         }
@@ -52,24 +54,28 @@ impl Mesh {
         &self.vertices
     }
 
+    /// Returns the mesh's indices.
+    pub fn indices(&self) -> &[u32] {
+        &self.indices
+    }
+
     /// Returns mutable access to the mesh's vertices.
     ///
     /// Requesting mutable access marks the mesh geometry as changed.
     pub fn vertices_mut(&mut self) -> &mut [Vertex] {
-        self.mark_changed();
-        &mut self.vertices
-    }
+        self.vertex_generation =
+            self.vertex_generation.wrapping_add(1);
 
-    /// Returns the mesh's indices.
-    pub fn indices(&self) -> &[u32] {
-        &self.indices
+        &mut self.vertices
     }
 
     /// Returns mutable access to the mesh's indices.
     ///
     /// Requesting mutable access marks the mesh geometry as changed.
     pub fn indices_mut(&mut self) -> &mut [u32] {
-        self.mark_changed();
+        self.index_generation =
+            self.index_generation.wrapping_add(1);
+
         &mut self.indices
     }
 
@@ -87,13 +93,12 @@ impl Mesh {
         self.id
     }
 
-    pub(crate) fn generation(&self) -> u64 {
-        self.generation
+    pub(crate) fn vertex_generation(&self) -> u64 {
+        self.vertex_generation
     }
 
-    fn mark_changed(&mut self) {
-        self.generation =
-            self.generation.wrapping_add(1);
+    pub(crate) fn index_generation(&self) -> u64 {
+        self.index_generation
     }
 }
 
@@ -101,7 +106,8 @@ impl Clone for Mesh {
     fn clone(&self) -> Self {
         Self {
             id: next_mesh_id(),
-            generation: 0,
+            vertex_generation: 0,
+            index_generation: 0,
             vertices: self.vertices.clone(),
             indices: self.indices.clone(),
         }

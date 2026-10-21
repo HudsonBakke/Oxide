@@ -74,6 +74,16 @@ impl Mat4 {
         result
     }
 
+    pub fn scale(x: f32, y: f32, z: f32) -> Self {
+        let mut result = Self::identity();
+
+        result.m[0][0] = x;
+        result.m[1][1] = y;
+        result.m[2][2] = z;
+
+        result
+    }
+
     /// Creates a right-handed perspective projection matrix.
     ///
     /// `fov_y` is the vertical field of view in radians.
