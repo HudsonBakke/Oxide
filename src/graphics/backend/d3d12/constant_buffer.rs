@@ -20,23 +20,28 @@ use windows::{
 
 use super::D3D12Device;
 
-use crate::math::Mat4;
-
 const CONSTANT_BUFFER_ALIGNMENT: usize = 256;
+
+// Temporary capacity. Later we'll make this grow dynamically.
+const MAX_CONSTANTS_PER_FRAME: usize = 1024;
 
 pub(crate) struct D3D12ConstantBuffer {
     resource: ID3D12Resource,
     mapped: *mut u8,
+    next_offset: usize,
 }
 
 impl D3D12ConstantBuffer {
     pub(crate) fn new(
         device: &D3D12Device,
     ) -> Result<Self> {
+        let size =
+            CONSTANT_BUFFER_ALIGNMENT * MAX_CONSTANTS_PER_FRAME;
+
         let resource_desc = D3D12_RESOURCE_DESC {
             Dimension: D3D12_RESOURCE_DIMENSION_BUFFER,
             Alignment: 0,
-            Width: CONSTANT_BUFFER_ALIGNMENT as u64,
+            Width: size as u64,
             Height: 1,
             DepthOrArraySize: 1,
             MipLevels: 1,
@@ -84,31 +89,53 @@ impl D3D12ConstantBuffer {
         Ok(Self {
             resource,
             mapped: mapped as *mut u8,
+            next_offset: 0,
         })
     }
 
-    pub(crate) fn write_matrix(
+    /// Resets allocation to the beginning of the buffer.
+    ///
+    /// This is safe because the current renderer waits for the GPU
+    /// to finish each frame before beginning another.
+    pub(crate) fn reset(&mut self) {
+        self.next_offset = 0;
+    }
+
+    pub(crate) fn write<T: Copy>(
         &mut self,
-        matrix: &Mat4,
-    ) {
-        // HLSL matrices are column-major by default, while Oxide's
-        // Mat4 storage is interpreted row-major by our CPU math.
-        let matrix = matrix.transposed();
-        let data = matrix.as_array();
+        data: &T,
+    ) -> u64 {
+        let data_size = std::mem::size_of::<T>();
+
+        let allocation_size =
+            (data_size + CONSTANT_BUFFER_ALIGNMENT - 1)
+                / CONSTANT_BUFFER_ALIGNMENT
+                * CONSTANT_BUFFER_ALIGNMENT;
+
+        assert!(
+            self.next_offset + allocation_size
+                <= CONSTANT_BUFFER_ALIGNMENT
+                    * MAX_CONSTANTS_PER_FRAME,
+            "Oxide exceeded the temporary per-frame constant-buffer capacity"
+        );
+
+        let offset = self.next_offset;
+
+        self.next_offset += allocation_size;
 
         unsafe {
             std::ptr::copy_nonoverlapping(
-                data.as_ptr() as *const u8,
-                self.mapped,
-                std::mem::size_of_val(&data),
+                data as *const T as *const u8,
+                self.mapped.add(offset),
+                data_size,
             );
         }
-    }
 
-    pub(crate) fn gpu_address(&self) -> u64 {
-        unsafe {
+        let base_address = unsafe {
             self.resource.GetGPUVirtualAddress()
-        }
+        };
+
+        base_address + offset as u64
     }
 }
 

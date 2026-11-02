@@ -9,18 +9,21 @@ use oxide::{
         Graphics,
         Mesh,
         Vertex,
+        Camera,
     },
     math::{
         Vec2,
         Vec3,
         Transform,
-        Angle,
     },
 };
 
 struct HelloGame {
     triangle: Mesh,
+    camera: Camera,
+
     transform: Transform,
+
     elapsed: f64,
 }
 
@@ -32,11 +35,11 @@ impl Game for HelloGame {
     fn update(&mut self, time: &GameTime) {
         self.elapsed += time.delta_seconds();
 
-        self.transform.set_roll(
-            Angle::radians(
-                time.total_seconds() as f32
-            )
-        );
+        // self.transform.set_roll(
+        //     Angle::radians(
+        //         time.total_seconds() as f32
+        //     )
+        // );
 
         if self.elapsed >= 1.0 {
             println!(
@@ -49,6 +52,15 @@ impl Game for HelloGame {
     }
 
     fn draw(&mut self, graphics: &mut Graphics) {
+        let destination = graphics.full_rect();
+
+        graphics
+            .bind_camera(
+                &self.camera,
+                destination,
+            )
+            .expect("failed to bind camera");
+
         graphics
             .draw_mesh(
                 &self.triangle,
@@ -59,6 +71,14 @@ impl Game for HelloGame {
 }
 
 fn main() {
+    let mut transform = Transform::new();
+
+    transform.set_position(
+        Vec3::new(0.0, 0.0, -3.0)
+    );
+
+    let camera = Camera::new();
+
     let game = HelloGame {
         triangle: Mesh::new(
             vec![
@@ -80,7 +100,8 @@ fn main() {
             ],
             vec![0, 1, 2],
         ),
-        transform: Transform::new(),
+        camera: camera,
+        transform: transform,
         elapsed: 0.0
     };
 

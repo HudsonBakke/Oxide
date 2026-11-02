@@ -15,6 +15,7 @@ use windows::{
         D3D12_RESOURCE_TRANSITION_BARRIER,
         ID3D12Resource,
         D3D12_RESOURCE_STATES,
+        D3D12_CLEAR_FLAG_DEPTH,
     },
     Win32::{
         Foundation::{CloseHandle, HANDLE, RECT},
@@ -49,12 +50,26 @@ use super::{
 
 use crate::{
     graphics::{
+        Camera,
+        DirectionalLight,
+        PointLight,
+        SpotLight,
         GraphicsResult,
         Mesh,
         mesh::MeshId,
     },
-    math::Transform,
+    math::{
+        Rect,
+        Transform,
+    },
 };
+
+#[derive(Debug, Clone, Copy)]
+enum ActiveLight {
+    Point(PointLight),
+    Spot(SpotLight),
+    Directional(DirectionalLight),
+}
 
 fn transition_resource(
     command_list: &ID3D12GraphicsCommandList,
@@ -88,6 +103,76 @@ fn transition_resource(
             &mut (*barrier.Anonymous.Transition).pResource
         );
     }
+}
+
+const MAX_POINT_LIGHTS: usize = 8;
+const MAX_SPOT_LIGHTS: usize = 8;
+const MAX_DIRECTIONAL_LIGHTS: usize = 8;
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct GpuSpotLight {
+    // xyz = position
+    // w   = intensity
+    position: [f32; 4],
+
+    // xyz = normalized direction
+    // w   = cosine of cone half-angle
+    direction: [f32; 4],
+
+    // rgb = color
+    color: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct GpuDirectionalLight {
+    // xyz = normalized direction
+    direction: [f32; 4],
+
+    // rgb = color
+    // a   = intensity
+    color: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct GpuPointLight {
+    position: [f32; 4],
+    color: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct LightConstants {
+    point_lights:
+        [GpuPointLight; MAX_POINT_LIGHTS],
+
+    spot_lights:
+        [GpuSpotLight; MAX_SPOT_LIGHTS],
+
+    directional_lights:
+        [GpuDirectionalLight; MAX_DIRECTIONAL_LIGHTS],
+
+    point_light_count: u32,
+    spot_light_count: u32,
+    directional_light_count: u32,
+
+    _padding: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct ObjectConstants {
+    model: [[f32; 4]; 4],
+    normal: [[f32; 4]; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct ViewConstants {
+    view: [[f32; 4]; 4],
+    projection: [[f32; 4]; 4],
 }
 
 struct CachedMesh {
@@ -158,7 +243,9 @@ pub(crate) struct D3D12Renderer {
     fence_value: u64,
     fence_event: HANDLE,
 
-    model_constant_buffer: D3D12ConstantBuffer,
+    constant_buffer: D3D12ConstantBuffer,
+
+    active_lights: Vec<ActiveLight>,
 }
 
 impl D3D12Renderer {
@@ -223,7 +310,7 @@ impl D3D12Renderer {
             &pixel_shader,
         )?;
 
-        let model_constant_buffer =
+        let constant_buffer =
             D3D12ConstantBuffer::new(device)?;
 
         Ok(Self {
@@ -238,7 +325,9 @@ impl D3D12Renderer {
             fence_value: 0,
             fence_event,
 
-            model_constant_buffer,
+            constant_buffer,
+
+            active_lights: Vec::new(),
         })
     }
 
@@ -249,6 +338,9 @@ impl D3D12Renderer {
     ) -> Result<()> {
         let frame_index = swap_chain.current_frame_index();
         let command_allocator = &self.command_allocators[frame_index];
+
+        self.constant_buffer.reset();
+        self.active_lights.clear();
 
         unsafe {
             command_allocator.Reset()?;
@@ -276,22 +368,6 @@ impl D3D12Renderer {
             D3D12_RESOURCE_STATE_RENDER_TARGET,
         );
 
-        let viewport = D3D12_VIEWPORT {
-            TopLeftX: 0.0,
-            TopLeftY: 0.0,
-            Width: swap_chain.width() as f32,
-            Height: swap_chain.height() as f32,
-            MinDepth: 0.0,
-            MaxDepth: 1.0,
-        };
-
-        let scissor = RECT {
-            left: 0,
-            top: 0,
-            right: swap_chain.width() as i32,
-            bottom: swap_chain.height() as i32,
-        };
-
         let clear_color = [
             0.10,
             0.15,
@@ -300,15 +376,16 @@ impl D3D12Renderer {
         ];
 
         let rtv = swap_chain.current_rtv();
+        let dsv = swap_chain.current_dsv();
 
         unsafe {
-            self.command_list.RSSetViewports(&[
-                viewport
-            ]);
-
-            self.command_list.RSSetScissorRects(&[
-                scissor
-            ]);
+            self.command_list.ClearDepthStencilView(
+                dsv,
+                D3D12_CLEAR_FLAG_DEPTH,
+                1.0,
+                0,
+                None,
+            );
 
             self.command_list.ClearRenderTargetView(
                 rtv,
@@ -320,7 +397,7 @@ impl D3D12Renderer {
                 1,
                 Some(&rtv),
                 false,
-                None,
+                Some(&dsv),
             );
 
             self.command_list.IASetPrimitiveTopology(
@@ -340,8 +417,22 @@ impl D3D12Renderer {
         let model_matrix =
             transform.matrix_around(mesh.pivot());
 
-        self.model_constant_buffer
-            .write_matrix(&model_matrix);
+        let normal_matrix =
+            transform.normal_matrix();
+
+        let object_constants = ObjectConstants {
+            model: model_matrix
+                .transposed()
+                .as_array(),
+
+            normal: normal_matrix
+                .transposed()
+                .as_array(),
+        };
+
+        let model_address = self
+            .constant_buffer
+            .write(&object_constants);
 
         let mesh_id = mesh.id();
 
@@ -367,7 +458,151 @@ impl D3D12Renderer {
             mesh,
         )?;
 
+        let mut light_constants = LightConstants {
+            point_lights:
+                [GpuPointLight::default(); MAX_POINT_LIGHTS],
+
+            spot_lights:
+                [GpuSpotLight::default(); MAX_SPOT_LIGHTS],
+
+            directional_lights:
+                [GpuDirectionalLight::default();
+                    MAX_DIRECTIONAL_LIGHTS],
+
+            point_light_count: 0,
+            spot_light_count: 0,
+            directional_light_count: 0,
+
+            _padding: 0,
+        };
+
+        for light in &self.active_lights {
+            match light {
+                ActiveLight::Point(light) => {
+                    let index =
+                        light_constants.point_light_count
+                            as usize;
+
+                    if index >= MAX_POINT_LIGHTS {
+                        continue;
+                    }
+
+                    let position = light.position();
+                    let color = light.color();
+
+                    light_constants.point_lights[index] =
+                        GpuPointLight {
+                            position: [
+                                position.x,
+                                position.y,
+                                position.z,
+                                light.intensity(),
+                            ],
+
+                            color: [
+                                color.r,
+                                color.g,
+                                color.b,
+                                color.a,
+                            ],
+                        };
+
+                    light_constants.point_light_count += 1;
+                }
+
+                ActiveLight::Spot(light) => {
+                    let index =
+                        light_constants.spot_light_count
+                            as usize;
+
+                    if index >= MAX_SPOT_LIGHTS {
+                        continue;
+                    }
+
+                    let position = light.position();
+                    let direction = light.direction();
+                    let color = light.color();
+
+                    light_constants.spot_lights[index] =
+                        GpuSpotLight {
+                            position: [
+                                position.x,
+                                position.y,
+                                position.z,
+                                light.intensity(),
+                            ],
+
+                            direction: [
+                                direction.x,
+                                direction.y,
+                                direction.z,
+
+                                light
+                                    .angle()
+                                    .as_radians()
+                                    .cos(),
+                            ],
+
+                            color: [
+                                color.r,
+                                color.g,
+                                color.b,
+                                color.a,
+                            ],
+                        };
+
+                    light_constants.spot_light_count += 1;
+                }
+
+                ActiveLight::Directional(light) => {
+                    let index =
+                        light_constants
+                            .directional_light_count
+                            as usize;
+
+                    if index >= MAX_DIRECTIONAL_LIGHTS {
+                        continue;
+                    }
+
+                    let direction = light.direction();
+                    let color = light.color();
+
+                    light_constants
+                        .directional_lights[index] =
+                        GpuDirectionalLight {
+                            direction: [
+                                direction.x,
+                                direction.y,
+                                direction.z,
+                                0.0,
+                            ],
+
+                            color: [
+                                color.r,
+                                color.g,
+                                color.b,
+                                light.intensity(),
+                            ],
+                        };
+
+                    light_constants
+                        .directional_light_count += 1;
+                }
+            }
+        }
+
+        let light_address =
+            self.constant_buffer.write(
+                &light_constants
+            );
+
         unsafe {
+            self.command_list
+                .SetGraphicsRootConstantBufferView(
+                    2,
+                    light_address,
+                );
+
             self.command_list.IASetVertexBuffers(
                 0,
                 Some(std::slice::from_ref(
@@ -381,7 +616,7 @@ impl D3D12Renderer {
 
             self.command_list.SetGraphicsRootConstantBufferView(
                 0,
-                self.model_constant_buffer.gpu_address(),
+                model_address,
             );
 
             self.command_list.DrawIndexedInstanced(
@@ -492,6 +727,108 @@ impl D3D12Renderer {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn bind_camera(
+        &mut self,
+        camera: &Camera,
+        destination: Rect,
+    ) -> Result<()> {
+        assert!(
+            destination.width > 0.0
+                && destination.height > 0.0,
+            "camera destination must have positive dimensions"
+        );
+
+        let view = camera.view_matrix();
+
+        let projection = camera.projection_matrix(
+            destination.aspect_ratio()
+        );
+
+        let view_constants = ViewConstants {
+            view: view
+                .transposed()
+                .as_array(),
+
+            projection: projection
+                .transposed()
+                .as_array(),
+        };
+
+        let view_address =
+            self.constant_buffer.write(
+                &view_constants
+            );
+
+        let viewport = D3D12_VIEWPORT {
+            TopLeftX: destination.x,
+            TopLeftY: destination.y,
+            Width: destination.width,
+            Height: destination.height,
+            MinDepth: 0.0,
+            MaxDepth: 1.0,
+        };
+
+        let scissor = RECT {
+            left: destination.x as i32,
+            top: destination.y as i32,
+            right:
+                (destination.x + destination.width)
+                    as i32,
+            bottom:
+                (destination.y + destination.height)
+                    as i32,
+        };
+
+        unsafe {
+            self.command_list
+                .SetGraphicsRootConstantBufferView(
+                    1,
+                    view_address,
+                );
+
+            self.command_list.RSSetViewports(&[
+                viewport
+            ]);
+
+            self.command_list.RSSetScissorRects(&[
+                scissor
+            ]);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn add_point_light(
+        &mut self,
+        light: &PointLight,
+    ) {
+        self.active_lights.push(
+            ActiveLight::Point(*light)
+        );
+    }
+
+    pub(crate) fn add_spot_light(
+        &mut self,
+        light: &SpotLight,
+    ) {
+        self.active_lights.push(
+            ActiveLight::Spot(*light)
+        );
+    }
+
+    pub(crate) fn add_directional_light(
+        &mut self,
+        light: &DirectionalLight,
+    ) {
+        self.active_lights.push(
+            ActiveLight::Directional(*light)
+        );
+    }
+
+    pub(crate) fn clear_lights(&mut self) {
+        self.active_lights.clear();
     }
 }
 

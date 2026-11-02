@@ -1,11 +1,17 @@
 use crate::{
     platform::window::PlatformWindow,
     math::Transform,
+    math::Rect,
 };
 
 use super::{
     GraphicsResult,
     Mesh,
+    Camera,
+    DirectionalLight,
+    SpotLight,
+    PointLight,
+    LightSource,
     backend::d3d12::{
         D3D12Device,
         D3D12Renderer,
@@ -99,5 +105,66 @@ impl Graphics {
         )?;
 
         Ok(())
+    }
+
+    /// Binds a camera and destination rectangle for subsequent draw calls.
+    pub fn bind_camera(
+        &mut self,
+        camera: &Camera,
+        destination: Rect,
+    ) -> GraphicsResult<()> {
+        self.renderer.bind_camera(
+            camera,
+            destination,
+        )?;
+
+        Ok(())
+    }
+
+    /// Returns a rectangle covering the entire current render surface.
+    pub fn full_rect(&self) -> Rect {
+        Rect::new(
+            0.0,
+            0.0,
+            self.swap_chain.width() as f32,
+            self.swap_chain.height() as f32,
+        )
+    }
+
+    /// Adds a light to the active lighting state.
+    ///
+    /// The light affects subsequent draw calls until the lights are cleared
+    /// or the current frame ends.
+    pub fn add_light<L: LightSource>(
+        &mut self,
+        light: &L,
+    ) {
+        light.add_to_graphics(self);
+    }
+
+    /// Removes all currently active lights.
+    pub fn clear_lights(&mut self) {
+        self.renderer.clear_lights();
+    }
+
+    pub(crate) fn add_point_light_internal(
+        &mut self,
+        light: &PointLight,
+    ) {
+        self.renderer.add_point_light(light);
+    }
+
+    pub(crate) fn add_spot_light_internal(
+        &mut self,
+        light: &SpotLight,
+    ) {
+        self.renderer.add_spot_light(light);
+    }
+
+    pub(crate) fn add_directional_light_internal(
+        &mut self,
+        light: &DirectionalLight,
+    ) {
+        self.renderer.add_directional_light(light);
     }
 }

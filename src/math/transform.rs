@@ -7,13 +7,13 @@ use super::{
 /// Position, orientation, and scale of an object in 3D space.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
-    pub position: Vec3,
+    position: Vec3,
 
-    pub pitch: Angle,
-    pub yaw: Angle,
-    pub roll: Angle,
+    pitch: Angle,
+    yaw: Angle,
+    roll: Angle,
 
-    pub scale: Vec3,
+    scale: Vec3,
 }
 
 impl Transform {
@@ -122,6 +122,62 @@ impl Transform {
         );
 
         self.matrix() * to_origin
+    }
+
+    /// Returns the transform's position.
+    pub fn position(&self) -> Vec3 {
+        self.position
+    }
+
+    /// Returns the transform's pitch.
+    pub fn pitch(&self) -> Angle {
+        self.pitch
+    }
+
+    /// Returns the transform's yaw.
+    pub fn yaw(&self) -> Angle {
+        self.yaw
+    }
+
+    /// Returns the transform's roll.
+    pub fn roll(&self) -> Angle {
+        self.roll
+    }
+
+    /// Returns the transform's scale.
+    pub fn scale(&self) -> Vec3 {
+        self.scale
+    }
+
+    pub(crate) fn normal_matrix(&self) -> Mat4 {
+        let inverse_scale = Mat4::scale(
+            if self.scale().x != 0.0 {
+                1.0 / self.scale().x
+            } else {
+                0.0
+            },
+            if self.scale().y != 0.0 {
+                1.0 / self.scale().y
+            } else {
+                0.0
+            },
+            if self.scale().z != 0.0 {
+                1.0 / self.scale().z
+            } else {
+                0.0
+            },
+        );
+
+        let pitch =
+            Mat4::rotation_x(self.pitch().as_radians());
+
+        let yaw =
+            Mat4::rotation_y(self.yaw().as_radians());
+
+        let roll =
+            Mat4::rotation_z(self.roll().as_radians());
+
+        yaw * pitch * roll * inverse_scale
     }
 }
 

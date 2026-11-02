@@ -10,10 +10,23 @@ use windows::{
                 D3D12_DESCRIPTOR_HEAP_DESC,
                 D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
                 D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+                D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+                D3D12_CLEAR_VALUE,
+                D3D12_DEPTH_STENCIL_VIEW_DESC,
+                D3D12_DSV_DIMENSION_TEXTURE2D,
+                D3D12_DSV_FLAG_NONE,
+                D3D12_HEAP_PROPERTIES,
+                D3D12_HEAP_TYPE_DEFAULT,
+                D3D12_RESOURCE_DESC,
+                D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+                D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
+                D3D12_RESOURCE_STATE_DEPTH_WRITE,
+                D3D12_TEXTURE_LAYOUT_UNKNOWN,
             },
             Dxgi::{
                 Common::{
                     DXGI_FORMAT_R8G8B8A8_UNORM,
+                    DXGI_FORMAT_D32_FLOAT,
                     DXGI_SAMPLE_DESC,
                 },
                 CreateDXGIFactory2,
@@ -42,12 +55,121 @@ pub(crate) struct D3D12SwapChain {
     render_targets: [Option<ID3D12Resource>; FRAME_COUNT],
     rtv_heap: ID3D12DescriptorHeap,
     rtv_descriptor_size: u32,
+    depth_buffer: ID3D12Resource,
+    dsv_heap: ID3D12DescriptorHeap,
 
     width: u32,
     height: u32,
 }
 
 impl D3D12SwapChain {
+    fn create_depth_buffer(
+        device: &D3D12Device,
+        width: u32,
+        height: u32,
+    ) -> Result<(
+        ID3D12Resource,
+        ID3D12DescriptorHeap,
+    )> {
+        let heap_properties = D3D12_HEAP_PROPERTIES {
+            Type: D3D12_HEAP_TYPE_DEFAULT,
+            ..Default::default()
+        };
+
+        let resource_desc = D3D12_RESOURCE_DESC {
+            Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            Alignment: 0,
+            Width: width as u64,
+            Height: height,
+            DepthOrArraySize: 1,
+            MipLevels: 1,
+            Format: DXGI_FORMAT_D32_FLOAT,
+
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
+
+            Layout: D3D12_TEXTURE_LAYOUT_UNKNOWN,
+
+            Flags:
+                D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
+        };
+
+        let clear_value = D3D12_CLEAR_VALUE {
+            Format: DXGI_FORMAT_D32_FLOAT,
+
+            Anonymous:
+                windows::Win32::Graphics::Direct3D12::
+                    D3D12_CLEAR_VALUE_0 {
+                        DepthStencil:
+                            windows::Win32::Graphics::Direct3D12::
+                                D3D12_DEPTH_STENCIL_VALUE {
+                                    Depth: 1.0,
+                                    Stencil: 0,
+                                },
+                    },
+        };
+
+        let mut depth_buffer = None;
+
+        unsafe {
+            device.device().CreateCommittedResource(
+                &heap_properties,
+                Default::default(),
+                &resource_desc,
+                D3D12_RESOURCE_STATE_DEPTH_WRITE,
+                Some(&clear_value),
+                &mut depth_buffer,
+            )?;
+        }
+
+        let depth_buffer = depth_buffer.expect(
+            "CreateCommittedResource succeeded but returned no depth buffer"
+        );
+
+        let dsv_heap_desc = D3D12_DESCRIPTOR_HEAP_DESC {
+            Type: D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+            NumDescriptors: 1,
+            Flags: D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+            NodeMask: 0,
+        };
+
+        let dsv_heap: ID3D12DescriptorHeap = unsafe {
+            device
+                .device()
+                .CreateDescriptorHeap(
+                    &dsv_heap_desc
+                )?
+        };
+
+        let dsv = unsafe {
+            dsv_heap
+                .GetCPUDescriptorHandleForHeapStart()
+        };
+
+        let dsv_desc = D3D12_DEPTH_STENCIL_VIEW_DESC {
+            Format: DXGI_FORMAT_D32_FLOAT,
+            ViewDimension:
+                D3D12_DSV_DIMENSION_TEXTURE2D,
+            Flags: D3D12_DSV_FLAG_NONE,
+            ..Default::default()
+        };
+
+        unsafe {
+            device.device().CreateDepthStencilView(
+                &depth_buffer,
+                Some(&dsv_desc),
+                dsv,
+            );
+        }
+
+        Ok((
+            depth_buffer,
+            dsv_heap,
+        ))
+    }
+
     pub(crate) fn new(
         device: &D3D12Device,
         hwnd: HWND,
@@ -125,6 +247,15 @@ impl D3D12SwapChain {
             Some(render_target_1),
         ];
 
+        let (
+            depth_buffer,
+            dsv_heap,
+        ) = Self::create_depth_buffer(
+            device,
+            width,
+            height,
+        )?;
+
         let rtv_start = unsafe {
             rtv_heap.GetCPUDescriptorHandleForHeapStart()
         };
@@ -149,6 +280,8 @@ impl D3D12SwapChain {
             render_targets,
             rtv_heap,
             rtv_descriptor_size,
+            depth_buffer,
+            dsv_heap,
             width,
             height,
         })
@@ -254,6 +387,18 @@ impl D3D12SwapChain {
             )?;
         }
 
+        let (
+            depth_buffer,
+            dsv_heap,
+        ) = Self::create_depth_buffer(
+            device,
+            width,
+            height,
+        )?;
+
+        self.depth_buffer = depth_buffer;
+        self.dsv_heap = dsv_heap;
+
         // Only update our stored dimensions AFTER ResizeBuffers succeeds.
         self.width = width;
         self.height = height;
@@ -261,6 +406,15 @@ impl D3D12SwapChain {
         self.create_render_target_views(device)?;
 
         Ok(())
+    }
+
+    pub(crate) fn current_dsv(
+        &self,
+    ) -> D3D12_CPU_DESCRIPTOR_HANDLE {
+        unsafe {
+            self.dsv_heap
+                .GetCPUDescriptorHandleForHeapStart()
+        }
     }
 
     pub(crate) fn width(&self) -> u32 {

@@ -2,15 +2,15 @@ use windows::{
     core::Result,
     Win32::Graphics::{
         Direct3D12::{
+            D3D12_DEPTH_WRITE_MASK_ALL,
+            D3D12_COMPARISON_FUNC_LESS,
             D3D12SerializeRootSignature,
             ID3D12PipelineState,
             ID3D12RootSignature,
             D3D12_BLEND_DESC,
             D3D12_COLOR_WRITE_ENABLE_ALL,
-            D3D12_COMPARISON_FUNC_ALWAYS,
             D3D12_CULL_MODE_BACK,
             D3D12_DEPTH_STENCIL_DESC,
-            D3D12_DEPTH_WRITE_MASK_ZERO,
             D3D12_FILL_MODE_SOLID,
             D3D12_GRAPHICS_PIPELINE_STATE_DESC,
             D3D12_INPUT_LAYOUT_DESC,
@@ -29,6 +29,7 @@ use windows::{
             D3D12_ROOT_PARAMETER_TYPE_CBV,
             D3D12_ROOT_DESCRIPTOR,
             D3D12_SHADER_VISIBILITY_VERTEX,
+            D3D12_SHADER_VISIBILITY_PIXEL
         },
         Dxgi::Common::{
             DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -36,6 +37,7 @@ use windows::{
             DXGI_SAMPLE_DESC,
             DXGI_FORMAT_R32G32B32_FLOAT,
             DXGI_FORMAT_R32G32_FLOAT,
+            DXGI_FORMAT_D32_FLOAT,
         },
     },
 };
@@ -67,7 +69,36 @@ impl D3D12Pipeline {
                     },
                 },
 
-                ShaderVisibility: D3D12_SHADER_VISIBILITY_VERTEX,
+                ShaderVisibility:
+                    D3D12_SHADER_VISIBILITY_VERTEX,
+            },
+
+            D3D12_ROOT_PARAMETER {
+                ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
+
+                Anonymous: D3D12_ROOT_PARAMETER_0 {
+                    Descriptor: D3D12_ROOT_DESCRIPTOR {
+                        ShaderRegister: 1,
+                        RegisterSpace: 0,
+                    },
+                },
+
+                ShaderVisibility:
+                    D3D12_SHADER_VISIBILITY_VERTEX,
+            },
+
+            D3D12_ROOT_PARAMETER {
+                ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
+
+                Anonymous: D3D12_ROOT_PARAMETER_0 {
+                    Descriptor: D3D12_ROOT_DESCRIPTOR {
+                        ShaderRegister: 2,
+                        RegisterSpace: 0,
+                    },
+                },
+
+                ShaderVisibility:
+                    D3D12_SHADER_VISIBILITY_PIXEL,
             },
         ];
 
@@ -149,9 +180,9 @@ impl D3D12Pipeline {
         };
 
         let depth_stencil = D3D12_DEPTH_STENCIL_DESC {
-            DepthEnable: false.into(),
-            DepthWriteMask: D3D12_DEPTH_WRITE_MASK_ZERO,
-            DepthFunc: D3D12_COMPARISON_FUNC_ALWAYS,
+            DepthEnable: true.into(),
+            DepthWriteMask: D3D12_DEPTH_WRITE_MASK_ALL,
+            DepthFunc: D3D12_COMPARISON_FUNC_LESS,
             StencilEnable: false.into(),
             StencilReadMask: 0,
             StencilWriteMask: 0,
@@ -231,7 +262,7 @@ impl D3D12Pipeline {
             NumRenderTargets: 1,
             RTVFormats: rtv_formats,
 
-            DSVFormat: DXGI_FORMAT_UNKNOWN,
+            DSVFormat: DXGI_FORMAT_D32_FLOAT,
 
             SampleDesc: DXGI_SAMPLE_DESC {
                 Count: 1,

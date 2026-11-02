@@ -5,6 +5,7 @@ pub mod vec4;
 pub mod mat4;
 pub mod quaternion;
 pub mod transform;
+pub mod rect;
 
 pub use angle::Angle;
 pub use vec2::Vec2;
@@ -13,3 +14,4 @@ pub use vec4::Vec4;
 pub use mat4::Mat4;
 pub use quaternion::Quaternion;
 pub use transform::Transform;
+pub use rect::Rect;
