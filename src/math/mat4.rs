@@ -1,6 +1,9 @@
 use std::ops::Mul;
 
-use super::vec4::Vec4;
+use super::{
+    vec4::Vec4,
+    vec3::Vec3,
+};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Mat4 {
@@ -128,6 +131,25 @@ impl Mat4 {
         }
 
         result
+    }
+
+    
+    pub(crate) fn transform_point(
+        &self,
+        point: Vec3,
+    ) -> Vec3 {
+        let result = *self * Vec4::new(
+            point.x,
+            point.y,
+            point.z,
+            1.0,
+        );
+
+        Vec3::new(
+            result.x,
+            result.y,
+            result.z,
+        )
     }
 }
 

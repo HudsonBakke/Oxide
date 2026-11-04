@@ -1,6 +1,6 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-/// A 3-dimensional vector
+/// A 2-dimensional vector
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Vec2 {
