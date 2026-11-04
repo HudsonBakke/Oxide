@@ -10,10 +10,10 @@ use oxide::{
         Graphics,
         Mesh,
         Vertex,
-        PointLight,
-        DirectionalLight,
         SpotLight,
+        Material,
         Color,
+        Texture,
     },
     math::{
         Angle,
@@ -28,6 +28,7 @@ struct CubeGame {
     transform: Transform,
     camera: Camera,
     light: SpotLight,
+    material: Material,
 }
 
 impl Game for CubeGame {
@@ -69,6 +70,7 @@ impl Game for CubeGame {
         graphics
             .draw_mesh(
                 &self.cube,
+                &self.material,
                 &self.transform,
             )
             .expect("failed to draw cube");
@@ -162,6 +164,12 @@ fn main() {
         15.0,
     );
 
+    let texture = Texture::load(
+        "assets/brick.jpg"
+    ).expect("failed to load texture");
+
+    let material = Material::new(texture);
+
     let cube = create_cube();
 
     let mut transform = Transform::new();
@@ -181,6 +189,7 @@ fn main() {
         transform,
         camera,
         light,
+        material,
     };
 
     let config = AppConfig {

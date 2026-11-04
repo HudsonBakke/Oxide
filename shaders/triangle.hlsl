@@ -10,6 +10,9 @@ cbuffer ViewConstants : register(b1)
     float4x4 projection;
 };
 
+Texture2D base_texture : register(t0);
+SamplerState base_sampler : register(s0);
+
 struct PointLight
 {
     float4 position;
@@ -100,11 +103,11 @@ float4 ps_main(VertexOutput input) : SV_TARGET
     float3 normal =
         normalize(input.normal);
 
-    float3 base_color = float3(
-        input.tex_coord.x,
-        input.tex_coord.y,
-        0.2
-    );
+    float3 base_color =
+        base_texture.Sample(
+            base_sampler,
+            input.tex_coord
+        ).rgb;
 
     float3 lighting =
         float3(0.0, 0.0, 0.0);

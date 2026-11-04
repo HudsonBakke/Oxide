@@ -8,6 +8,8 @@ use oxide::{
     graphics::{
         Camera,
         Graphics,
+        Material,
+        Color,
         Mesh,
         Vertex,
     },
@@ -30,6 +32,7 @@ struct SplitScreenGame {
     right_camera: Camera,
 
     elapsed: f64,
+    material: Material,
 }
 
 impl Game for SplitScreenGame {
@@ -88,6 +91,7 @@ impl Game for SplitScreenGame {
         graphics
             .draw_mesh(
                 &self.triangle,
+                &self.material,
                 &self.left_transform,
             )
             .expect("failed to draw from left camera");
@@ -95,6 +99,7 @@ impl Game for SplitScreenGame {
         graphics
             .draw_mesh(
                 &self.triangle,
+                &self.material,
                 &self.right_transform,
             )
             .expect("failed to draw from left camera");
@@ -110,6 +115,7 @@ impl Game for SplitScreenGame {
         graphics
             .draw_mesh(
                 &self.triangle,
+                &self.material,
                 &self.left_transform,
             )
             .expect("failed to draw from right camera");
@@ -117,6 +123,7 @@ impl Game for SplitScreenGame {
         graphics
             .draw_mesh(
                 &self.triangle,
+                &self.material,
                 &self.right_transform,
             )
             .expect("failed to draw from right camera");
@@ -124,6 +131,9 @@ impl Game for SplitScreenGame {
 }
 
 fn main() {
+    let material =
+        Material::solid(Color::WHITE);
+
     let triangle = Mesh::new(
         vec![
             Vertex::new(
@@ -195,6 +205,7 @@ fn main() {
         right_camera,
 
         elapsed: 0.0,
+        material: material,
     };
 
     let config = AppConfig {

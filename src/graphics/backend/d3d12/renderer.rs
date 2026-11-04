@@ -1,21 +1,33 @@
 use windows::{
     core::{Interface, Result},
-    Win32::Graphics::Direct3D12::{
-        ID3D12CommandAllocator,
-        ID3D12CommandList,
-        ID3D12GraphicsCommandList,
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        D3D12_RESOURCE_BARRIER,
-        D3D12_RESOURCE_BARRIER_0,
-        D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-        D3D12_RESOURCE_BARRIER_FLAG_NONE,
-        D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-        D3D12_RESOURCE_STATE_PRESENT,
-        D3D12_RESOURCE_STATE_RENDER_TARGET,
-        D3D12_RESOURCE_TRANSITION_BARRIER,
-        ID3D12Resource,
-        D3D12_RESOURCE_STATES,
-        D3D12_CLEAR_FLAG_DEPTH,
+    Win32::Graphics::{
+        Direct3D12::{
+            ID3D12CommandAllocator,
+            ID3D12CommandList,
+            ID3D12GraphicsCommandList,
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            D3D12_RESOURCE_BARRIER,
+            D3D12_RESOURCE_BARRIER_0,
+            D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+            D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            D3D12_RESOURCE_STATE_PRESENT,
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_TRANSITION_BARRIER,
+            ID3D12Resource,
+            D3D12_RESOURCE_STATES,
+            D3D12_CLEAR_FLAG_DEPTH,
+            D3D12_DESCRIPTOR_HEAP_DESC,
+            D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            D3D12_GPU_DESCRIPTOR_HANDLE,
+            ID3D12DescriptorHeap,
+            D3D12_SHADER_RESOURCE_VIEW_DESC,
+            D3D12_SRV_DIMENSION_TEXTURE2D,
+            D3D12_TEX2D_SRV,
+            D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+        },
+        Dxgi::Common::DXGI_FORMAT_R8G8B8A8_UNORM,
     },
     Win32::{
         Foundation::{CloseHandle, HANDLE, RECT},
@@ -45,6 +57,7 @@ use super::{
     D3D12VertexBuffer,
     D3D12IndexBuffer,
     D3D12ConstantBuffer,
+    D3D12Texture,
     swap_chain::FRAME_COUNT,
 };
 
@@ -56,7 +69,9 @@ use crate::{
         SpotLight,
         GraphicsResult,
         Mesh,
+        Material,
         mesh::MeshId,
+        texture::TextureId,
     },
     math::{
         Rect,
@@ -231,6 +246,8 @@ impl CachedMesh {
     }
 }
 
+const MAX_TEXTURES: u32 = 1024;
+
 pub(crate) struct D3D12Renderer {
     command_allocators: [ID3D12CommandAllocator; FRAME_COUNT],
     command_list: ID3D12GraphicsCommandList,
@@ -246,6 +263,10 @@ pub(crate) struct D3D12Renderer {
     constant_buffer: D3D12ConstantBuffer,
 
     active_lights: Vec<ActiveLight>,
+    texture_cache: HashMap<TextureId, D3D12Texture>,
+    texture_heap: ID3D12DescriptorHeap,
+    texture_descriptor_size: u32,
+    next_texture_descriptor: u32,
 }
 
 impl D3D12Renderer {
@@ -313,6 +334,29 @@ impl D3D12Renderer {
         let constant_buffer =
             D3D12ConstantBuffer::new(device)?;
 
+        let texture_heap_desc = D3D12_DESCRIPTOR_HEAP_DESC {
+            Type: D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            NumDescriptors: MAX_TEXTURES,
+            Flags: D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+            NodeMask: 0,
+        };
+
+        let texture_heap: ID3D12DescriptorHeap = unsafe {
+            device
+                .device()
+                .CreateDescriptorHeap(
+                    &texture_heap_desc
+                )?
+        };
+
+        let texture_descriptor_size = unsafe {
+            device
+                .device()
+                .GetDescriptorHandleIncrementSize(
+                    D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+                )
+        };
+
         Ok(Self {
             command_allocators,
             command_list,
@@ -328,6 +372,10 @@ impl D3D12Renderer {
             constant_buffer,
 
             active_lights: Vec::new(),
+            texture_cache: HashMap::new(),
+            texture_heap,
+            texture_descriptor_size,
+            next_texture_descriptor: 0,
         })
     }
 
@@ -403,6 +451,10 @@ impl D3D12Renderer {
             self.command_list.IASetPrimitiveTopology(
                 D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
             );
+
+            self.command_list.SetDescriptorHeaps(&[
+                Some(self.texture_heap.clone())
+            ]);
         }
 
         Ok(())
@@ -412,6 +464,7 @@ impl D3D12Renderer {
         &mut self,
         device: &D3D12Device,
         mesh: &Mesh,
+        material: &Material,
         transform: &Transform,
     ) -> Result<()> {
         let model_matrix =
@@ -419,6 +472,62 @@ impl D3D12Renderer {
 
         let normal_matrix =
             transform.normal_matrix();
+
+        let texture =
+        material.base_texture();
+
+        let texture_id =
+            texture.id();
+
+        if !self.texture_cache.contains_key(
+            &texture_id
+        ) {
+            assert!(
+                self.next_texture_descriptor < MAX_TEXTURES,
+                "Oxide exceeded the temporary GPU texture limit"
+            );
+
+            let descriptor_index =
+                self.next_texture_descriptor;
+
+            self.next_texture_descriptor += 1;
+
+            let gpu_texture =
+                D3D12Texture::new(
+                    device,
+                    &self.command_list,
+                    texture,
+                    descriptor_index,
+                )?;
+
+            self.create_texture_srv(
+                device,
+                &gpu_texture,
+            );
+
+            self.texture_cache.insert(
+                texture_id,
+                gpu_texture,
+            );
+        }
+
+        let gpu_texture = self
+            .texture_cache
+            .get(&texture_id)
+            .expect(
+                "texture should be cached after upload"
+            );
+
+        let mut gpu_handle:
+            D3D12_GPU_DESCRIPTOR_HANDLE =
+            unsafe {
+                self.texture_heap
+                    .GetGPUDescriptorHandleForHeapStart()
+            };
+
+        gpu_handle.ptr +=
+            gpu_texture.descriptor_index() as u64
+            * self.texture_descriptor_size as u64;
 
         let object_constants = ObjectConstants {
             model: model_matrix
@@ -618,6 +727,12 @@ impl D3D12Renderer {
                 0,
                 model_address,
             );
+
+            self.command_list
+                .SetGraphicsRootDescriptorTable(
+                    3,
+                    gpu_handle,
+                );
 
             self.command_list.DrawIndexedInstanced(
                 cached.index_buffer.index_count(),
@@ -829,6 +944,53 @@ impl D3D12Renderer {
 
     pub(crate) fn clear_lights(&mut self) {
         self.active_lights.clear();
+    }
+
+    fn create_texture_srv(
+        &self,
+        device: &D3D12Device,
+        texture: &D3D12Texture,
+    ) {
+        let mut handle = unsafe {
+            self.texture_heap
+                .GetCPUDescriptorHandleForHeapStart()
+        };
+
+        handle.ptr +=
+            texture.descriptor_index() as usize
+            * self.texture_descriptor_size as usize;
+
+        let desc = D3D12_SHADER_RESOURCE_VIEW_DESC {
+            Format: DXGI_FORMAT_R8G8B8A8_UNORM,
+
+            ViewDimension:
+                D3D12_SRV_DIMENSION_TEXTURE2D,
+
+            Shader4ComponentMapping:
+                D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+
+            Anonymous:
+                windows::Win32::Graphics::Direct3D12::
+                    D3D12_SHADER_RESOURCE_VIEW_DESC_0 {
+                        Texture2D:
+                            D3D12_TEX2D_SRV {
+                                MostDetailedMip: 0,
+                                MipLevels: 1,
+                                PlaneSlice: 0,
+                                ResourceMinLODClamp: 0.0,
+                            },
+                    },
+        };
+
+        unsafe {
+            device
+                .device()
+                .CreateShaderResourceView(
+                    Some(texture.resource()),
+                    Some(&desc),
+                    handle,
+                );
+        }
     }
 }
 

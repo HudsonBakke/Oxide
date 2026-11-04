@@ -29,7 +29,16 @@ use windows::{
             D3D12_ROOT_PARAMETER_TYPE_CBV,
             D3D12_ROOT_DESCRIPTOR,
             D3D12_SHADER_VISIBILITY_VERTEX,
-            D3D12_SHADER_VISIBILITY_PIXEL
+            D3D12_SHADER_VISIBILITY_PIXEL,
+            D3D12_DESCRIPTOR_RANGE,
+            D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            D3D12_ROOT_DESCRIPTOR_TABLE,
+            D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            D3D12_STATIC_SAMPLER_DESC,
+            D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+            D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            D3D12_COMPARISON_FUNC_ALWAYS,
+            D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
         },
         Dxgi::Common::{
             DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -58,6 +67,20 @@ impl D3D12Pipeline {
         vertex_shader: &D3D12Shader,
         pixel_shader: &D3D12Shader,
     ) -> Result<Self> {
+        let texture_range = [
+            D3D12_DESCRIPTOR_RANGE {
+                RangeType:
+                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+
+                NumDescriptors: 1,
+
+                BaseShaderRegister: 0,
+                RegisterSpace: 0,
+
+                OffsetInDescriptorsFromTableStart: 0,
+            },
+        ];
+
         let root_parameters = [
             D3D12_ROOT_PARAMETER {
                 ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
@@ -100,13 +123,70 @@ impl D3D12Pipeline {
                 ShaderVisibility:
                     D3D12_SHADER_VISIBILITY_PIXEL,
             },
+
+            D3D12_ROOT_PARAMETER {
+                ParameterType:
+                    D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+
+                Anonymous:
+                    D3D12_ROOT_PARAMETER_0 {
+                        DescriptorTable:
+                            D3D12_ROOT_DESCRIPTOR_TABLE {
+                                NumDescriptorRanges:
+                                    texture_range.len() as u32,
+
+                                pDescriptorRanges:
+                                    texture_range.as_ptr(),
+                            },
+                    },
+
+                ShaderVisibility:
+                    D3D12_SHADER_VISIBILITY_PIXEL,
+            },
+        ];
+
+        let static_samplers = [
+            D3D12_STATIC_SAMPLER_DESC {
+                Filter:
+                    D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+
+                AddressU:
+                    D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+
+                AddressV:
+                    D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+
+                AddressW:
+                    D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+
+                MipLODBias: 0.0,
+                MaxAnisotropy: 1,
+
+                ComparisonFunc:
+                    D3D12_COMPARISON_FUNC_ALWAYS,
+
+                BorderColor:
+                    D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
+
+                MinLOD: 0.0,
+                MaxLOD: f32::MAX,
+
+                ShaderRegister: 0,
+                RegisterSpace: 0,
+
+                ShaderVisibility:
+                    D3D12_SHADER_VISIBILITY_PIXEL,
+            },
         ];
 
         let root_desc = D3D12_ROOT_SIGNATURE_DESC {
             NumParameters: root_parameters.len() as u32,
             pParameters: root_parameters.as_ptr(),
-            NumStaticSamplers: 0,
-            pStaticSamplers: std::ptr::null(),
+            NumStaticSamplers:
+                static_samplers.len() as u32,
+
+            pStaticSamplers:
+                static_samplers.as_ptr(),
             Flags: D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
         };
 

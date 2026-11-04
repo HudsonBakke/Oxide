@@ -10,6 +10,8 @@ use oxide::{
         Mesh,
         Vertex,
         Camera,
+        Material,
+        Color,
     },
     math::{
         Vec2,
@@ -25,6 +27,7 @@ struct HelloGame {
     transform: Transform,
 
     elapsed: f64,
+    material: Material,
 }
 
 impl Game for HelloGame {
@@ -64,7 +67,8 @@ impl Game for HelloGame {
         graphics
             .draw_mesh(
                 &self.triangle,
-                &self.transform,
+                &self.material,
+                &self.transform
             )
             .expect("failed to draw triangle");
     }
@@ -78,6 +82,9 @@ fn main() {
     );
 
     let camera = Camera::new();
+
+    let material =
+        Material::solid(Color::WHITE);
 
     let game = HelloGame {
         triangle: Mesh::new(
@@ -102,7 +109,8 @@ fn main() {
         ),
         camera: camera,
         transform: transform,
-        elapsed: 0.0
+        elapsed: 0.0,
+        material: material,
     };
 
     let config = AppConfig {

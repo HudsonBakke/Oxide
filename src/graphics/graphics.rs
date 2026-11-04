@@ -12,6 +12,7 @@ use super::{
     SpotLight,
     PointLight,
     LightSource,
+    Material,
     backend::d3d12::{
         D3D12Device,
         D3D12Renderer,
@@ -74,11 +75,13 @@ impl Graphics {
     pub fn draw_mesh(
         &mut self,
         mesh: &Mesh,
+        material: &Material,
         transform: &Transform,
     ) -> GraphicsResult<()> {
         self.renderer.draw_mesh(
             &self.device,
             mesh,
+            material,
             transform,
         )?;
 
