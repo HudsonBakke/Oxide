@@ -37,6 +37,9 @@ pub struct Mesh {
     indices: Vec<u32>,
 
     pivot: Vec3,
+
+    direction: Vec3,
+    reference: Vec3,
 }
 
 fn calculate_vertex_average(vertices: &[Vertex]) -> Vec3 {
@@ -51,6 +54,26 @@ fn calculate_vertex_average(vertices: &[Vertex]) -> Vec3 {
     }
 
     sum / vertices.len() as f32
+}
+
+const ORIENTATION_EPSILON: f32 = 1.0e-6;
+
+fn orthogonalize_reference(
+    direction: Vec3,
+    reference: Vec3,
+) -> Vec3 {
+    let projected =
+        reference
+        - direction
+            * reference.dot(&direction);
+
+    assert!(
+        projected.length()
+            > ORIENTATION_EPSILON,
+        "mesh reference cannot be parallel to mesh direction"
+    );
+
+    projected.normalized()
 }
 
 impl Mesh {
@@ -71,6 +94,18 @@ impl Mesh {
             indices,
 
             pivot,
+
+            direction: Vec3::new(
+                0.0,
+                0.0,
+                -1.0,
+            ),
+
+            reference: Vec3::new(
+                0.0,
+                1.0,
+                0.0,
+            ),
         }
     }
 
@@ -141,6 +176,107 @@ impl Mesh {
     pub(crate) fn index_generation(&self) -> u64 {
         self.index_generation
     }
+
+    /// Returns the mesh's canonical model-space direction.
+    pub fn direction(&self) -> Vec3 {
+        self.direction
+    }
+
+    /// Returns the mesh's canonical model-space reference direction.
+    ///
+    /// The reference is always perpendicular to the canonical direction.
+    pub fn reference(&self) -> Vec3 {
+        self.reference
+    }
+
+    /// Sets the mesh's canonical reference direction.
+    ///
+    /// The supplied vector is automatically made perpendicular
+    /// to the mesh's canonical direction and normalized.
+    pub fn set_reference(
+        &mut self,
+        reference: Vec3,
+    ) {
+        assert!(
+            reference.length()
+                > ORIENTATION_EPSILON,
+            "mesh reference cannot be zero"
+        );
+
+        self.reference =
+            orthogonalize_reference(
+                self.direction,
+                reference,
+            );
+    }
+
+    /// Sets the mesh's canonical direction while preserving its
+    /// current reference orientation when possible.
+    pub fn set_direction(
+        &mut self,
+        direction: Vec3,
+    ) {
+        assert!(
+            direction.length()
+                > ORIENTATION_EPSILON,
+            "mesh direction cannot be zero"
+        );
+
+        let direction =
+            direction.normalized();
+
+        self.reference =
+            orthogonalize_reference(
+                direction,
+                self.reference,
+            );
+
+        self.direction = direction;
+    }
+
+    /// Sets the mesh's canonical model-space orientation.
+    ///
+    /// `direction` defines the mesh's forward/longitudinal axis.
+    /// `reference` defines its zero-twist orientation around that axis.
+    ///
+    /// Both vectors are normalized automatically, and `reference` is
+    /// automatically made perpendicular to `direction`.
+    pub fn set_orientation(
+        &mut self,
+        direction: Vec3,
+        reference: Vec3,
+    ) {
+        assert!(
+            direction.length()
+                > ORIENTATION_EPSILON,
+            "mesh direction cannot be zero"
+        );
+
+        assert!(
+            reference.length()
+                > ORIENTATION_EPSILON,
+            "mesh reference cannot be zero"
+        );
+
+        let direction =
+            direction.normalized();
+
+        let reference =
+            orthogonalize_reference(
+                direction,
+                reference,
+            );
+
+        self.direction = direction;
+        self.reference = reference;
+    }
+
+    /// Returns the third axis of the mesh's canonical orientation frame.
+    pub fn side(&self) -> Vec3 {
+        self.direction
+            .cross(&self.reference)
+            .normalized()
+    }
 }
 
 impl Clone for Mesh {
@@ -155,6 +291,9 @@ impl Clone for Mesh {
             indices: self.indices.clone(),
 
             pivot: self.pivot,
+
+            direction: self.direction,
+            reference: self.reference, 
         }
     }
 }

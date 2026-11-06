@@ -37,18 +37,19 @@ impl Game for CubeGame {
     }
 
     fn update(&mut self, time: &GameTime) {
-        let seconds = time.total_seconds() as f32;
+        let seconds =
+            time.total_seconds() as f32;
 
-        self.transform.set_pitch(
-            Angle::radians(seconds * 0.7)
-        );
-
-        self.transform.set_yaw(
-            Angle::radians(seconds)
-        );
-
-        self.transform.set_roll(
-            Angle::radians(seconds * 0.25)
+        self.transform.set_euler(
+            Angle::radians(
+                seconds * 0.7
+            ),
+            Angle::radians(
+                seconds
+            ),
+            Angle::radians(
+                seconds * 0.25
+            ),
         );
     }
 

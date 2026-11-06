@@ -1,6 +1,7 @@
 use super::{
     Angle,
     Mat4,
+    Quaternion,
     Vec3,
 };
 
@@ -8,11 +9,7 @@ use super::{
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
     position: Vec3,
-
-    pitch: Angle,
-    yaw: Angle,
-    roll: Angle,
-
+    rotation: Quaternion,
     scale: Vec3,
 }
 
@@ -27,9 +24,7 @@ impl Transform {
                 z: 0.0,
             },
 
-            pitch: Angle::ZERO,
-            yaw: Angle::ZERO,
-            roll: Angle::ZERO,
+            rotation: Quaternion::IDENTITY,
 
             scale: Vec3 {
                 x: 1.0,
@@ -39,109 +34,106 @@ impl Transform {
         }
     }
 
-    pub fn set_position(&mut self, position: Vec3) {
-        self.position = position;
-    }
-
-    pub fn translate_by(&mut self, translation: Vec3) {
-        self.position = self.position + translation;
-    }
-
-    pub fn set_pitch(&mut self, pitch: Angle) {
-        self.pitch = pitch;
-    }
-
-    pub fn set_yaw(&mut self, yaw: Angle) {
-        self.yaw = yaw;
-    }
-
-    pub fn set_roll(&mut self, roll: Angle) {
-        self.roll = roll;
-    }
-
-    pub fn rotate_pitch_by(&mut self, angle: Angle) {
-        self.pitch = Angle::radians(
-            self.pitch.as_radians() + angle.as_radians()
-        );
-    }
-
-    pub fn rotate_yaw_by(&mut self, angle: Angle) {
-        self.yaw = Angle::radians(
-            self.yaw.as_radians() + angle.as_radians()
-        );
-    }
-
-    pub fn rotate_roll_by(&mut self, angle: Angle) {
-        self.roll = Angle::radians(
-            self.roll.as_radians() + angle.as_radians()
-        );
-    }
-
-    pub fn set_scale(&mut self, scale: Vec3) {
-        self.scale = scale;
-    }
-
-    /// Multiplies the current scale component-wise.
-    pub fn scale_by(&mut self, scale: Vec3) {
-        self.scale.x *= scale.x;
-        self.scale.y *= scale.y;
-        self.scale.z *= scale.z;
-    }
-
-    /// Produces the transformation matrix represented by this transform.
-    pub(crate) fn matrix(&self) -> Mat4 {
-        let translation = Mat4::translation(
-            self.position.x,
-            self.position.y,
-            self.position.z,
-        );
-
-        let pitch =
-            Mat4::rotation_x(self.pitch.as_radians());
-
-        let yaw =
-            Mat4::rotation_y(self.yaw.as_radians());
-
-        let roll =
-            Mat4::rotation_z(self.roll.as_radians());
-
-        let scale = Mat4::scale(
-            self.scale.x,
-            self.scale.y,
-            self.scale.z,
-        );
-
-        translation * yaw * pitch * roll * scale
-    }
-
-    pub(crate) fn matrix_around(&self, pivot: Vec3) -> Mat4 {
-        let to_origin = Mat4::translation(
-            -pivot.x,
-            -pivot.y,
-            -pivot.z,
-        );
-
-        self.matrix() * to_origin
-    }
-
     /// Returns the transform's position.
     pub fn position(&self) -> Vec3 {
         self.position
     }
 
-    /// Returns the transform's pitch.
-    pub fn pitch(&self) -> Angle {
-        self.pitch
+    /// Sets the transform's position.
+    pub fn set_position(
+        &mut self,
+        position: Vec3,
+    ) {
+        self.position = position;
     }
 
-    /// Returns the transform's yaw.
-    pub fn yaw(&self) -> Angle {
-        self.yaw
+    /// Moves the transform by the given amount.
+    pub fn translate_by(
+        &mut self,
+        translation: Vec3,
+    ) {
+        self.position =
+            self.position + translation;
     }
 
-    /// Returns the transform's roll.
-    pub fn roll(&self) -> Angle {
-        self.roll
+    /// Returns the transform's orientation.
+    pub fn rotation(&self) -> Quaternion {
+        self.rotation
+    }
+
+    /// Sets the transform's orientation.
+    pub fn set_rotation(
+        &mut self,
+        rotation: Quaternion,
+    ) {
+        self.rotation =
+            rotation.normalized();
+    }
+
+    /// Sets the transform's orientation from Euler angles.
+    ///
+    /// Rotation order is yaw, then pitch, then roll,
+    /// matching Oxide's existing transform convention.
+    pub fn set_euler(
+        &mut self,
+        pitch: Angle,
+        yaw: Angle,
+        roll: Angle,
+    ) {
+        self.rotation =
+            Quaternion::from_euler(
+                pitch,
+                yaw,
+                roll,
+            );
+    }
+
+    /// Rotates around the world X axis.
+    pub fn rotate_pitch_by(
+        &mut self,
+        angle: Angle,
+    ) {
+        let rotation =
+            Quaternion::from_axis_angle(
+                Vec3::new(1.0, 0.0, 0.0),
+                angle,
+            );
+
+        self.rotation =
+            (rotation * self.rotation)
+                .normalized();
+    }
+
+    /// Rotates around the world Y axis.
+    pub fn rotate_yaw_by(
+        &mut self,
+        angle: Angle,
+    ) {
+        let rotation =
+            Quaternion::from_axis_angle(
+                Vec3::new(0.0, 1.0, 0.0),
+                angle,
+            );
+
+        self.rotation =
+            (rotation * self.rotation)
+                .normalized();
+    }
+
+    /// Rotates around the world Z axis.
+    pub fn rotate_roll_by(
+        &mut self,
+        angle: Angle,
+    ) {
+        let rotation =
+            Quaternion::from_axis_angle(
+                Vec3::new(0.0, 0.0, 1.0),
+                angle,
+            );
+
+        self.rotation =
+            (rotation * self.rotation)
+                .normalized();
     }
 
     /// Returns the transform's scale.
@@ -149,35 +141,91 @@ impl Transform {
         self.scale
     }
 
-    pub(crate) fn normal_matrix(&self) -> Mat4 {
-        let inverse_scale = Mat4::scale(
-            if self.scale().x != 0.0 {
-                1.0 / self.scale().x
-            } else {
-                0.0
-            },
-            if self.scale().y != 0.0 {
-                1.0 / self.scale().y
-            } else {
-                0.0
-            },
-            if self.scale().z != 0.0 {
-                1.0 / self.scale().z
-            } else {
-                0.0
-            },
-        );
+    /// Sets the transform's scale.
+    pub fn set_scale(
+        &mut self,
+        scale: Vec3,
+    ) {
+        self.scale = scale;
+    }
 
-        let pitch =
-            Mat4::rotation_x(self.pitch().as_radians());
+    /// Multiplies the current scale component-wise.
+    pub fn scale_by(
+        &mut self,
+        scale: Vec3,
+    ) {
+        self.scale.x *= scale.x;
+        self.scale.y *= scale.y;
+        self.scale.z *= scale.z;
+    }
 
-        let yaw =
-            Mat4::rotation_y(self.yaw().as_radians());
+    /// Produces the transformation matrix represented by
+    /// this transform.
+    pub(crate) fn matrix(&self) -> Mat4 {
+        let translation =
+            Mat4::translation(
+                self.position.x,
+                self.position.y,
+                self.position.z,
+            );
 
-        let roll =
-            Mat4::rotation_z(self.roll().as_radians());
+        let rotation =
+            self.rotation.to_matrix();
 
-        yaw * pitch * roll * inverse_scale
+        let scale =
+            Mat4::scale(
+                self.scale.x,
+                self.scale.y,
+                self.scale.z,
+            );
+
+        translation
+            * rotation
+            * scale
+    }
+
+    /// Produces this transformation around a model-space pivot.
+    pub(crate) fn matrix_around(
+        &self,
+        pivot: Vec3,
+    ) -> Mat4 {
+        let to_origin =
+            Mat4::translation(
+                -pivot.x,
+                -pivot.y,
+                -pivot.z,
+            );
+
+        self.matrix() * to_origin
+    }
+
+    /// Produces the matrix used to transform surface normals.
+    pub(crate) fn normal_matrix(
+        &self,
+    ) -> Mat4 {
+        let inverse_scale =
+            Mat4::scale(
+                if self.scale.x != 0.0 {
+                    1.0 / self.scale.x
+                } else {
+                    0.0
+                },
+
+                if self.scale.y != 0.0 {
+                    1.0 / self.scale.y
+                } else {
+                    0.0
+                },
+
+                if self.scale.z != 0.0 {
+                    1.0 / self.scale.z
+                } else {
+                    0.0
+                },
+            );
+
+        self.rotation.to_matrix()
+            * inverse_scale
     }
 }
 

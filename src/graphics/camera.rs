@@ -3,6 +3,7 @@ use crate::math::{
     Mat4,
     Transform,
     Vec3,
+    Quaternion,
 };
 
 /// Defines a viewpoint from which a 3D scene can be rendered.
@@ -42,40 +43,40 @@ impl Camera {
         self.transform.translate_by(translation);
     }
 
-    pub fn pitch(&self) -> Angle {
-        self.transform.pitch()
-    }
-
-    pub fn set_pitch(&mut self, pitch: Angle) {
-        self.transform.set_pitch(pitch);
-    }
-
     pub fn rotate_pitch_by(&mut self, angle: Angle) {
         self.transform.rotate_pitch_by(angle);
-    }
-
-    pub fn yaw(&self) -> Angle {
-        self.transform.yaw()
-    }
-
-    pub fn set_yaw(&mut self, yaw: Angle) {
-        self.transform.set_yaw(yaw);
     }
 
     pub fn rotate_yaw_by(&mut self, angle: Angle) {
         self.transform.rotate_yaw_by(angle);
     }
 
-    pub fn roll(&self) -> Angle {
-        self.transform.roll()
-    }
-
-    pub fn set_roll(&mut self, roll: Angle) {
-        self.transform.set_roll(roll);
-    }
-
     pub fn rotate_roll_by(&mut self, angle: Angle) {
         self.transform.rotate_roll_by(angle);
+    }
+
+    pub fn rotation(&self) -> Quaternion {
+        self.transform.rotation()
+    }
+
+    pub fn set_rotation(
+        &mut self,
+        rotation: Quaternion,
+    ) {
+        self.transform.set_rotation(rotation);
+    }
+
+    pub fn set_euler(
+        &mut self,
+        pitch: Angle,
+        yaw: Angle,
+        roll: Angle,
+    ) {
+        self.transform.set_euler(
+            pitch,
+            yaw,
+            roll,
+        );
     }
 
     pub fn field_of_view(&self) -> Angle {
@@ -121,32 +122,23 @@ impl Camera {
     }
 
     pub(crate) fn view_matrix(&self) -> Mat4 {
-        let position = self.transform.position();
+        let position =
+            self.transform.position();
 
-        let inverse_translation = Mat4::translation(
-            -position.x,
-            -position.y,
-            -position.z,
-        );
-
-        let inverse_pitch =
-            Mat4::rotation_x(
-                -self.transform.pitch().as_radians()
+        let inverse_translation =
+            Mat4::translation(
+                -position.x,
+                -position.y,
+                -position.z,
             );
 
-        let inverse_yaw =
-            Mat4::rotation_y(
-                -self.transform.yaw().as_radians()
-            );
+        let inverse_rotation =
+            self.transform
+                .rotation()
+                .conjugate()
+                .to_matrix();
 
-        let inverse_roll =
-            Mat4::rotation_z(
-                -self.transform.roll().as_radians()
-            );
-
-        inverse_roll
-            * inverse_pitch
-            * inverse_yaw
+        inverse_rotation
             * inverse_translation
     }
 

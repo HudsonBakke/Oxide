@@ -45,10 +45,12 @@ impl Game for SplitScreenGame {
 
         // Slowly rotate the right-hand triangle so it is obvious
         // that both halves of the screen are updating normally.
-        self.right_transform.set_roll(
+        self.right_transform.set_euler(
+            Angle::ZERO,
+            Angle::ZERO,
             Angle::radians(
                 time.total_seconds() as f32
-            )
+            ),
         );
 
         if self.elapsed >= 1.0 {
@@ -191,8 +193,10 @@ fn main() {
         )
     );
 
-    right_camera.set_yaw(
-        Angle::degrees(-15.0)
+    right_camera.set_euler(
+        Angle::ZERO,
+        Angle::degrees(-15.0),
+        Angle::ZERO,
     );
 
     let game = SplitScreenGame {

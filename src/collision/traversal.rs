@@ -114,8 +114,6 @@ pub(super) fn surfaces_intersect(
         }
     );
 
-    let mut overlapping_leaves = 0;
-
     while let Some(pair) = stack.pop() {
         let node_a =
             &bvh_a.nodes[pair.a as usize];
