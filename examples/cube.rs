@@ -21,6 +21,7 @@ use oxide::{
         Vec2,
         Vec3,
     },
+    content::ContentManager,
 };
 
 struct CubeGame {
@@ -165,9 +166,17 @@ fn main() {
         15.0,
     );
 
-    let texture = Texture::load(
-        "assets/brick.jpg"
-    ).expect("failed to load texture");
+    let mut content =
+        ContentManager::new();
+
+    let texture =
+        content
+            .load::<Texture>(
+                "assets/brick.jpg"
+            )
+            .expect(
+                "failed to load texture"
+            );
 
     let material = Material::new(texture);
 
