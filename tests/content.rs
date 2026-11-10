@@ -3,7 +3,10 @@ use oxide::{
         ContentError,
         ContentManager,
     },
-    graphics::Texture,
+    graphics::{
+        Texture,
+        Mesh,
+    },
 };
 
 use std::{
@@ -421,6 +424,40 @@ fn empty_selector_path_still_loads_normally() {
 
     assert!(
         texture.height() > 0
+    );
+
+    fs::remove_dir_all(
+        cache
+    ).unwrap();
+}
+
+#[test]
+fn loads_glb_mesh() {
+    let cache =
+        test_cache_directory(
+            "glb-mesh"
+        );
+
+    let mut content =
+        ContentManager::with_cache_directory(
+            &cache
+        );
+
+    let mesh =
+        content
+            .load::<Mesh>(
+                "assets/blender_cube.glb"
+            )
+            .expect(
+                "GLB mesh should load"
+            );
+
+    assert!(
+        !mesh.vertices().is_empty()
+    );
+
+    assert!(
+        !mesh.indices().is_empty()
     );
 
     fs::remove_dir_all(

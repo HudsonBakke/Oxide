@@ -7,6 +7,7 @@ use std::{
         Read, 
         Write,
     },
+    path::Path,
 };
 
 use super::Vertex;
@@ -355,23 +356,12 @@ impl ContentAsset for Mesh {
     }
 
     fn import(
-        path: &std::path::Path,
+        path: &Path,
         subobject: &str,
     ) -> ContentResult<Self> {
-        let _ = (
+        crate::content::import_gltf_mesh(
             path,
             subobject,
-        );
-
-        Err(
-            ContentError::ImportFailed {
-                path:
-                    path.to_path_buf(),
-
-                message:
-                    "GLTF/GLB importing has not been implemented yet"
-                        .into(),
-            }
         )
     }
 
