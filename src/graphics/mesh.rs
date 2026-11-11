@@ -340,6 +340,10 @@ impl Clone for Mesh {
 }
 
 impl ContentAsset for Mesh {
+    fn compiler_version() -> u32 {
+        3
+    }
+
     fn asset_type_name()
         -> &'static str
     {

@@ -39,4 +39,7 @@ pub trait ContentAsset: Sized {
         reader: &mut impl Read,
         payload_size: u64,
     ) -> ContentResult<Self>;
+
+    #[doc(hidden)]
+    fn compiler_version() -> u32;
 }

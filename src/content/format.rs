@@ -11,7 +11,7 @@ use super::{
 pub(crate) const MAGIC: &[u8; 8] =
     b"OXASSET\0";
 
-pub(crate) const FORMAT_VERSION: u32 = 2;
+pub(crate) const FORMAT_VERSION: u32 = 3;
 
 #[doc(hidden)]
 #[derive(
@@ -46,6 +46,7 @@ impl AssetType {
 #[derive(Debug)]
 pub(crate) struct AssetHeader {
     pub asset_type: AssetType,
+    pub compiler_version: u32,
     pub dependency_count: u32,
     pub subobject_length: u32,
     pub payload_size: u64,
@@ -63,6 +64,12 @@ pub(crate) fn write_header(
 
     writer.write_all(
         &(header.asset_type as u32)
+            .to_le_bytes()
+    )?;
+
+    writer.write_all(
+        &header
+            .compiler_version
             .to_le_bytes()
     )?;
 
@@ -135,6 +142,9 @@ pub(crate) fn read_header(
         );
     };
 
+    let compiler_version =
+        read_u32(reader)?;
+
     let dependency_count =
         read_u32(reader)?;
 
@@ -147,6 +157,7 @@ pub(crate) fn read_header(
     Ok(
         AssetHeader {
             asset_type,
+            compiler_version,
             dependency_count,
             subobject_length,
             payload_size,

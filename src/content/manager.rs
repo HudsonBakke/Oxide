@@ -244,6 +244,20 @@ impl ContentManager {
             );
         }
 
+        if header.compiler_version
+            != T::compiler_version()
+        {
+            return Err(
+                ContentError::InvalidCache(
+                    format!(
+                        "compiled asset compiler version {} does not match current compiler version {}",
+                        header.compiler_version,
+                        T::compiler_version(),
+                    )
+                )
+            );
+        }
+
         // Protect against absurd dependency counts in a
         // corrupt or malicious cache file before allocating or
         // looping over them.
@@ -474,6 +488,9 @@ impl ContentManager {
                 asset_type:
                     T::compiled_asset_type(),
 
+                compiler_version:
+                    T::compiler_version(),
+
                 dependency_count: 1,
 
                 subobject_length,
@@ -525,6 +542,9 @@ impl ContentManager {
             AssetHeader {
                 asset_type:
                     T::compiled_asset_type(),
+
+                compiler_version:
+                    T::compiler_version(),
 
                 dependency_count: 1,
 

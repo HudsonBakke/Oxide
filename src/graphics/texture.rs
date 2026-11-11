@@ -126,6 +126,10 @@ impl Clone for Texture {
 }
 
 impl ContentAsset for Texture {
+    fn compiler_version() -> u32 {
+        1
+    }
+
     fn asset_type_name() -> &'static str {
         "Texture"
     }
