@@ -94,6 +94,7 @@ fn attachment_points_coincide() {
             ),
 
             Angle::ZERO,
+            Vec3::new(1.0, 1.0, 1.0),
         );
 
     // Parent has no rotation or scale, so its
@@ -155,6 +156,7 @@ fn child_direction_is_aligned() {
             desired_direction,
 
             Angle::ZERO,
+            Vec3::new(1.0, 1.0, 1.0),
         );
 
     let actual_direction =
@@ -207,6 +209,7 @@ fn zero_rotation_follows_parent_reference() {
             desired_direction,
 
             Angle::ZERO,
+            Vec3::new(1.0, 1.0, 1.0),
         );
 
     let parent_reference =
@@ -258,6 +261,7 @@ fn rotation_twists_around_direction() {
             direction,
 
             Angle::degrees(90.0),
+            Vec3::new(1.0, 1.0, 1.0),
         );
 
     let actual_direction =
@@ -325,6 +329,7 @@ fn parallel_parent_reference_uses_side_fallback() {
             desired_direction,
 
             Angle::ZERO,
+            Vec3::new(1.0, 1.0, 1.0),
         );
 
     let actual_direction =

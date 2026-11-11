@@ -7,6 +7,7 @@ use super::{
 };
 
 /// A quaternion representing a 3D rotation.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quaternion {
     pub x: f32,

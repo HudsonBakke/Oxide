@@ -17,6 +17,7 @@ use crate::content::{
     ContentAsset,
     ContentError,
     ContentResult,
+    ContentAssetInternal,
 };
 
 static NEXT_TEXTURE_ID: AtomicU64 =
@@ -138,7 +139,7 @@ impl Clone for Texture {
     }
 }
 
-impl ContentAsset for Texture {
+impl ContentAssetInternal for Texture {
     fn compiler_version() -> u32 {
         2
     }
@@ -380,3 +381,5 @@ impl ContentAsset for Texture {
         )
     }
 }
+
+impl ContentAsset for Texture {}

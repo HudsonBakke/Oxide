@@ -46,6 +46,10 @@ pub enum ContentError {
         path: PathBuf,
         asset_type: &'static str,
     },
+
+    InvalidSubObject {
+        message: &'static str,
+    },
 }
 
 pub type ContentResult<T> =
@@ -160,6 +164,16 @@ impl fmt::Display for ContentError {
                     "{} contains multiple objects that can be loaded as {}; specify a subobject",
                     path.display(),
                     asset_type,
+                )
+            }
+
+            Self::InvalidSubObject {
+                message,
+            } => {
+                write!(
+                    f,
+                    "invalid content subobject: {}",
+                    message,
                 )
             }
         }

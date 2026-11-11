@@ -83,15 +83,31 @@ impl Camera {
         self.field_of_view
     }
 
-    pub fn set_field_of_view(&mut self, field_of_view: Angle) {
-        assert!(
-            field_of_view.as_radians() > 0.0
-                && field_of_view.as_radians()
-                    < std::f32::consts::PI,
-            "camera field of view must be between 0 and pi radians"
-        );
+    pub fn set_field_of_view(
+        &mut self,
+        field_of_view: Angle,
+    ) -> crate::OxideResult<()> {
+        let radians =
+            field_of_view.as_radians();
 
-        self.field_of_view = field_of_view;
+        if radians <= 0.0
+            || radians >= std::f32::consts::PI
+        {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "field_of_view",
+
+                    message:
+                        "field of view must be between 0 and pi radians",
+                }
+            );
+        }
+
+        self.field_of_view =
+            field_of_view;
+
+        Ok(())
     }
 
     pub fn near_plane(&self) -> f32 {
@@ -106,19 +122,38 @@ impl Camera {
         &mut self,
         near_plane: f32,
         far_plane: f32,
-    ) {
-        assert!(
-            near_plane > 0.0,
-            "camera near plane must be greater than zero"
-        );
+    ) -> crate::OxideResult<()> {
+        if near_plane <= 0.0 {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "near_plane",
 
-        assert!(
-            far_plane > near_plane,
-            "camera far plane must be farther than the near plane"
-        );
+                    message:
+                        "near plane must be greater than zero",
+                }
+            );
+        }
 
-        self.near_plane = near_plane;
-        self.far_plane = far_plane;
+        if far_plane <= near_plane {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "far_plane",
+
+                    message:
+                        "far plane must be farther than the near plane",
+                }
+            );
+        }
+
+        self.near_plane =
+            near_plane;
+
+        self.far_plane =
+            far_plane;
+
+        Ok(())
     }
 
     pub(crate) fn view_matrix(&self) -> Mat4 {

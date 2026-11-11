@@ -6,6 +6,7 @@ use super::{
 };
 
 /// Position, orientation, and scale of an object in 3D space.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
     position: Vec3,

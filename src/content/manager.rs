@@ -80,10 +80,14 @@ impl ContentManager {
         let subobject =
             subobject.as_ref();
 
-        assert!(
-            !subobject.is_empty(),
-            "load_sub requires a non-empty subobject name; use load for the default object"
-        );
+        if subobject.is_empty() {
+            return Err(
+                ContentError::InvalidSubObject {
+                    message:
+                        "subobject name cannot be empty; use load for the default object",
+                }
+            );
+        }
 
         self.load_internal::<T>(
             path.as_ref(),

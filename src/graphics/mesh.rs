@@ -16,6 +16,7 @@ use crate::{
     content::{
         AssetType,
         ContentAsset,
+        ContentAssetInternal,
         ContentError,
         ContentResult,
     },
@@ -145,6 +146,9 @@ impl Mesh {
         mesh.set_orientation(
             direction,
             reference,
+        )
+        .expect(
+            "validated compiled mesh orientation should be valid"
         );
 
         mesh
@@ -237,18 +241,28 @@ impl Mesh {
     pub fn set_reference(
         &mut self,
         reference: Vec3,
-    ) {
-        assert!(
-            reference.length()
-                > ORIENTATION_EPSILON,
-            "mesh reference cannot be zero"
-        );
+    ) -> crate::OxideResult<()> {
+        if reference.length()
+            <= ORIENTATION_EPSILON
+        {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "reference",
+
+                    message:
+                        "mesh reference cannot be zero",
+                }
+            );
+        }
 
         self.reference =
             orthogonalize_reference(
                 self.direction,
                 reference,
             );
+
+        Ok(())
     }
 
     /// Sets the mesh's canonical direction while preserving its
@@ -256,12 +270,20 @@ impl Mesh {
     pub fn set_direction(
         &mut self,
         direction: Vec3,
-    ) {
-        assert!(
-            direction.length()
-                > ORIENTATION_EPSILON,
-            "mesh direction cannot be zero"
-        );
+    ) -> crate::OxideResult<()> {
+        if direction.length()
+            <= ORIENTATION_EPSILON
+        {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "direction",
+
+                    message:
+                        "mesh direction cannot be zero",
+                }
+            );
+        }
 
         let direction =
             direction.normalized();
@@ -273,6 +295,8 @@ impl Mesh {
             );
 
         self.direction = direction;
+
+        Ok(())
     }
 
     /// Sets the mesh's canonical model-space orientation.
@@ -286,30 +310,66 @@ impl Mesh {
         &mut self,
         direction: Vec3,
         reference: Vec3,
-    ) {
-        assert!(
-            direction.length()
-                > ORIENTATION_EPSILON,
-            "mesh direction cannot be zero"
-        );
+    ) -> crate::OxideResult<()> {
+        if direction.length()
+            <= ORIENTATION_EPSILON
+        {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "direction",
 
-        assert!(
-            reference.length()
-                > ORIENTATION_EPSILON,
-            "mesh reference cannot be zero"
-        );
+                    message:
+                        "mesh direction cannot be zero",
+                }
+            );
+        }
+
+        if reference.length()
+            <= ORIENTATION_EPSILON
+        {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "reference",
+
+                    message:
+                        "mesh reference cannot be zero",
+                }
+            );
+        }
 
         let direction =
             direction.normalized();
 
-        let reference =
-            orthogonalize_reference(
-                direction,
-                reference,
-            );
+        let projected =
+            reference
+                - direction
+                    * reference.dot(
+                        &direction
+                    );
 
-        self.direction = direction;
-        self.reference = reference;
+        if projected.length()
+            <= ORIENTATION_EPSILON
+        {
+            return Err(
+                crate::OxideError::InvalidArgument {
+                    argument:
+                        "reference",
+
+                    message:
+                        "mesh reference cannot be parallel to mesh direction",
+                }
+            );
+        }
+
+        self.direction =
+            direction;
+
+        self.reference =
+            projected.normalized();
+
+        Ok(())
     }
 
     /// Returns the third axis of the mesh's canonical orientation frame.
@@ -339,7 +399,7 @@ impl Clone for Mesh {
     }
 }
 
-impl ContentAsset for Mesh {
+impl ContentAssetInternal for Mesh {
     fn compiler_version() -> u32 {
         3
     }
@@ -395,6 +455,8 @@ impl ContentAsset for Mesh {
         )
     }
 }
+
+impl ContentAsset for Mesh {}
 
 fn write_f32(
     writer: &mut impl Write,

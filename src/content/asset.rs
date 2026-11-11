@@ -11,35 +11,49 @@ use super::{
     ContentResult,
 };
 
-pub trait ContentAsset: Sized {
-    fn asset_type_name()
-        -> &'static str;
+/// A fundamental Oxide asset that can be loaded by ContentManager.
+///
+/// This trait is sealed. Oxide defines which engine primitives
+/// are valid content assets.
+pub trait ContentAsset:
+    private::ContentAssetInternal
+{
+}
 
-    fn supports_extension(
-        extension: &str,
-    ) -> bool;
+pub(crate) use private::ContentAssetInternal;
 
-    fn import(
-        path: &Path,
-        subobject: &str,
-    ) -> ContentResult<Self>;
+mod private {
+    use super::*;
 
-    #[doc(hidden)]
-    fn compiled_asset_type()
-        -> AssetType;
+    pub trait ContentAssetInternal:
+        Sized
+    {
+        fn asset_type_name()
+            -> &'static str;
 
-    #[doc(hidden)]
-    fn write_compiled(
-        &self,
-        writer: &mut impl Write,
-    ) -> ContentResult<()>;
+        fn supports_extension(
+            extension: &str,
+        ) -> bool;
 
-    #[doc(hidden)]
-    fn read_compiled(
-        reader: &mut impl Read,
-        payload_size: u64,
-    ) -> ContentResult<Self>;
+        fn import(
+            path: &Path,
+            subobject: &str,
+        ) -> ContentResult<Self>;
 
-    #[doc(hidden)]
-    fn compiler_version() -> u32;
+        fn compiled_asset_type()
+            -> AssetType;
+
+        fn compiler_version()
+            -> u32;
+
+        fn write_compiled(
+            &self,
+            writer: &mut impl Write,
+        ) -> ContentResult<()>;
+
+        fn read_compiled(
+            reader: &mut impl Read,
+            payload_size: u64,
+        ) -> ContentResult<Self>;
+    }
 }

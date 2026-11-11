@@ -5,6 +5,7 @@ use super::{
     vec3::Vec3,
 };
 
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Mat4 {
     m: [[f32; 4]; 4],
@@ -149,24 +150,6 @@ impl Mat4 {
             point.y,
             point.z,
             1.0,
-        );
-
-        Vec3::new(
-            result.x,
-            result.y,
-            result.z,
-        )
-    }
-
-    pub(crate) fn transform_vector(
-        &self,
-        vector: Vec3,
-    ) -> Vec3 {
-        let result = *self * Vec4::new(
-            vector.x,
-            vector.y,
-            vector.z,
-            0.0,
         );
 
         Vec3::new(

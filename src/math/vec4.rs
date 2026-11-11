@@ -1,6 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 use super::vec3::Vec3;
 
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Vec4 {
     pub x: f32,

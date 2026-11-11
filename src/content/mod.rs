@@ -8,15 +8,15 @@ mod importers;
 
 pub use asset::ContentAsset;
 
+pub(crate) use asset::ContentAssetInternal;
+pub(crate) use format::AssetType;
+
 pub use error::{
     ContentError,
     ContentResult,
 };
 
 pub use manager::ContentManager;
-
-#[doc(hidden)]
-pub use format::AssetType;
 
 pub(crate) fn import_gltf_mesh(
     path: &std::path::Path,

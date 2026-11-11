@@ -13,7 +13,6 @@ pub(crate) const MAGIC: &[u8; 8] =
 
 pub(crate) const FORMAT_VERSION: u32 = 3;
 
-#[doc(hidden)]
 #[derive(
     Debug,
     Clone,

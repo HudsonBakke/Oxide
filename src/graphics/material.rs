@@ -10,6 +10,7 @@ use crate::content::{
     AssetType,
     ContentAsset,
     ContentResult,
+    ContentAssetInternal,
 };
 
 use super::{
@@ -47,7 +48,7 @@ impl Material {
     }
 }
 
-impl ContentAsset for Material {
+impl ContentAssetInternal for Material {
     fn asset_type_name()
         -> &'static str
     {
@@ -87,7 +88,7 @@ impl ContentAsset for Material {
         &self,
         writer: &mut impl Write,
     ) -> ContentResult<()> {
-        <Texture as ContentAsset>
+        <Texture as ContentAssetInternal>
             ::write_compiled(
                 &self.base_texture,
                 writer,
@@ -99,7 +100,7 @@ impl ContentAsset for Material {
         payload_size: u64,
     ) -> ContentResult<Self> {
         let texture =
-            <Texture as ContentAsset>
+            <Texture as ContentAssetInternal>
                 ::read_compiled(
                     reader,
                     payload_size,
@@ -110,3 +111,5 @@ impl ContentAsset for Material {
         )
     }
 }
+
+impl ContentAsset for Material {}

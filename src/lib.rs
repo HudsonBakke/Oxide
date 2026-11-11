@@ -5,3 +5,9 @@ pub mod collision;
 pub mod content;
 
 mod platform;
+mod error;
+
+pub use error::{
+    OxideError,
+    OxideResult,
+};

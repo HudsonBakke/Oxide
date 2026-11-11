@@ -1,4 +1,5 @@
 /// A rectangular region defined by its position and dimensions.
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Rect {
     pub x: f32,
@@ -24,11 +25,6 @@ impl Rect {
 
     /// Returns this rectangle's width-to-height ratio.
     pub fn aspect_ratio(&self) -> f32 {
-        assert!(
-            self.height > 0.0,
-            "rectangle height must be greater than zero"
-        );
-
         self.width / self.height
     }
 }

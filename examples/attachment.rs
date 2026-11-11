@@ -81,6 +81,10 @@ impl Game for AttachmentGame {
 
                 desired_direction,
                 twist,
+                Vec3::new(1.0, 1.0, 1.0),
+            )
+            .expect(
+                "failed to calculate arm attachment"
             );
     }
 
@@ -390,6 +394,7 @@ fn main() {
             ),
 
             Angle::ZERO,
+            Vec3::new(1.0, 1.0, 1.0),
         );
 
     let camera =

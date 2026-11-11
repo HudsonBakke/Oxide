@@ -28,11 +28,21 @@ pub fn from_attachment(
 
     direction: Vec3,
     rotation: Angle,
-) -> Transform {
-    assert!(
-        direction.length() > ATTACHMENT_EPSILON,
-        "attachment direction cannot be zero"
-    );
+    scale: Vec3,
+) -> crate::OxideResult<Transform> {
+    if direction.length()
+        <= ATTACHMENT_EPSILON
+    {
+        return Err(
+            crate::OxideError::InvalidArgument {
+                argument:
+                    "direction",
+
+                message:
+                    "attachment direction cannot be zero",
+            }
+        );
+    }
 
     let direction = direction.normalized();
 
@@ -85,11 +95,16 @@ pub fn from_attachment(
                     );
     }
 
-    assert!(
-        target_reference.length()
-            > ATTACHMENT_EPSILON,
-        "could not determine attachment reference orientation"
-    );
+    if target_reference.length()
+        <= ATTACHMENT_EPSILON
+    {
+        return Err(
+            crate::OxideError::InvalidOperation {
+                message:
+                    "could not determine attachment reference orientation",
+            }
+        );
+    }
 
     target_reference.normalize();
 
@@ -186,7 +201,7 @@ pub fn from_attachment(
     // ---------------------------------------------------------
 
     let child_scale =
-        parent_transform.scale();
+        scale;
 
     let child_local_offset =
         child_attach_point
@@ -232,5 +247,5 @@ pub fn from_attachment(
         child_scale
     );
 
-    result
+    Ok(result)
 }
