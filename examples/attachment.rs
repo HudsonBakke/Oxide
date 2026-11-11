@@ -395,7 +395,8 @@ fn main() {
 
             Angle::ZERO,
             Vec3::new(1.0, 1.0, 1.0),
-        );
+        )
+        .expect("");
 
     let camera =
         Camera::new();
