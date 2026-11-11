@@ -29,3 +29,27 @@ pub(crate) fn import_gltf_mesh(
         subobject,
     )
 }
+
+pub(crate) fn import_gltf_texture(
+    path: &std::path::Path,
+    subobject: &str,
+) -> ContentResult<
+    crate::graphics::Texture
+> {
+    importers::gltf::import_texture(
+        path,
+        subobject,
+    )
+}
+
+pub(crate) fn import_gltf_material(
+    path: &std::path::Path,
+    subobject: &str,
+) -> ContentResult<
+    crate::graphics::Material
+> {
+    importers::gltf::import_material(
+        path,
+        subobject,
+    )
+}

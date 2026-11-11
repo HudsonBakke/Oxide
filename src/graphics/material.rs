@@ -1,3 +1,17 @@
+use std::{
+    io::{
+        Read,
+        Write,
+    },
+    path::Path,
+};
+
+use crate::content::{
+    AssetType,
+    ContentAsset,
+    ContentResult,
+};
+
 use super::{
     Color,
     Texture,
@@ -30,5 +44,69 @@ impl Material {
             base_texture:
                 Texture::solid(color),
         }
+    }
+}
+
+impl ContentAsset for Material {
+    fn asset_type_name()
+        -> &'static str
+    {
+        "Material"
+    }
+
+    fn supports_extension(
+        extension: &str,
+    ) -> bool {
+        matches!(
+            extension,
+            "gltf" | "glb"
+        )
+    }
+
+    fn import(
+        path: &Path,
+        subobject: &str,
+    ) -> ContentResult<Self> {
+        crate::content::import_gltf_material(
+            path,
+            subobject,
+        )
+    }
+
+    fn compiled_asset_type()
+        -> AssetType
+    {
+        AssetType::Material
+    }
+
+    fn compiler_version() -> u32 {
+        1
+    }
+
+    fn write_compiled(
+        &self,
+        writer: &mut impl Write,
+    ) -> ContentResult<()> {
+        <Texture as ContentAsset>
+            ::write_compiled(
+                &self.base_texture,
+                writer,
+            )
+    }
+
+    fn read_compiled(
+        reader: &mut impl Read,
+        payload_size: u64,
+    ) -> ContentResult<Self> {
+        let texture =
+            <Texture as ContentAsset>
+                ::read_compiled(
+                    reader,
+                    payload_size,
+                )?;
+
+        Ok(
+            Self::new(texture)
+        )
     }
 }

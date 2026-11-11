@@ -110,6 +110,19 @@ impl Texture {
     pub(crate) fn pixels(&self) -> &[u8] {
         &self.pixels
     }
+
+    pub(crate) fn from_rgba(
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+    ) -> Self {
+        Self {
+            id: next_texture_id(),
+            width,
+            height,
+            pixels,
+        }
+    }
 }
 
 impl Clone for Texture {
@@ -127,7 +140,7 @@ impl Clone for Texture {
 
 impl ContentAsset for Texture {
     fn compiler_version() -> u32 {
-        1
+        2
     }
 
     fn asset_type_name() -> &'static str {
@@ -147,6 +160,8 @@ impl ContentAsset for Texture {
                 | "tif"
                 | "tiff"
                 | "webp"
+                | "gltf"
+                | "glb"
         )
     }
 
@@ -154,32 +169,50 @@ impl ContentAsset for Texture {
         path: &Path,
         subobject: &str,
     ) -> ContentResult<Self> {
-        if !subobject.is_empty() {
-            return Err(
-                ContentError::SubObjectNotSupported {
-                    path:
-                        path.to_path_buf(),
+        let extension =
+            path.extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
 
-                    asset_type:
-                        Self::asset_type_name(),
-
-                    subobject:
-                        subobject.to_string(),
-                }
-            );
-        }
-
-        Self::load(path).map_err(
-            |error| {
-                ContentError::ImportFailed {
-                    path:
-                        path.to_path_buf(),
-
-                    message:
-                        error.to_string(),
-                }
+        match extension.as_str() {
+            "gltf" | "glb" => {
+                crate::content::import_gltf_texture(
+                    path,
+                    subobject,
+                )
             }
-        )
+
+            _ => {
+                if !subobject.is_empty() {
+                    return Err(
+                        ContentError::SubObjectNotSupported {
+                            path:
+                                path.to_path_buf(),
+
+                            asset_type:
+                                Self::asset_type_name(),
+
+                            subobject:
+                                subobject.to_string(),
+                        }
+                    );
+                }
+
+                Self::load(path)
+                    .map_err(
+                        |error| {
+                            ContentError::ImportFailed {
+                                path:
+                                    path.to_path_buf(),
+
+                                message:
+                                    error.to_string(),
+                            }
+                        }
+                    )
+            }
+        }
     }
 
     fn compiled_asset_type()

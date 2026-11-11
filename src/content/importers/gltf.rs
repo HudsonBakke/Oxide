@@ -8,6 +8,9 @@ use crate::{
     graphics::{
         Mesh,
         Vertex,
+        Texture,
+        Color,
+        Material,
     },
     math::{
         Vec2,
@@ -266,11 +269,6 @@ pub(crate) fn import_mesh(
     let mut indices =
         Vec::new();
 
-    let normal_transform =
-        transpose_matrix3(
-            &inverse
-        );
-
     for primitive
         in selected_mesh.primitives()
     {
@@ -319,6 +317,191 @@ pub(crate) fn import_mesh(
             indices,
         )
     )
+}
+
+pub(crate) fn import_texture(
+    path: &Path,
+    subobject: &str,
+) -> ContentResult<Texture> {
+    let (
+        document,
+        _buffers,
+        images,
+    ) = gltf::import(path)
+        .map_err(
+            |error| {
+                ContentError::ImportFailed {
+                    path:
+                        path.to_path_buf(),
+
+                    message:
+                        error.to_string(),
+                }
+            }
+        )?;
+
+    let texture =
+        select_texture(
+            &document,
+            path,
+            subobject,
+        )?;
+
+    let source_index =
+        texture.source().index();
+
+    let image =
+        images.get(
+            source_index
+        )
+        .ok_or_else(
+            || {
+                ContentError::ImportFailed {
+                    path:
+                        path.to_path_buf(),
+
+                    message:
+                        "glTF texture references missing image data"
+                            .into(),
+                }
+            }
+        )?;
+
+    let pixels =
+        convert_image_to_rgba(
+            image,
+            path,
+        )?;
+
+    Ok(
+        Texture::from_rgba(
+            image.width,
+            image.height,
+            pixels,
+        )
+    )
+}
+
+pub(crate) fn import_material(
+    path: &Path,
+    subobject: &str,
+) -> ContentResult<Material> {
+    let (
+        document,
+        _buffers,
+        images,
+    ) = gltf::import(path)
+        .map_err(
+            |error| {
+                ContentError::ImportFailed {
+                    path:
+                        path.to_path_buf(),
+
+                    message:
+                        error.to_string(),
+                }
+            }
+        )?;
+
+    let material =
+        select_material(
+            &document,
+            path,
+            subobject,
+        )?;
+
+    let pbr =
+        material
+            .pbr_metallic_roughness();
+
+    let factor =
+        pbr.base_color_factor();
+
+    let texture =
+        if let Some(info) =
+            pbr.base_color_texture()
+        {
+            let source_index =
+                info
+                    .texture()
+                    .source()
+                    .index();
+
+            let image =
+                images.get(
+                    source_index
+                )
+                .ok_or_else(
+                    || {
+                        ContentError::ImportFailed {
+                            path:
+                                path.to_path_buf(),
+
+                            message:
+                                "glTF material references missing image data"
+                                    .into(),
+                        }
+                    }
+                )?;
+
+            let mut pixels =
+                convert_image_to_rgba(
+                    image,
+                    path,
+                )?;
+
+            // glTF's base-color factor multiplies the
+            // base-color texture.
+            apply_base_color_factor(
+                &mut pixels,
+                factor,
+            );
+
+            Texture::from_rgba(
+                image.width,
+                image.height,
+                pixels,
+            )
+        } else {
+            Texture::solid(
+                Color::rgba(
+                    factor[0],
+                    factor[1],
+                    factor[2],
+                    factor[3],
+                )
+            )
+        };
+
+    Ok(
+        Material::new(
+            texture
+        )
+    )
+}
+
+fn apply_base_color_factor(
+    pixels: &mut [u8],
+    factor: [f32; 4],
+) {
+    for pixel
+        in pixels.chunks_exact_mut(4)
+    {
+        for channel in 0..4 {
+            let value =
+                pixel[channel] as f32
+                * factor[channel];
+
+            pixel[channel] =
+                value
+                    .clamp(
+                        0.0,
+                        255.0,
+                    )
+                    .round()
+                    as u8;
+        }
+    }
 }
 
 struct MeshNode<'a> {
@@ -480,6 +663,390 @@ fn select_mesh_node<'a>(
     Ok(selected)
 }
 
+fn generate_normals(
+    vertices: &mut [Vertex],
+    indices: &[u32],
+    base_vertex: u32,
+) {
+    // Start with no accumulated surface normal.
+    for vertex in vertices.iter_mut() {
+        vertex.normal =
+            Vec3::new(
+                0.0,
+                0.0,
+                0.0,
+            );
+    }
+
+    for triangle
+        in indices.chunks_exact(3)
+    {
+        let i0 =
+            triangle[0]
+                .checked_sub(
+                    base_vertex
+                )
+                .expect(
+                    "primitive index precedes its base vertex"
+                )
+                as usize;
+
+        let i1 =
+            triangle[1]
+                .checked_sub(
+                    base_vertex
+                )
+                .expect(
+                    "primitive index precedes its base vertex"
+                )
+                as usize;
+
+        let i2 =
+            triangle[2]
+                .checked_sub(
+                    base_vertex
+                )
+                .expect(
+                    "primitive index precedes its base vertex"
+                )
+                as usize;
+
+        let a =
+            vertices[i0].position;
+
+        let b =
+            vertices[i1].position;
+
+        let c =
+            vertices[i2].position;
+
+        let edge_ab =
+            b - a;
+
+        let edge_ac =
+            c - a;
+
+        let face_normal =
+            edge_ab.cross(
+                &edge_ac
+            );
+
+        // A zero cross product means the triangle is
+        // degenerate and contributes no useful normal.
+        if face_normal.length()
+            <= 1.0e-8
+        {
+            continue;
+        }
+
+        // Deliberately do NOT normalize here.
+        //
+        // The cross-product magnitude is proportional to
+        // triangle area, so larger triangles contribute more
+        // strongly to the resulting smooth vertex normal.
+        vertices[i0].normal =
+            vertices[i0].normal
+                + face_normal;
+
+        vertices[i1].normal =
+            vertices[i1].normal
+                + face_normal;
+
+        vertices[i2].normal =
+            vertices[i2].normal
+                + face_normal;
+    }
+
+    for vertex in vertices.iter_mut() {
+        if vertex.normal.length()
+            > 1.0e-8
+        {
+            vertex.normal =
+                vertex.normal
+                    .normalized();
+        }
+    }
+}
+
+fn select_texture<'a>(
+    document: &'a gltf::Document,
+    path: &Path,
+    subobject: &str,
+) -> ContentResult<gltf::Texture<'a>> {
+    if !subobject.is_empty() {
+        let mut matches =
+            document
+                .textures()
+                .filter(
+                    |texture| {
+                        texture.name()
+                            == Some(subobject)
+                    }
+                );
+
+        let Some(selected) =
+            matches.next()
+        else {
+            return Err(
+                ContentError::SubObjectNotFound {
+                    path:
+                        path.to_path_buf(),
+
+                    asset_type:
+                        "Texture",
+
+                    subobject:
+                        subobject.to_string(),
+                }
+            );
+        };
+
+        if matches.next().is_some() {
+            return Err(
+                ContentError::AmbiguousSubObject {
+                    path:
+                        path.to_path_buf(),
+
+                    asset_type:
+                        "Texture",
+                }
+            );
+        }
+
+        return Ok(selected);
+    }
+
+    let mut textures =
+        document.textures();
+
+    let Some(selected) =
+        textures.next()
+    else {
+        return Err(
+            ContentError::ImportFailed {
+                path:
+                    path.to_path_buf(),
+
+                message:
+                    "glTF file contains no textures"
+                        .into(),
+            }
+        );
+    };
+
+    if textures.next().is_some() {
+        return Err(
+            ContentError::AmbiguousSubObject {
+                path:
+                    path.to_path_buf(),
+
+                asset_type:
+                    "Texture",
+            }
+        );
+    }
+
+    Ok(selected)
+}
+
+fn select_material<'a>(
+    document: &'a gltf::Document,
+    path: &Path,
+    subobject: &str,
+) -> ContentResult<gltf::Material<'a>> {
+    if !subobject.is_empty() {
+        let mut matches =
+            document
+                .materials()
+                .filter(
+                    |material| {
+                        material.name()
+                            == Some(subobject)
+                    }
+                );
+
+        let Some(selected) =
+            matches.next()
+        else {
+            return Err(
+                ContentError::SubObjectNotFound {
+                    path:
+                        path.to_path_buf(),
+
+                    asset_type:
+                        "Material",
+
+                    subobject:
+                        subobject.to_string(),
+                }
+            );
+        };
+
+        if matches.next().is_some() {
+            return Err(
+                ContentError::AmbiguousSubObject {
+                    path:
+                        path.to_path_buf(),
+
+                    asset_type:
+                        "Material",
+                }
+            );
+        }
+
+        return Ok(selected);
+    }
+
+    let mut materials =
+        document.materials();
+
+    let Some(selected) =
+        materials.next()
+    else {
+        return Err(
+            ContentError::ImportFailed {
+                path:
+                    path.to_path_buf(),
+
+                message:
+                    "glTF file contains no materials"
+                        .into(),
+            }
+        );
+    };
+
+    if materials.next().is_some() {
+        return Err(
+            ContentError::AmbiguousSubObject {
+                path:
+                    path.to_path_buf(),
+
+                asset_type:
+                    "Material",
+            }
+        );
+    }
+
+    Ok(selected)
+}
+
+fn convert_image_to_rgba(
+    image: &gltf::image::Data,
+    path: &Path,
+) -> ContentResult<Vec<u8>> {
+    use gltf::image::Format;
+
+    let pixel_count =
+        u64::from(image.width)
+            .checked_mul(
+                u64::from(image.height)
+            )
+            .ok_or_else(
+                || {
+                    ContentError::ImportFailed {
+                        path:
+                            path.to_path_buf(),
+
+                        message:
+                            "glTF texture dimensions overflow"
+                                .into(),
+                    }
+                }
+            )?;
+
+    let capacity =
+        pixel_count
+            .checked_mul(4)
+            .and_then(
+                |value| {
+                    usize::try_from(value)
+                        .ok()
+                }
+            )
+            .ok_or_else(
+                || {
+                    ContentError::ImportFailed {
+                        path:
+                            path.to_path_buf(),
+
+                        message:
+                            "glTF texture is too large"
+                                .into(),
+                    }
+                }
+            )?;
+
+    let mut rgba =
+        Vec::with_capacity(
+            capacity
+        );
+
+    match image.format {
+        Format::R8 => {
+            for &r in &image.pixels {
+                rgba.extend_from_slice(
+                    &[r, r, r, 255]
+                );
+            }
+        }
+
+        Format::R8G8 => {
+            for pixel
+                in image.pixels
+                    .chunks_exact(2)
+            {
+                rgba.extend_from_slice(
+                    &[
+                        pixel[0],
+                        pixel[0],
+                        pixel[0],
+                        pixel[1],
+                    ]
+                );
+            }
+        }
+
+        Format::R8G8B8 => {
+            for pixel
+                in image.pixels
+                    .chunks_exact(3)
+            {
+                rgba.extend_from_slice(
+                    &[
+                        pixel[0],
+                        pixel[1],
+                        pixel[2],
+                        255,
+                    ]
+                );
+            }
+        }
+
+        Format::R8G8B8A8 => {
+            rgba.extend_from_slice(
+                &image.pixels
+            );
+        }
+
+        _ => {
+            return Err(
+                ContentError::ImportFailed {
+                    path:
+                        path.to_path_buf(),
+
+                    message:
+                        format!(
+                            "unsupported glTF image format {:?}",
+                            image.format
+                        ),
+                }
+            );
+        }
+    }
+
+    Ok(rgba)
+}
+
 fn import_primitive(
     primitive: gltf::Primitive<'_>,
     buffers: &[gltf::buffer::Data],
@@ -538,17 +1105,14 @@ fn import_primitive(
             )?
             .collect();
 
-    let normals: Vec<[f32; 3]> =
-        match reader.read_normals() {
-            Some(normals) =>
-                normals.collect(),
-
-            None =>
-                vec![
-                    [0.0, 0.0, 0.0];
-                    positions.len()
-                ],
-        };
+    let normals: Option<Vec<[f32; 3]>> =
+        reader
+            .read_normals()
+            .map(
+                |normals| {
+                    normals.collect()
+                }
+            );
 
     let tex_coords: Vec<[f32; 2]> =
         match reader
@@ -566,19 +1130,23 @@ fn import_primitive(
                 ],
         };
 
-    if normals.len()
-        != positions.len()
+    if let Some(normals) =
+        &normals
     {
-        return Err(
-            ContentError::ImportFailed {
-                path:
-                    path.to_path_buf(),
+        if normals.len()
+            != positions.len()
+        {
+            return Err(
+                ContentError::ImportFailed {
+                    path:
+                        path.to_path_buf(),
 
-                message:
-                    "glTF NORMAL count does not match POSITION count"
-                        .into(),
-            }
-        );
+                    message:
+                        "glTF NORMAL count does not match POSITION count"
+                            .into(),
+                }
+            );
+        }
     }
 
     if tex_coords.len()
@@ -613,12 +1181,15 @@ fn import_primitive(
             }
         )?;
 
+    let first_vertex =
+        vertices.len();
+
+    let first_index =
+        indices.len();
+
     for i in 0..positions.len() {
         let position =
             positions[i];
-
-        let normal =
-            normals[i];
 
         let tex_coord =
             tex_coords[i];
@@ -630,19 +1201,21 @@ fn import_primitive(
             );
 
         let transformed_normal =
-            if normal
-                == [0.0, 0.0, 0.0]
-            {
-                Vec3::new(
-                    0.0,
-                    0.0,
-                    0.0,
-                )
-            } else {
-                transform_normal(
-                    normal_transform,
-                    normal,
-                )
+            match &normals {
+                Some(normals) => {
+                    transform_normal(
+                        normal_transform,
+                        normals[i],
+                    )
+                }
+
+                None => {
+                    Vec3::new(
+                        0.0,
+                        0.0,
+                        0.0,
+                    )
+                }
             };
 
         vertices.push(
@@ -801,6 +1374,20 @@ fn import_primitive(
                 ]
             );
         }
+    }
+
+    if normals.is_none() {
+        generate_normals(
+            &mut vertices[
+                first_vertex..
+            ],
+
+            &indices[
+                first_index..
+            ],
+
+            base_vertex,
+        );
     }
 
     Ok(())

@@ -87,16 +87,20 @@ fn main() {
     let mesh =
         content
             .load::<Mesh>(
-                "assets/hierarchy_cube.glb"
+                "assets/textured_material_cube.glb"
             )
             .expect(
-                "failed to load Blender model"
+                "failed to load Blender mesh"
             );
 
     let material =
-        Material::solid(
-            Color::WHITE
-        );
+        content
+            .load::<Material>(
+                "assets/textured_material_cube.glb"
+            )
+            .expect(
+                "failed to load Blender material"
+            );
 
     let mut transform =
         Transform::new();
