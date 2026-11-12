@@ -6,6 +6,7 @@ pub mod content;
 
 mod platform;
 mod error;
+mod ffi;
 
 pub use error::{
     OxideError,

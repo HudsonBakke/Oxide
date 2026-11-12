@@ -3,6 +3,9 @@ name = "oxide"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
 gltf = { version = "1.4.1", features = ["import"] }
 image = "0.25.10"
