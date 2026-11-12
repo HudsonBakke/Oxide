@@ -1,9 +1,15 @@
-use crate::math::{
-    Angle,
-    Vec3,
+use crate::{
+    math::{
+        Angle,
+        Vec3,
+    },
+    OxideError,
+    OxideResult,
 };
 
 use super::Color;
+
+const LIGHT_EPSILON: f32 = 1.0e-6;
 
 /// A light emitted outward in all directions from one point.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -18,24 +24,34 @@ impl PointLight {
         position: Vec3,
         color: Color,
         intensity: f32,
-    ) -> Self {
-        assert!(
-            intensity >= 0.0,
-            "light intensity cannot be negative"
-        );
-
-        Self {
-            position,
-            color,
-            intensity,
+    ) -> OxideResult<Self> {
+        if intensity < 0.0 {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "intensity",
+                    message:
+                        "light intensity cannot be negative",
+                }
+            );
         }
+
+        Ok(
+            Self {
+                position,
+                color,
+                intensity,
+            }
+        )
     }
 
     pub fn position(&self) -> Vec3 {
         self.position
     }
 
-    pub fn set_position(&mut self, position: Vec3) {
+    pub fn set_position(
+        &mut self,
+        position: Vec3,
+    ) {
         self.position = position;
     }
 
@@ -43,7 +59,10 @@ impl PointLight {
         self.color
     }
 
-    pub fn set_color(&mut self, color: Color) {
+    pub fn set_color(
+        &mut self,
+        color: Color,
+    ) {
         self.color = color;
     }
 
@@ -51,13 +70,23 @@ impl PointLight {
         self.intensity
     }
 
-    pub fn set_intensity(&mut self, intensity: f32) {
-        assert!(
-            intensity >= 0.0,
-            "light intensity cannot be negative"
-        );
+    pub fn set_intensity(
+        &mut self,
+        intensity: f32,
+    ) -> OxideResult<()> {
+        if intensity < 0.0 {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "intensity",
+                    message:
+                        "light intensity cannot be negative",
+                }
+            );
+        }
 
         self.intensity = intensity;
+
+        Ok(())
     }
 }
 
@@ -79,37 +108,64 @@ impl SpotLight {
         angle: Angle,
         color: Color,
         intensity: f32,
-    ) -> Self {
-        assert!(
-            direction.length() > 0.0,
-            "spot light direction cannot be zero"
-        );
-
-        assert!(
-            angle.as_radians() > 0.0
-                && angle.as_radians() < std::f32::consts::PI,
-            "spot light angle must be between 0 and pi radians"
-        );
-
-        assert!(
-            intensity >= 0.0,
-            "light intensity cannot be negative"
-        );
-
-        Self {
-            position,
-            direction: direction.normalized(),
-            angle,
-            color,
-            intensity,
+    ) -> OxideResult<Self> {
+        if direction.length()
+            <= LIGHT_EPSILON
+        {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "direction",
+                    message:
+                        "spot light direction cannot be zero",
+                }
+            );
         }
+
+        let radians =
+            angle.as_radians();
+
+        if radians <= 0.0
+            || radians >= std::f32::consts::PI
+        {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "angle",
+                    message:
+                        "spot light angle must be between 0 and pi radians",
+                }
+            );
+        }
+
+        if intensity < 0.0 {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "intensity",
+                    message:
+                        "light intensity cannot be negative",
+                }
+            );
+        }
+
+        Ok(
+            Self {
+                position,
+                direction:
+                    direction.normalized(),
+                angle,
+                color,
+                intensity,
+            }
+        )
     }
 
     pub fn position(&self) -> Vec3 {
         self.position
     }
 
-    pub fn set_position(&mut self, position: Vec3) {
+    pub fn set_position(
+        &mut self,
+        position: Vec3,
+    ) {
         self.position = position;
     }
 
@@ -117,34 +173,64 @@ impl SpotLight {
         self.direction
     }
 
-    pub fn set_direction(&mut self, direction: Vec3) {
-        assert!(
-            direction.length() > 0.0,
-            "spot light direction cannot be zero"
-        );
+    pub fn set_direction(
+        &mut self,
+        direction: Vec3,
+    ) -> OxideResult<()> {
+        if direction.length()
+            <= LIGHT_EPSILON
+        {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "direction",
+                    message:
+                        "spot light direction cannot be zero",
+                }
+            );
+        }
 
-        self.direction = direction.normalized();
+        self.direction =
+            direction.normalized();
+
+        Ok(())
     }
 
     pub fn angle(&self) -> Angle {
         self.angle
     }
 
-    pub fn set_angle(&mut self, angle: Angle) {
-        assert!(
-            angle.as_radians() > 0.0
-                && angle.as_radians() < std::f32::consts::PI,
-            "spot light angle must be between 0 and pi radians"
-        );
+    pub fn set_angle(
+        &mut self,
+        angle: Angle,
+    ) -> OxideResult<()> {
+        let radians =
+            angle.as_radians();
+
+        if radians <= 0.0
+            || radians >= std::f32::consts::PI
+        {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "angle",
+                    message:
+                        "spot light angle must be between 0 and pi radians",
+                }
+            );
+        }
 
         self.angle = angle;
+
+        Ok(())
     }
 
     pub fn color(&self) -> Color {
         self.color
     }
 
-    pub fn set_color(&mut self, color: Color) {
+    pub fn set_color(
+        &mut self,
+        color: Color,
+    ) {
         self.color = color;
     }
 
@@ -152,13 +238,23 @@ impl SpotLight {
         self.intensity
     }
 
-    pub fn set_intensity(&mut self, intensity: f32) {
-        assert!(
-            intensity >= 0.0,
-            "light intensity cannot be negative"
-        );
+    pub fn set_intensity(
+        &mut self,
+        intensity: f32,
+    ) -> OxideResult<()> {
+        if intensity < 0.0 {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "intensity",
+                    message:
+                        "light intensity cannot be negative",
+                }
+            );
+        }
 
         self.intensity = intensity;
+
+        Ok(())
     }
 }
 
@@ -177,42 +273,73 @@ impl DirectionalLight {
         direction: Vec3,
         color: Color,
         intensity: f32,
-    ) -> Self {
-        assert!(
-            direction.length() > 0.0,
-            "directional light direction cannot be zero"
-        );
-
-        assert!(
-            intensity >= 0.0,
-            "light intensity cannot be negative"
-        );
-
-        Self {
-            direction: direction.normalized(),
-            color,
-            intensity,
+    ) -> OxideResult<Self> {
+        if direction.length()
+            <= LIGHT_EPSILON
+        {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "direction",
+                    message:
+                        "directional light direction cannot be zero",
+                }
+            );
         }
+
+        if intensity < 0.0 {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "intensity",
+                    message:
+                        "light intensity cannot be negative",
+                }
+            );
+        }
+
+        Ok(
+            Self {
+                direction:
+                    direction.normalized(),
+                color,
+                intensity,
+            }
+        )
     }
 
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
 
-    pub fn set_direction(&mut self, direction: Vec3) {
-        assert!(
-            direction.length() > 0.0,
-            "directional light direction cannot be zero"
-        );
+    pub fn set_direction(
+        &mut self,
+        direction: Vec3,
+    ) -> OxideResult<()> {
+        if direction.length()
+            <= LIGHT_EPSILON
+        {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "direction",
+                    message:
+                        "directional light direction cannot be zero",
+                }
+            );
+        }
 
-        self.direction = direction.normalized();
+        self.direction =
+            direction.normalized();
+
+        Ok(())
     }
 
     pub fn color(&self) -> Color {
         self.color
     }
 
-    pub fn set_color(&mut self, color: Color) {
+    pub fn set_color(
+        &mut self,
+        color: Color,
+    ) {
         self.color = color;
     }
 
@@ -220,47 +347,93 @@ impl DirectionalLight {
         self.intensity
     }
 
-    pub fn set_intensity(&mut self, intensity: f32) {
-        assert!(
-            intensity >= 0.0,
-            "light intensity cannot be negative"
-        );
+    pub fn set_intensity(
+        &mut self,
+        intensity: f32,
+    ) -> OxideResult<()> {
+        if intensity < 0.0 {
+            return Err(
+                OxideError::InvalidArgument {
+                    argument: "intensity",
+                    message:
+                        "light intensity cannot be negative",
+                }
+            );
+        }
 
         self.intensity = intensity;
+
+        Ok(())
     }
 }
 
-pub trait LightSource: Copy {
-    #[doc(hidden)]
-    fn add_to_graphics(
-        &self,
-        graphics: &mut super::Graphics,
-    );
+
+// ---------------------------------------------------------
+// Sealed LightSource implementation
+// ---------------------------------------------------------
+
+pub trait LightSource:
+    private::LightSourceInternal
+    + Copy
+{
 }
 
-impl LightSource for PointLight {
+pub(crate) use private::LightSourceInternal;
+
+mod private {
+    pub trait LightSourceInternal:
+        Copy
+    {
+        fn add_to_graphics(
+            &self,
+            graphics:
+                &mut crate::graphics::Graphics,
+        );
+    }
+}
+
+impl LightSourceInternal for PointLight {
     fn add_to_graphics(
         &self,
         graphics: &mut super::Graphics,
     ) {
-        graphics.add_point_light_internal(self);
+        graphics
+            .add_point_light_internal(
+                self
+            );
     }
 }
 
-impl LightSource for SpotLight {
+impl LightSource for PointLight {}
+
+
+impl LightSourceInternal for SpotLight {
     fn add_to_graphics(
         &self,
         graphics: &mut super::Graphics,
     ) {
-        graphics.add_spot_light_internal(self);
+        graphics
+            .add_spot_light_internal(
+                self
+            );
     }
 }
 
-impl LightSource for DirectionalLight {
+impl LightSource for SpotLight {}
+
+
+impl LightSourceInternal
+    for DirectionalLight
+{
     fn add_to_graphics(
         &self,
         graphics: &mut super::Graphics,
     ) {
-        graphics.add_directional_light_internal(self);
+        graphics
+            .add_directional_light_internal(
+                self
+            );
     }
 }
+
+impl LightSource for DirectionalLight {}

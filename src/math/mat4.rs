@@ -5,7 +5,6 @@ use super::{
     vec3::Vec3,
 };
 
-#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Mat4 {
     m: [[f32; 4]; 4],

@@ -125,6 +125,9 @@ fn main() {
             ),
             Color::WHITE,
             1.0,
+        )
+        .expect(
+            "failed to create directional light"
         );
 
     let game =

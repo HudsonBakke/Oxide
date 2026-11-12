@@ -164,6 +164,9 @@ fn main() {
         Color::WHITE,
 
         15.0,
+    )
+    .expect(
+        "failed to create spot light"
     );
 
     let mut content =

@@ -343,6 +343,9 @@ fn main() {
             0.0,
             1.0,
         ),
+    )
+    .expect(
+        "failed to set arm orientation"
     );
 
     // Give the torso an intuitive canonical frame as well.
@@ -357,6 +360,9 @@ fn main() {
             1.0,
             0.0,
         ),
+    )
+    .expect(
+        "failed to set torso orientation"
     );
 
     let mut torso_transform =
@@ -410,6 +416,9 @@ fn main() {
             ),
             Color::WHITE,
             1.0,
+        )
+        .expect(
+            "failed to create directional light"
         );
 
     let torso_material =

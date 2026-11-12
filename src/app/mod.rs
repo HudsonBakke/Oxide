@@ -170,6 +170,7 @@ pub trait Game {
 }
 
 /// Timing information for the current frame.
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct GameTime {
     delta_seconds: f64,

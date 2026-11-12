@@ -80,19 +80,31 @@ const ORIENTATION_EPSILON: f32 = 1.0e-6;
 fn orthogonalize_reference(
     direction: Vec3,
     reference: Vec3,
-) -> Vec3 {
+) -> crate::OxideResult<Vec3> {
     let projected =
         reference
         - direction
-            * reference.dot(&direction);
+            * reference.dot(
+                &direction
+            );
 
-    assert!(
-        projected.length()
-            > ORIENTATION_EPSILON,
-        "mesh reference cannot be parallel to mesh direction"
-    );
+    if projected.length()
+        <= ORIENTATION_EPSILON
+    {
+        return Err(
+            crate::OxideError::InvalidArgument {
+                argument:
+                    "reference",
 
-    projected.normalized()
+                message:
+                    "mesh reference cannot be parallel to mesh direction",
+            }
+        );
+    }
+
+    Ok(
+        projected.normalized()
+    )
 }
 
 impl Mesh {
@@ -260,7 +272,7 @@ impl Mesh {
             orthogonalize_reference(
                 self.direction,
                 reference,
-            );
+            )?;
 
         Ok(())
     }
@@ -292,7 +304,7 @@ impl Mesh {
             orthogonalize_reference(
                 direction,
                 self.reference,
-            );
+            )?;
 
         self.direction = direction;
 
