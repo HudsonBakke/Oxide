@@ -1,3 +1,6 @@
+#[cfg(target_os = "windows")]
+use winit::platform::windows::WindowAttributesExtWindows;
+
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -78,6 +81,10 @@ impl<G: Game> ApplicationHandler for App<G> {
                 self.config.width,
                 self.config.height,
             ));
+
+        #[cfg(target_os = "windows")]
+        let attributes =
+            attributes.with_drag_and_drop(false);
 
         let window = event_loop
             .create_window(attributes)
