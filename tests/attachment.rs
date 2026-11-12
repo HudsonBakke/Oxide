@@ -377,3 +377,43 @@ fn parallel_parent_reference_uses_side_fallback() {
             < EPSILON
     );
 }
+
+#[test]
+fn zero_direction_returns_error() {
+    let parent =
+        empty_mesh();
+
+    let child =
+        empty_mesh();
+
+    let result =
+        from_attachment(
+            &parent,
+            &Transform::new(),
+            Vec3::default(),
+
+            &child,
+            Vec3::default(),
+
+            Vec3::default(),
+            Angle::ZERO,
+
+            Vec3::new(
+                1.0,
+                1.0,
+                1.0,
+            ),
+        );
+
+    assert!(
+        matches!(
+            result,
+            Err(
+                oxide::OxideError::InvalidArgument {
+                    argument: "direction",
+                    ..
+                }
+            )
+        )
+    );
+}
