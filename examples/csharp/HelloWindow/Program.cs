@@ -1,228 +1,105 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using Oxide;
 
-internal static class Program
+internal sealed class MyGame
+    : Game,
+      IDisposable
 {
-    private enum OxideStatus
-    {
-        Ok = 0,
-        InvalidArgument = 1,
-        InvalidOperation = 2,
-        ContentError = 3,
-        GraphicsError = 4,
-        InternalError = 5,
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct OxideGameTime
-    {
-        public double DeltaSeconds;
-        public double TotalSeconds;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct OxideGraphicsHandle
-    {
-        public IntPtr Ptr;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct OxideAppConfig
-    {
-        public IntPtr Title;
-        public uint Width;
-        public uint Height;
-    }
-
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void InitializeCallback(
-        IntPtr userData
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void UpdateCallback(
-        IntPtr userData,
-        OxideGameTime time
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void DrawCallback(
-        IntPtr userData,
-        OxideGraphicsHandle graphics
-    );
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct OxideGameCallbacks
-    {
-        public IntPtr UserData;
-
-        public InitializeCallback Initialize;
-        public UpdateCallback Update;
-        public DrawCallback Draw;
-    }
-
-    private static class Native
-    {
-        [DllImport(
-            "oxide",
-            CallingConvention =
-                CallingConvention.Cdecl
-        )]
-        public static extern OxideStatus oxide_run(
-            OxideAppConfig config,
-            OxideGameCallbacks callbacks
+    private bool _printedUpdate;
+    private bool _printedDraw;
+    private readonly Camera _camera =
+        new();
+    private readonly DirectionalLight _light =
+        new(
+            new Vec3(
+                1.0f,
+                -1.0f,
+                -1.0f
+            ),
+            Color.White,
+            1.0f
         );
 
-        [DllImport(
-            "oxide",
-            CallingConvention =
-                CallingConvention.Cdecl
-        )]
-        public static extern IntPtr
-            oxide_last_error_message();
+    protected override void Initialize()
+    {
+        _camera.Position =
+            new Vec3(
+                0.0f,
+                0.0f,
+                5.0f
+            );
+
+        Console.WriteLine(
+            "C# Initialize!"
+        );
     }
 
-    private static void Check(
-        OxideStatus status
+    protected override void Update(
+        GameTime time
     )
     {
-        if (status == OxideStatus.Ok)
+        if (_printedUpdate)
         {
             return;
         }
 
-        IntPtr messagePtr =
-            Native.oxide_last_error_message();
-
-        string message =
-            messagePtr == IntPtr.Zero
-                ? $"Oxide failed with status {status}."
-                : Marshal.PtrToStringUTF8(
-                    messagePtr
-                )
-                ?? $"Oxide failed with status {status}.";
-
-        throw new InvalidOperationException(
-            message
-        );
-    }
-
-    private static void Initialize(
-        IntPtr userData
-    )
-    {
         Console.WriteLine(
-            "C# initialize callback!"
+            $"C# Update! " +
+            $"delta = {time.DeltaSeconds:F6}, " +
+            $"total = {time.TotalSeconds:F6}"
         );
+
+        _printedUpdate = true;
     }
 
-    private static void Update(
-        IntPtr userData,
-        OxideGameTime time
+    protected override void Draw(
+        Graphics graphics
     )
     {
-        if (!_printedUpdate)
-        {
-            Console.WriteLine(
-                $"C# update callback! " +
-                $"delta = {time.DeltaSeconds:F6}, " +
-                $"total = {time.TotalSeconds:F6}"
-            );
+        graphics.BindCamera(
+            _camera,
+            graphics.FullRect
+        );
 
-            _printedUpdate = true;
+        graphics.AddLight(
+            _light
+        );
+
+        if (_printedDraw)
+        {
+            return;
         }
+
+        Console.WriteLine(
+            "C# camera and light successfully bound!"
+        );
+
+        _printedDraw = true;
     }
 
-    private static void Draw(
-        IntPtr userData,
-        OxideGraphicsHandle graphics
-    )
+    public void Dispose()
     {
-        if (!_printedDraw)
-        {
-            Console.WriteLine(
-                "C# draw callback!"
-            );
-
-            _printedDraw = true;
-        }
+        _camera.Dispose();
     }
+}
 
-    private static bool _printedUpdate;
-    private static bool _printedDraw;
-
+internal static class Program
+{
     private static void Main()
     {
-        IntPtr title =
-            Marshal.StringToCoTaskMemUTF8(
-                "Oxide C# ABI Test"
-            );
+        using var game =
+            new MyGame();
 
-        try
-        {
-            var initialize =
-                new InitializeCallback(
-                    Initialize
-                );
+        game.Run(
+            new AppConfig {
+                Title =
+                    "Oxide.NET Camera Test",
 
-            var update =
-                new UpdateCallback(
-                    Update
-                );
+                Width =
+                    1280,
 
-            var draw =
-                new DrawCallback(
-                    Draw
-                );
-
-            var config =
-                new OxideAppConfig {
-                    Title = title,
-                    Width = 1280,
-                    Height = 720,
-                };
-
-            var callbacks =
-                new OxideGameCallbacks {
-                    UserData =
-                        IntPtr.Zero,
-
-                    Initialize =
-                        initialize,
-
-                    Update =
-                        update,
-
-                    Draw =
-                        draw,
-                };
-
-            Console.WriteLine(
-                "Starting Oxide from C#..."
-            );
-
-            Check(
-                Native.oxide_run(
-                    config,
-                    callbacks
-                )
-            );
-
-            // Explicitly keep the delegates alive for the
-            // entire native event loop.
-            GC.KeepAlive(initialize);
-            GC.KeepAlive(update);
-            GC.KeepAlive(draw);
-
-            Console.WriteLine(
-                "Oxide returned to C#."
-            );
-        }
-        finally
-        {
-            Marshal.FreeCoTaskMem(
-                title
-            );
-        }
+                Height =
+                    720,
+            }
+        );
     }
 }

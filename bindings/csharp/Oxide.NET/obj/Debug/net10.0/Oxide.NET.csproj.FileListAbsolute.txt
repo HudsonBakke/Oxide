@@ -1,0 +1,12 @@
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\bin\Debug\net10.0\Oxide.NET.deps.json
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\bin\Debug\net10.0\Oxide.NET.dll
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\bin\Debug\net10.0\Oxide.NET.pdb
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\Oxide.NET.GeneratedMSBuildEditorConfig.editorconfig
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\Oxide.NET.AssemblyInfoInputs.cache
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\Oxide.NET.AssemblyInfo.cs
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\Oxide.NET.csproj.CoreCompileInputs.cache
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\Oxide.NET.sourcelink.json
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\Oxide.NET.dll
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\refint\Oxide.NET.dll
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\Oxide.NET.pdb
+C:\CodeProjects\Oxide\oxide\bindings\csharp\Oxide.NET\obj\Debug\net10.0\ref\Oxide.NET.dll

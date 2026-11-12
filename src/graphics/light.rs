@@ -12,6 +12,7 @@ use super::Color;
 const LIGHT_EPSILON: f32 = 1.0e-6;
 
 /// A light emitted outward in all directions from one point.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PointLight {
     position: Vec3,
@@ -91,6 +92,7 @@ impl PointLight {
 }
 
 /// A light emitted from one point within a directional cone.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SpotLight {
     position: Vec3,
@@ -261,6 +263,7 @@ impl SpotLight {
 /// A light whose rays travel in one uniform direction.
 ///
 /// Directional lights have no position or distance attenuation.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DirectionalLight {
     direction: Vec3,

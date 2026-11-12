@@ -28,3 +28,7 @@ C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\refint
 C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.pdb
 C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.genruntimeconfig.cache
 C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\ref\HelloWindow.dll
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\bin\Debug\net10.0\Oxide.NET.dll
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\bin\Debug\net10.0\Oxide.NET.pdb
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.csproj.AssemblyReference.cache
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWin.9C31D8BA.Up2Date

@@ -3,7 +3,9 @@ use std::ffi::{
     c_void
 };
 
-use crate::app::GameTime;
+use crate::{
+    app::GameTime,
+};
 
 /// Opaque handle representing the Graphics object
 /// valid during a draw callback.
@@ -13,6 +15,12 @@ use crate::app::GameTime;
 #[derive(Debug, Clone, Copy)]
 pub struct OxideGraphicsHandle(
     pub *mut c_void
+);
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct OxideCameraHandle(
+    pub u64
 );
 
 /// Callback table supplied by foreign-language game code.
