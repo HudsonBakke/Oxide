@@ -79,6 +79,16 @@ use crate::{
     },
 };
 
+const TRIANGLE_VERTEX_SHADER: &[u8] =
+    include_bytes!(
+        "../../../../shaders/compiled/triangle_vs.dxil"
+    );
+
+const TRIANGLE_PIXEL_SHADER: &[u8] =
+    include_bytes!(
+        "../../../../shaders/compiled/triangle_ps.dxil"
+    );
+
 #[derive(Debug, Clone, Copy)]
 enum ActiveLight {
     Point(PointLight),
@@ -317,13 +327,15 @@ impl D3D12Renderer {
             )?
         };
 
-        let vertex_shader = D3D12Shader::load(
-            "shaders/compiled/triangle_vs.dxil"
-        )?;
+        let vertex_shader =
+            D3D12Shader::from_bytes(
+                TRIANGLE_VERTEX_SHADER
+            );
 
-        let pixel_shader = D3D12Shader::load(
-            "shaders/compiled/triangle_ps.dxil"
-        )?;
+        let pixel_shader =
+            D3D12Shader::from_bytes(
+                TRIANGLE_PIXEL_SHADER
+            );
 
         let pipeline = D3D12Pipeline::new(
             device,

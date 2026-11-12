@@ -11,9 +11,14 @@ use crate::{
 };
 
 use super::{
+    error::{
+        ffi_boundary,
+        set_last_error,
+    },
+    OxideAppConfig,
     OxideGameCallbacks,
     OxideGraphicsHandle,
-    OxideAppConfig,
+    OxideStatus,
 };
 
 struct ForeignGame {
@@ -82,41 +87,75 @@ impl Game for ForeignGame {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn oxide_run(
-    config:
-        OxideAppConfig,
+    config: OxideAppConfig,
+    callbacks: OxideGameCallbacks,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if config.width == 0 {
+                set_last_error(
+                    "application width must be greater than zero"
+                );
 
-    callbacks:
-        OxideGameCallbacks,
-) {
-    let title =
-        if config.title.is_null() {
-            String::from("Oxide")
-        } else {
-            unsafe {
-                CStr::from_ptr(
-                    config.title
-                )
+                return OxideStatus::InvalidArgument;
             }
-            .to_string_lossy()
-            .into_owned()
-        };
 
-    let config =
-        AppConfig {
-            title,
-            width:
-                config.width,
-            height:
-                config.height,
-        };
+            if config.height == 0 {
+                set_last_error(
+                    "application height must be greater than zero"
+                );
 
-    let game =
-        ForeignGame {
-            callbacks,
-        };
+                return OxideStatus::InvalidArgument;
+            }
 
-    app::run(
-        game,
-        config,
-    );
+            let title =
+                if config.title.is_null() {
+                    String::from(
+                        "Oxide"
+                    )
+                } else {
+                    let title =
+                        unsafe {
+                            CStr::from_ptr(
+                                config.title
+                            )
+                        };
+
+                    match title.to_str() {
+                        Ok(title) => {
+                            title.to_owned()
+                        }
+
+                        Err(_) => {
+                            set_last_error(
+                                "application title must be valid UTF-8"
+                            );
+
+                            return OxideStatus::InvalidArgument;
+                        }
+                    }
+                };
+
+            let config =
+                AppConfig {
+                    title,
+                    width:
+                        config.width,
+                    height:
+                        config.height,
+                };
+
+            let game =
+                ForeignGame {
+                    callbacks,
+                };
+
+            app::run(
+                game,
+                config,
+            );
+
+            OxideStatus::Ok
+        }
+    )
 }

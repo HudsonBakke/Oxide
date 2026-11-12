@@ -13,3 +13,18 @@ C:\Users\hudso\OneDrive\Documents\Coding Projects\Oxide\Oxide\examples\csharp\He
 C:\Users\hudso\OneDrive\Documents\Coding Projects\Oxide\Oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.pdb
 C:\Users\hudso\OneDrive\Documents\Coding Projects\Oxide\Oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.genruntimeconfig.cache
 C:\Users\hudso\OneDrive\Documents\Coding Projects\Oxide\Oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\ref\HelloWindow.dll
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\bin\Debug\net10.0\HelloWindow.exe
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\bin\Debug\net10.0\HelloWindow.deps.json
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\bin\Debug\net10.0\HelloWindow.runtimeconfig.json
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\bin\Debug\net10.0\HelloWindow.dll
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\bin\Debug\net10.0\HelloWindow.pdb
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.GeneratedMSBuildEditorConfig.editorconfig
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.AssemblyInfoInputs.cache
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.AssemblyInfo.cs
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.csproj.CoreCompileInputs.cache
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.sourcelink.json
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.dll
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\refint\HelloWindow.dll
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.pdb
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\HelloWindow.genruntimeconfig.cache
+C:\CodeProjects\Oxide\oxide\examples\csharp\HelloWindow\obj\Debug\net10.0\ref\HelloWindow.dll

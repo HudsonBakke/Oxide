@@ -3,6 +3,16 @@ using System.Runtime.InteropServices;
 
 internal static class Program
 {
+    private enum OxideStatus
+    {
+        Ok = 0,
+        InvalidArgument = 1,
+        InvalidOperation = 2,
+        ContentError = 3,
+        GraphicsError = 4,
+        InternalError = 5,
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct OxideGameTime
     {
@@ -58,9 +68,42 @@ internal static class Program
             CallingConvention =
                 CallingConvention.Cdecl
         )]
-        public static extern void oxide_run(
+        public static extern OxideStatus oxide_run(
             OxideAppConfig config,
             OxideGameCallbacks callbacks
+        );
+
+        [DllImport(
+            "oxide",
+            CallingConvention =
+                CallingConvention.Cdecl
+        )]
+        public static extern IntPtr
+            oxide_last_error_message();
+    }
+
+    private static void Check(
+        OxideStatus status
+    )
+    {
+        if (status == OxideStatus.Ok)
+        {
+            return;
+        }
+
+        IntPtr messagePtr =
+            Native.oxide_last_error_message();
+
+        string message =
+            messagePtr == IntPtr.Zero
+                ? $"Oxide failed with status {status}."
+                : Marshal.PtrToStringUTF8(
+                    messagePtr
+                )
+                ?? $"Oxide failed with status {status}.";
+
+        throw new InvalidOperationException(
+            message
         );
     }
 
@@ -158,9 +201,11 @@ internal static class Program
                 "Starting Oxide from C#..."
             );
 
-            Native.oxide_run(
-                config,
-                callbacks
+            Check(
+                Native.oxide_run(
+                    config,
+                    callbacks
+                )
             );
 
             // Explicitly keep the delegates alive for the

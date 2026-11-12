@@ -13,6 +13,16 @@
 extern "C" {
 #endif
 
+typedef enum OxideStatus
+{
+    OXIDE_STATUS_OK = 0,
+    OXIDE_STATUS_INVALID_ARGUMENT = 1,
+    OXIDE_STATUS_INVALID_OPERATION = 2,
+    OXIDE_STATUS_CONTENT_ERROR = 3,
+    OXIDE_STATUS_GRAPHICS_ERROR = 4,
+    OXIDE_STATUS_INTERNAL_ERROR = 5
+} OxideStatus;
+
 typedef struct OxideGameTime
 {
     double delta_seconds;
@@ -54,10 +64,13 @@ typedef struct OxideGameCallbacks
     OxideDrawCallback draw;
 } OxideGameCallbacks;
 
-OXIDE_API void oxide_run(
+OXIDE_API OxideStatus oxide_run(
     OxideAppConfig config,
     OxideGameCallbacks callbacks
 );
+
+OXIDE_API const char*
+oxide_last_error_message(void);
 
 #ifdef __cplusplus
 }

@@ -8,32 +8,24 @@
     "net10.0": []
   },
   "packageFolders": {
-    "C:\\Users\\hudso\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\hudso\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\hudso\\OneDrive\\Documents\\Coding Projects\\Oxide\\Oxide\\examples\\csharp\\HelloWindow\\HelloWindow.csproj",
+      "projectUniqueName": "C:\\CodeProjects\\Oxide\\oxide\\examples\\csharp\\HelloWindow\\HelloWindow.csproj",
       "projectName": "HelloWindow",
-      "projectPath": "C:\\Users\\hudso\\OneDrive\\Documents\\Coding Projects\\Oxide\\Oxide\\examples\\csharp\\HelloWindow\\HelloWindow.csproj",
+      "projectPath": "C:\\CodeProjects\\Oxide\\oxide\\examples\\csharp\\HelloWindow\\HelloWindow.csproj",
       "packagesPath": "C:\\Users\\hudso\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\hudso\\OneDrive\\Documents\\Coding Projects\\Oxide\\Oxide\\examples\\csharp\\HelloWindow\\obj\\",
+      "outputPath": "C:\\CodeProjects\\Oxide\\oxide\\examples\\csharp\\HelloWindow\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\hudso\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "C:\\Users\\hudso\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
