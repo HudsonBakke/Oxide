@@ -131,4 +131,31 @@ public sealed class Graphics
                 )
         );
     }
+
+    public void DrawMesh(
+        Mesh mesh,
+        Material material,
+        Transform transform
+    )
+    {
+        ArgumentNullException.ThrowIfNull(
+            mesh
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            material
+        );
+
+        EnsureValid();
+
+        NativeMethods.Check(
+            NativeMethods
+                .oxide_graphics_draw_mesh(
+                    _handle,
+                    mesh.Handle,
+                    material.Handle,
+                    transform
+                )
+        );
+    }
 }

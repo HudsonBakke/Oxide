@@ -5,7 +5,10 @@ use crate::{
         PointLight,
         SpotLight,
     },
-    math::Rect,
+    math::{
+        Rect,
+        Transform,
+    },
 };
 
 use super::{
@@ -15,6 +18,13 @@ use super::{
         ffi_boundary,
         set_last_error,
     },
+
+    resources::{
+        with_material,
+        with_mesh,
+    },
+    OxideMaterialHandle,
+    OxideMeshHandle,
 
     OxideCameraHandle,
     OxideGraphicsHandle,
@@ -34,6 +44,77 @@ fn graphics_from_handle<'a>(
                 handle.0
                     as *mut Graphics
             )
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_draw_mesh(
+    graphics: OxideGraphicsHandle,
+    mesh: OxideMeshHandle,
+    material: OxideMaterialHandle,
+    transform: Transform,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(graphics) =
+                graphics_from_handle(
+                    graphics
+                )
+            else {
+                set_last_error(
+                    "graphics handle is null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            let Some(result) =
+                with_mesh(
+                    mesh,
+                    |mesh| {
+                        with_material(
+                            material,
+                            |material| {
+                                graphics.draw_mesh(
+                                    mesh,
+                                    material,
+                                    &transform,
+                                )
+                            },
+                        )
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            let Some(result) =
+                result
+            else {
+                set_last_error(
+                    "material handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            match result {
+                Ok(()) =>
+                    OxideStatus::Ok,
+
+                Err(error) => {
+                    set_last_error(
+                        error.to_string()
+                    );
+
+                    OxideStatus::GraphicsError
+                }
+            }
         }
     )
 }

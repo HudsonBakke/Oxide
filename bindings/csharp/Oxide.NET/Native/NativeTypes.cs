@@ -14,6 +14,18 @@ internal enum OxideStatus
 }
 
 [StructLayout(LayoutKind.Sequential)]
+internal struct NativeMeshHandle
+{
+    public ulong Value;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeMaterialHandle
+{
+    public ulong Value;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 internal struct NativeGameTime
 {
     public double DeltaSeconds;

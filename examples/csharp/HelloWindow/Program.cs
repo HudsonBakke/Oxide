@@ -20,6 +20,12 @@ internal sealed class MyGame
     private readonly ContentManager
         _content = new();
 
+    private Mesh? _mesh;
+    private Material? _material;
+
+    private Transform _transform =
+        new();
+
     protected override void Initialize()
     {
         _camera.Position =
@@ -32,6 +38,23 @@ internal sealed class MyGame
         Console.WriteLine(
             "C# Initialize!"
         );
+
+        _mesh =
+            _content.LoadMesh(
+                "../../../assets/textured_material_cube.glb"
+            );
+
+        _material =
+            _content.LoadMaterial(
+                "../../../assets/textured_material_cube.glb"
+            );
+
+        _camera.Position =
+            new Vec3(
+                0.0f,
+                0.0f,
+                5.0f
+            );
     }
 
     protected override void Update(
@@ -65,16 +88,11 @@ internal sealed class MyGame
             _light
         );
 
-        if (_printedDraw)
-        {
-            return;
-        }
-
-        Console.WriteLine(
-            "C# camera and light successfully bound!"
+        graphics.DrawMesh(
+            _mesh!,
+            _material!,
+            _transform
         );
-
-        _printedDraw = true;
     }
 }
 

@@ -197,5 +197,37 @@ internal static class NativeMethods
         oxide_content_manager_destroy(
             NativeContentManagerHandle manager
         );
+        
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_content_load_mesh(
+        NativeContentManagerHandle manager,
+        IntPtr path,
+        out NativeMeshHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_content_load_material(
+        NativeContentManagerHandle manager,
+        IntPtr path,
+        out NativeMaterialHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_destroy(
+        NativeMeshHandle mesh
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_destroy(
+        NativeMaterialHandle material
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_draw_mesh(
+        NativeGraphicsHandle graphics,
+        NativeMeshHandle mesh,
+        NativeMaterialHandle material,
+        Transform transform
+    );
 }
 

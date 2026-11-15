@@ -4,6 +4,7 @@ mod content;
 mod error;
 mod graphics;
 mod registry;
+mod resources;
 mod types;
 
 pub use error::OxideStatus;
@@ -14,4 +15,6 @@ pub use types::{
     OxideContentManagerHandle,
     OxideGameCallbacks,
     OxideGraphicsHandle,
+    OxideMaterialHandle,
+    OxideMeshHandle,
 };

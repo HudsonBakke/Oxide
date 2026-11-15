@@ -7,6 +7,18 @@ use crate::{
     app::GameTime,
 };
 
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct OxideMeshHandle(
+    pub u64
+);
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct OxideMaterialHandle(
+    pub u64
+);
+
 /// Opaque handle representing the Graphics object
 /// valid during a draw callback.
 ///
