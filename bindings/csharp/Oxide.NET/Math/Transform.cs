@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Oxide;
+namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct Transform

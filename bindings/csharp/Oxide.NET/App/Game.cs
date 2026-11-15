@@ -3,8 +3,9 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 using Oxide.Native;
+using Oxide.Graphics;
 
-namespace Oxide;
+namespace Oxide.App;
 
 public abstract class Game
     : IDisposable
@@ -26,7 +27,7 @@ public abstract class Game
     }
 
     protected virtual void Draw(
-        Graphics graphics
+        Graphics.Graphics graphics
     )
     {
     }
@@ -223,7 +224,7 @@ public abstract class Game
         }
 
         var graphics =
-            new Graphics(
+            new Graphics.Graphics(
                 graphicsHandle
             );
 

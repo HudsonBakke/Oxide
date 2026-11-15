@@ -1,4 +1,7 @@
-﻿using Oxide;
+﻿using Oxide.App;
+using Oxide.Content;
+using Oxide.Graphics;
+using Oxide.Math;
 
 internal sealed class MyGame
     : Game

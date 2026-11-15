@@ -1,4 +1,4 @@
-namespace Oxide;
+namespace Oxide.App;
 
 public sealed class AppConfig
 {

@@ -1,7 +1,8 @@
 using Oxide.Native;
+using Oxide.Graphics;
 using System.Runtime.InteropServices;
 
-namespace Oxide;
+namespace Oxide.Content;
 
 public sealed class ContentManager
 {

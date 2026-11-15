@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Oxide;
+namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct Color

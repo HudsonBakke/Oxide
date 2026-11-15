@@ -1,6 +1,9 @@
 using System;
 using System.Runtime.InteropServices;
 
+using Oxide.Graphics;
+using Oxide.Math;
+
 namespace Oxide.Native;
 
 internal static class NativeMethods
@@ -197,7 +200,7 @@ internal static class NativeMethods
         oxide_content_manager_destroy(
             NativeContentManagerHandle manager
         );
-        
+
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
     internal static extern OxideStatus oxide_content_load_mesh(
         NativeContentManagerHandle manager,

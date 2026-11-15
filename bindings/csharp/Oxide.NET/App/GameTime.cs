@@ -1,4 +1,4 @@
-namespace Oxide;
+namespace Oxide.App;
 
 public readonly struct GameTime
 {

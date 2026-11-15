@@ -1,6 +1,6 @@
 using Oxide.Native;
 
-namespace Oxide;
+namespace Oxide.Graphics;
 
 public sealed class Mesh
 {

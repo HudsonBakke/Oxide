@@ -1,7 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
+using Oxide.Math;
 
-namespace Oxide;
+namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct SpotLight

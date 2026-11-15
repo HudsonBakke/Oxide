@@ -1,6 +1,7 @@
 using Oxide.Native;
+using Oxide.Math;
 
-namespace Oxide;
+namespace Oxide.Graphics;
 
 public sealed class Camera
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Oxide;
+namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct Quaternion
