@@ -1,8 +1,7 @@
 ﻿using Oxide;
 
 internal sealed class MyGame
-    : Game,
-      IDisposable
+    : Game
 {
     private bool _printedUpdate;
     private bool _printedDraw;
@@ -18,6 +17,8 @@ internal sealed class MyGame
             Color.White,
             1.0f
         );
+    private readonly ContentManager
+        _content = new();
 
     protected override void Initialize()
     {
@@ -74,11 +75,6 @@ internal sealed class MyGame
         );
 
         _printedDraw = true;
-    }
-
-    public void Dispose()
-    {
-        _camera.Dispose();
     }
 }
 

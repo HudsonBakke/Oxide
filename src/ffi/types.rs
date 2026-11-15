@@ -23,6 +23,12 @@ pub struct OxideCameraHandle(
     pub u64
 );
 
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct OxideContentManagerHandle(
+    pub u64
+);
+
 /// Callback table supplied by foreign-language game code.
 #[repr(C)]
 #[derive(Clone, Copy)]

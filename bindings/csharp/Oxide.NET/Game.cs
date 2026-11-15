@@ -7,9 +7,13 @@ using Oxide.Native;
 namespace Oxide;
 
 public abstract class Game
+    : IDisposable
 {
     private ExceptionDispatchInfo?
         _callbackException;
+
+    private bool
+        _disposed;
 
     protected virtual void Initialize()
     {
@@ -38,9 +42,26 @@ public abstract class Game
         AppConfig config
     )
     {
+        ObjectDisposedException.ThrowIf(
+            _disposed,
+            this
+        );
+
         ArgumentNullException.ThrowIfNull(
             config
         );
+
+        // A Game instance represents one application
+        // lifetime. Running it twice would attempt to start
+        // the native event loop again.
+        if (_hasRun)
+        {
+            throw new InvalidOperationException(
+                "An Oxide Game instance can only be run once."
+            );
+        }
+
+        _hasRun = true;
 
         IntPtr title =
             Marshal.StringToCoTaskMemUTF8(
@@ -86,15 +107,15 @@ public abstract class Game
                     callbacks
                 );
 
-            // Keep the managed delegate objects alive until
-            // native execution has completely returned.
+            // Native code stores these function pointers for
+            // the entire application lifetime.
             GC.KeepAlive(initialize);
             GC.KeepAlive(update);
             GC.KeepAlive(draw);
 
-            // A managed exception must never propagate through
-            // an unmanaged callback frame. The callback catches
-            // it, and we rethrow it here once Rust has returned.
+            // Managed exceptions are caught inside callbacks
+            // so they never cross the native ABI. Rethrow
+            // safely once native execution has returned.
             _callbackException?
                 .Throw();
 
@@ -110,10 +131,46 @@ public abstract class Game
         }
     }
 
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        Dispose(
+            true
+        );
+
+        _disposed = true;
+
+        GC.SuppressFinalize(
+            this
+        );
+    }
+
+    /// Framework-level cleanup hook.
+    ///
+    /// Game subclasses normally do not need to override this.
+    protected virtual void Dispose(
+        bool disposing
+    )
+    {
+    }
+
+    private bool
+        _hasRun;
+
     private void OnInitialize(
         IntPtr userData
     )
     {
+        if (_callbackException
+            is not null)
+        {
+            return;
+        }
+
         try
         {
             Initialize();

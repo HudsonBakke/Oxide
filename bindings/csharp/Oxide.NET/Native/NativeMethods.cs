@@ -177,5 +177,25 @@ internal static class NativeMethods
             NativeGraphicsHandle graphics,
             DirectionalLight light
         );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern OxideStatus
+        oxide_content_manager_create(
+            out NativeContentManagerHandle result
+        );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern OxideStatus
+        oxide_content_manager_destroy(
+            NativeContentManagerHandle manager
+        );
 }
 

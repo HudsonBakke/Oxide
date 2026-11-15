@@ -33,6 +33,12 @@ internal struct NativeCameraHandle
 }
 
 [StructLayout(LayoutKind.Sequential)]
+internal struct NativeContentManagerHandle
+{
+    public ulong Value;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 internal struct NativeAppConfig
 {
     public IntPtr Title;

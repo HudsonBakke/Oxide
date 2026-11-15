@@ -1,35 +1,40 @@
-using System;
-
 using Oxide.Native;
 
 namespace Oxide;
 
 public sealed class Camera
-    : IDisposable
 {
-    private NativeCameraHandle
+    private readonly CameraSafeHandle
         _handle;
-
-    private bool
-        _disposed;
 
     public Camera()
     {
         NativeMethods.Check(
             NativeMethods
                 .oxide_camera_create(
-                    out _handle
+                    out NativeCameraHandle handle
                 )
         );
+
+        _handle =
+            new CameraSafeHandle(
+                handle
+            );
     }
 
     internal NativeCameraHandle Handle
     {
         get
         {
-            EnsureNotDisposed();
+            if (_handle.IsInvalid
+                || _handle.IsClosed)
+            {
+                throw new ObjectDisposedException(
+                    nameof(Camera)
+                );
+            }
 
-            return _handle;
+            return _handle.NativeHandle;
         }
     }
 
@@ -37,12 +42,10 @@ public sealed class Camera
     {
         get
         {
-            EnsureNotDisposed();
-
             NativeMethods.Check(
                 NativeMethods
                     .oxide_camera_get_position(
-                        _handle,
+                        Handle,
                         out Vec3 result
                     )
             );
@@ -52,12 +55,10 @@ public sealed class Camera
 
         set
         {
-            EnsureNotDisposed();
-
             NativeMethods.Check(
                 NativeMethods
                     .oxide_camera_set_position(
-                        _handle,
+                        Handle,
                         value
                     )
             );
@@ -68,12 +69,10 @@ public sealed class Camera
     {
         get
         {
-            EnsureNotDisposed();
-
             NativeMethods.Check(
                 NativeMethods
                     .oxide_camera_get_rotation(
-                        _handle,
+                        Handle,
                         out Quaternion result
                     )
             );
@@ -83,12 +82,10 @@ public sealed class Camera
 
         set
         {
-            EnsureNotDisposed();
-
             NativeMethods.Check(
                 NativeMethods
                     .oxide_camera_set_rotation(
-                        _handle,
+                        Handle,
                         value
                     )
             );
@@ -99,12 +96,10 @@ public sealed class Camera
     {
         get
         {
-            EnsureNotDisposed();
-
             NativeMethods.Check(
                 NativeMethods
                     .oxide_camera_get_field_of_view(
-                        _handle,
+                        Handle,
                         out Angle result
                     )
             );
@@ -114,12 +109,10 @@ public sealed class Camera
 
         set
         {
-            EnsureNotDisposed();
-
             NativeMethods.Check(
                 NativeMethods
                     .oxide_camera_set_field_of_view(
-                        _handle,
+                        Handle,
                         value
                     )
             );
@@ -130,12 +123,10 @@ public sealed class Camera
         Vec3 translation
     )
     {
-        EnsureNotDisposed();
-
         NativeMethods.Check(
             NativeMethods
                 .oxide_camera_translate_by(
-                    _handle,
+                    Handle,
                     translation
                 )
         );
@@ -147,12 +138,10 @@ public sealed class Camera
         Angle roll
     )
     {
-        EnsureNotDisposed();
-
         NativeMethods.Check(
             NativeMethods
                 .oxide_camera_set_euler(
-                    _handle,
+                    Handle,
                     pitch,
                     yaw,
                     roll
@@ -165,46 +154,13 @@ public sealed class Camera
         float farPlane
     )
     {
-        EnsureNotDisposed();
-
         NativeMethods.Check(
             NativeMethods
                 .oxide_camera_set_clip_planes(
-                    _handle,
+                    Handle,
                     nearPlane,
                     farPlane
                 )
         );
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_destroy(
-                    _handle
-                )
-        );
-
-        _handle = default;
-        _disposed = true;
-
-        GC.SuppressFinalize(
-            this
-        );
-    }
-
-    private void EnsureNotDisposed()
-    {
-        ObjectDisposedException
-            .ThrowIf(
-                _disposed,
-                this
-            );
     }
 }
