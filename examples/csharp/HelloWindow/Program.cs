@@ -6,8 +6,6 @@ using Oxide.Math;
 internal sealed class MyGame
     : Game
 {
-    private bool _printedUpdate;
-    private bool _printedDraw;
     private readonly Camera _camera =
         new();
     private readonly DirectionalLight _light =
@@ -24,6 +22,7 @@ internal sealed class MyGame
         _content = new();
 
     private Mesh? _mesh;
+    private Mesh? _testMesh;
     private Material? _material;
 
     private Transform _transform =
@@ -38,10 +37,6 @@ internal sealed class MyGame
                 5.0f
             );
 
-        Console.WriteLine(
-            "C# Initialize!"
-        );
-
         _mesh =
             _content.LoadMesh(
                 "../../../assets/textured_material_cube.glb"
@@ -50,6 +45,68 @@ internal sealed class MyGame
         _material =
             _content.LoadMaterial(
                 "../../../assets/textured_material_cube.glb"
+            );
+
+        _testMesh =
+            new Mesh(
+                [
+                    new(
+                        new Vec3(
+                            -1.0f,
+                            -1.0f,
+                            0.0f
+                        ),
+                        new Vec3(
+                            0.0f,
+                            0.0f,
+                            1.0f
+                        ),
+                        new Vec2(
+                            0.0f,
+                            1.0f
+                        )
+                    ),
+
+                    new(
+                        new Vec3(
+                            0.0f,
+                            1.0f,
+                            0.0f
+                        ),
+                        new Vec3(
+                            0.0f,
+                            0.0f,
+                            1.0f
+                        ),
+                        new Vec2(
+                            0.5f,
+                            0.0f
+                        )
+                    ),
+
+                    new(
+                        new Vec3(
+                            1.0f,
+                            -1.0f,
+                            0.0f
+                        ),
+                        new Vec3(
+                            0.0f,
+                            0.0f,
+                            1.0f
+                        ),
+                        new Vec2(
+                            1.0f,
+                            1.0f
+                        )
+                    ),
+                ],
+
+                [
+                    0,
+                    1,
+                    2,
+                ]
             );
 
         _camera.Position =
@@ -95,6 +152,12 @@ internal sealed class MyGame
 
         graphics.DrawMesh(
             _mesh!,
+            _material!,
+            _transform
+        );
+
+        graphics.DrawMesh(
+            _testMesh!,
             _material!,
             _transform
         );

@@ -4,9 +4,13 @@ use std::sync::{
     OnceLock,
 };
 
-use crate::graphics::{
-    Material,
-    Mesh,
+use crate::{
+    graphics::{
+        Material,
+        Mesh,
+        Vertex,
+    },
+    math::Vec3,
 };
 
 use super::{
@@ -148,6 +152,19 @@ pub(crate) fn with_material<R>(
         .map(operation)
 }
 
+pub(crate) fn with_mesh_mut<R>(
+    handle: OxideMeshHandle,
+    operation:
+        impl FnOnce(&mut Mesh) -> R,
+) -> Option<R> {
+    let mut registry =
+        lock_meshes();
+
+    registry
+        .get_mut(handle.0)
+        .map(operation)
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn oxide_mesh_destroy(
     mesh: OxideMeshHandle,
@@ -185,6 +202,750 @@ pub extern "C" fn oxide_material_destroy(
                 );
 
                 return OxideStatus::InvalidArgument;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_vertex_count(
+    mesh: OxideMeshHandle,
+    result: *mut usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(count) =
+                with_mesh(
+                    mesh,
+                    |mesh| {
+                        mesh.vertex_count()
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = count;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_index_count(
+    mesh: OxideMeshHandle,
+    result: *mut usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(count) =
+                with_mesh(
+                    mesh,
+                    |mesh| {
+                        mesh.index_count()
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = count;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_get_pivot(
+    mesh: OxideMeshHandle,
+    result: *mut Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(pivot) =
+                with_mesh(
+                    mesh,
+                    |mesh| mesh.pivot(),
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = pivot;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_set_pivot(
+    mesh: OxideMeshHandle,
+    pivot: Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(()) =
+                with_mesh_mut(
+                    mesh,
+                    |mesh| {
+                        mesh.set_pivot(
+                            pivot
+                        );
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_recalculate_pivot(
+    mesh: OxideMeshHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(()) =
+                with_mesh_mut(
+                    mesh,
+                    |mesh| {
+                        mesh.recalculate_pivot();
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_get_direction(
+    mesh: OxideMeshHandle,
+    result: *mut Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(value) =
+                with_mesh(
+                    mesh,
+                    |mesh| mesh.direction(),
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = value;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_get_reference(
+    mesh: OxideMeshHandle,
+    result: *mut Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(value) =
+                with_mesh(
+                    mesh,
+                    |mesh| mesh.reference(),
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = value;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_get_side(
+    mesh: OxideMeshHandle,
+    result: *mut Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(value) =
+                with_mesh(
+                    mesh,
+                    |mesh| mesh.side(),
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = value;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+fn mesh_result_status(
+    result: crate::OxideResult<()>,
+) -> OxideStatus {
+    match result {
+        Ok(()) =>
+            OxideStatus::Ok,
+
+        Err(error) => {
+            set_last_error(
+                error.to_string()
+            );
+
+            OxideStatus::InvalidArgument
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_set_direction(
+    mesh: OxideMeshHandle,
+    direction: Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(result) =
+                with_mesh_mut(
+                    mesh,
+                    |mesh| {
+                        mesh.set_direction(
+                            direction
+                        )
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            mesh_result_status(
+                result
+            )
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_set_reference(
+    mesh: OxideMeshHandle,
+    reference: Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(result) =
+                with_mesh_mut(
+                    mesh,
+                    |mesh| {
+                        mesh.set_reference(
+                            reference
+                        )
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            mesh_result_status(
+                result
+            )
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_set_orientation(
+    mesh: OxideMeshHandle,
+    direction: Vec3,
+    reference: Vec3,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(result) =
+                with_mesh_mut(
+                    mesh,
+                    |mesh| {
+                        mesh.set_orientation(
+                            direction,
+                            reference,
+                        )
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            mesh_result_status(
+                result
+            )
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_copy_vertices(
+    mesh: OxideMeshHandle,
+    destination: *mut Vertex,
+    capacity: usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(result) =
+                with_mesh(
+                    mesh,
+                    |mesh| {
+                        if capacity
+                            < mesh.vertex_count()
+                        {
+                            return false;
+                        }
+
+                        if !mesh.vertices().is_empty()
+                            && destination.is_null()
+                        {
+                            return false;
+                        }
+
+                        if !mesh.vertices().is_empty() {
+                            unsafe {
+                                std::ptr::copy_nonoverlapping(
+                                    mesh.vertices().as_ptr(),
+                                    destination,
+                                    mesh.vertex_count(),
+                                );
+                            }
+                        }
+
+                        true
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            if !result {
+                set_last_error(
+                    "vertex destination buffer is null or too small"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_copy_indices(
+    mesh: OxideMeshHandle,
+    destination: *mut u32,
+    capacity: usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(result) =
+                with_mesh(
+                    mesh,
+                    |mesh| {
+                        if capacity
+                            < mesh.index_count()
+                        {
+                            return false;
+                        }
+
+                        if !mesh.indices().is_empty()
+                            && destination.is_null()
+                        {
+                            return false;
+                        }
+
+                        if !mesh.indices().is_empty() {
+                            unsafe {
+                                std::ptr::copy_nonoverlapping(
+                                    mesh.indices().as_ptr(),
+                                    destination,
+                                    mesh.index_count(),
+                                );
+                            }
+                        }
+
+                        true
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            if !result {
+                set_last_error(
+                    "index destination buffer is null or too small"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_set_vertices(
+    mesh: OxideMeshHandle,
+    vertices: *const Vertex,
+    count: usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if count > 0
+                && vertices.is_null()
+            {
+                set_last_error(
+                    "vertex source pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(result) =
+                with_mesh_mut(
+                    mesh,
+                    |mesh| {
+                        if count
+                            != mesh.vertex_count()
+                        {
+                            return false;
+                        }
+
+                        if count > 0 {
+                            let source =
+                                unsafe {
+                                    std::slice::from_raw_parts(
+                                        vertices,
+                                        count,
+                                    )
+                                };
+
+                            mesh.vertices_mut()
+                                .copy_from_slice(
+                                    source
+                                );
+                        }
+
+                        true
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            if !result {
+                set_last_error(
+                    "vertex count must match the mesh's existing vertex count"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_set_indices(
+    mesh: OxideMeshHandle,
+    indices: *const u32,
+    count: usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if count > 0
+                && indices.is_null()
+            {
+                set_last_error(
+                    "index source pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(result) =
+                with_mesh_mut(
+                    mesh,
+                    |mesh| {
+                        if count
+                            != mesh.index_count()
+                        {
+                            return false;
+                        }
+
+                        if count > 0 {
+                            let source =
+                                unsafe {
+                                    std::slice::from_raw_parts(
+                                        indices,
+                                        count,
+                                    )
+                                };
+
+                            mesh.indices_mut()
+                                .copy_from_slice(
+                                    source
+                                );
+                        }
+
+                        true
+                    },
+                )
+            else {
+                set_last_error(
+                    "mesh handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            if !result {
+                set_last_error(
+                    "index count must match the mesh's existing index count"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_mesh_create(
+    vertices: *const Vertex,
+    vertex_count: usize,
+
+    indices: *const u32,
+    index_count: usize,
+
+    result: *mut OxideMeshHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            if vertex_count > 0
+                && vertices.is_null()
+            {
+                set_last_error(
+                    "vertex source pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            if index_count > 0
+                && indices.is_null()
+            {
+                set_last_error(
+                    "index source pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let vertices =
+                if vertex_count == 0 {
+                    Vec::new()
+                } else {
+                    unsafe {
+                        std::slice::from_raw_parts(
+                            vertices,
+                            vertex_count,
+                        )
+                    }
+                    .to_vec()
+                };
+
+            let indices =
+                if index_count == 0 {
+                    Vec::new()
+                } else {
+                    unsafe {
+                        std::slice::from_raw_parts(
+                            indices,
+                            index_count,
+                        )
+                    }
+                    .to_vec()
+                };
+
+            // Reject indices that cannot refer to a vertex.
+            if indices
+                .iter()
+                .any(
+                    |&index| {
+                        index as usize
+                            >= vertices.len()
+                    }
+                )
+            {
+                set_last_error(
+                    "mesh contains an out-of-range index"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let mesh =
+                Mesh::new(
+                    vertices,
+                    indices,
+                );
+
+            unsafe {
+                *result =
+                    insert_mesh(
+                        mesh
+                    );
             }
 
             OxideStatus::Ok

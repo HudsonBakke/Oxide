@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <RootNamespace>Oxide</RootNamespace>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
 </Project>

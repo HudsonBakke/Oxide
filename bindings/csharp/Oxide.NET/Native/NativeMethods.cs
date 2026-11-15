@@ -232,5 +232,115 @@ internal static class NativeMethods
         NativeMaterialHandle material,
         Transform transform
     );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_vertex_count(
+        NativeMeshHandle mesh,
+        out nuint result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_index_count(
+        NativeMeshHandle mesh,
+        out nuint result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_get_pivot(
+        NativeMeshHandle mesh,
+        out Vec3 result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_set_pivot(
+        NativeMeshHandle mesh,
+        Vec3 pivot
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_recalculate_pivot(
+        NativeMeshHandle mesh
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_get_direction(
+        NativeMeshHandle mesh,
+        out Vec3 result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_get_reference(
+        NativeMeshHandle mesh,
+        out Vec3 result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_get_side(
+        NativeMeshHandle mesh,
+        out Vec3 result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_set_direction(
+        NativeMeshHandle mesh,
+        Vec3 direction
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_set_reference(
+        NativeMeshHandle mesh,
+        Vec3 reference
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mesh_set_orientation(
+        NativeMeshHandle mesh,
+        Vec3 direction,
+        Vec3 reference
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern unsafe OxideStatus oxide_mesh_copy_vertices(
+        NativeMeshHandle mesh,
+        Vertex* destination,
+        nuint capacity
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern unsafe OxideStatus oxide_mesh_copy_indices(
+        NativeMeshHandle mesh,
+        uint* destination,
+        nuint capacity
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern unsafe OxideStatus oxide_mesh_set_vertices(
+        NativeMeshHandle mesh,
+        Vertex* vertices,
+        nuint count
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern unsafe OxideStatus oxide_mesh_set_indices(
+        NativeMeshHandle mesh,
+        uint* indices,
+        nuint count
+    );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern unsafe OxideStatus
+        oxide_mesh_create(
+            Vertex* vertices,
+            nuint vertexCount,
+
+            uint* indices,
+            nuint indexCount,
+
+            out NativeMeshHandle result
+        );
 }
 
