@@ -1,2 +1,6 @@
 /target
 /shaders/compiled
+
+# .NET / C# build artifacts
+**/bin/
+**/obj/
