@@ -61,18 +61,20 @@ internal sealed class MyGame
         GameTime time
     )
     {
-        if (_printedUpdate)
-        {
-            return;
-        }
+        float delta =
+            (float)time.DeltaSeconds;
 
-        Console.WriteLine(
-            $"C# Update! " +
-            $"delta = {time.DeltaSeconds:F6}, " +
-            $"total = {time.TotalSeconds:F6}"
+        _transform.RotateYawBy(
+            Angle.Radians(
+                0.8f * delta
+            )
         );
 
-        _printedUpdate = true;
+        _transform.RotatePitchBy(
+            Angle.Radians(
+                0.35f * delta
+            )
+        );
     }
 
     protected override void Draw(

@@ -19,4 +19,40 @@ public readonly struct Vec3
         Y = y;
         Z = z;
     }
+
+    public static Vec3 operator +(
+        Vec3 a,
+        Vec3 b
+    )
+    {
+        return new Vec3(
+            a.X + b.X,
+            a.Y + b.Y,
+            a.Z + b.Z
+        );
+    }
+
+    public static Vec3 operator -(
+        Vec3 a,
+        Vec3 b
+    )
+    {
+        return new Vec3(
+            a.X - b.X,
+            a.Y - b.Y,
+            a.Z - b.Z
+        );
+    }
+
+    public static Vec3 operator *(
+        Vec3 value,
+        float scalar
+    )
+    {
+        return new Vec3(
+            value.X * scalar,
+            value.Y * scalar,
+            value.Z * scalar
+        );
+    }
 }
