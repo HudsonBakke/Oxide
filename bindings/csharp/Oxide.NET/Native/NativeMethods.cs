@@ -469,5 +469,35 @@ internal static class NativeMethods
 
             out Transform result
         );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_camera_rotate_pitch_by(
+        NativeCameraHandle camera,
+        Angle angle
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_camera_rotate_yaw_by(
+        NativeCameraHandle camera,
+        Angle angle
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_camera_rotate_roll_by(
+        NativeCameraHandle camera,
+        Angle angle
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_camera_get_near_plane(
+        NativeCameraHandle camera,
+        out float result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_camera_get_far_plane(
+        NativeCameraHandle camera,
+        out float result
+    );
 }
 

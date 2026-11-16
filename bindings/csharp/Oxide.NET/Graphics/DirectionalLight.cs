@@ -1,15 +1,16 @@
 using System;
 using System.Runtime.InteropServices;
+
 using Oxide.Math;
 
 namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct DirectionalLight
+public struct DirectionalLight
 {
-    public readonly Vec3 Direction;
-    public readonly Color Color;
-    public readonly float Intensity;
+    private Vec3 _direction;
+    private Color _color;
+    private float _intensity;
 
     public DirectionalLight(
         Vec3 direction,
@@ -17,7 +18,7 @@ public readonly struct DirectionalLight
         float intensity
     )
     {
-        if (Length(direction)
+        if (direction.Length
             <= 1.0e-6f)
         {
             throw new ArgumentException(
@@ -34,35 +35,55 @@ public readonly struct DirectionalLight
             );
         }
 
-        Direction =
-            Normalize(direction);
+        _direction =
+            direction.Normalized();
 
-        Color = color;
-        Intensity = intensity;
+        _color = color;
+        _intensity = intensity;
     }
 
-    private static float Length(
-        Vec3 value
-    )
+    public Vec3 Direction
     {
-        return MathF.Sqrt(
-            value.X * value.X
-            + value.Y * value.Y
-            + value.Z * value.Z
-        );
+        readonly get =>
+            _direction;
+
+        set
+        {
+            if (value.Length
+                <= 1.0e-6f)
+            {
+                throw new ArgumentException(
+                    "Directional light direction cannot be zero.",
+                    nameof(value)
+                );
+            }
+
+            _direction =
+                value.Normalized();
+        }
     }
 
-    private static Vec3 Normalize(
-        Vec3 value
-    )
+    public Color Color
     {
-        float length =
-            Length(value);
+        readonly get => _color;
+        set => _color = value;
+    }
 
-        return new Vec3(
-            value.X / length,
-            value.Y / length,
-            value.Z / length
-        );
+    public float Intensity
+    {
+        readonly get => _intensity;
+
+        set
+        {
+            if (value < 0.0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    "Light intensity cannot be negative."
+                );
+            }
+
+            _intensity = value;
+        }
     }
 }

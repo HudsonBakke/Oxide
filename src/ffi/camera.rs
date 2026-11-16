@@ -21,7 +21,6 @@ use super::{
         set_last_error,
     },
     OxideCameraHandle,
-    OxideGraphicsHandle,
     OxideStatus,
 };
 
@@ -470,4 +469,157 @@ pub(crate) fn with_camera<R>(
         .cameras
         .get(&handle.0)
         .map(operation)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_camera_rotate_pitch_by(
+    camera: OxideCameraHandle,
+    angle: Angle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let mut registry =
+                lock_cameras();
+
+            let Some(camera) =
+                registry.cameras.get_mut(
+                    &camera.0
+                )
+            else {
+                return invalid_handle();
+            };
+
+            camera.rotate_pitch_by(
+                angle
+            );
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_camera_rotate_yaw_by(
+    camera: OxideCameraHandle,
+    angle: Angle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let mut registry =
+                lock_cameras();
+
+            let Some(camera) =
+                registry.cameras.get_mut(
+                    &camera.0
+                )
+            else {
+                return invalid_handle();
+            };
+
+            camera.rotate_yaw_by(
+                angle
+            );
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_camera_rotate_roll_by(
+    camera: OxideCameraHandle,
+    angle: Angle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let mut registry =
+                lock_cameras();
+
+            let Some(camera) =
+                registry.cameras.get_mut(
+                    &camera.0
+                )
+            else {
+                return invalid_handle();
+            };
+
+            camera.rotate_roll_by(
+                angle
+            );
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_camera_get_near_plane(
+    camera: OxideCameraHandle,
+    result: *mut f32,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let registry =
+                lock_cameras();
+
+            let Some(camera) =
+                registry.cameras.get(
+                    &camera.0
+                )
+            else {
+                return invalid_handle();
+            };
+
+            unsafe {
+                *result =
+                    camera.near_plane();
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_camera_get_far_plane(
+    camera: OxideCameraHandle,
+    result: *mut f32,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let registry =
+                lock_cameras();
+
+            let Some(camera) =
+                registry.cameras.get(
+                    &camera.0
+                )
+            else {
+                return invalid_handle();
+            };
+
+            unsafe {
+                *result =
+                    camera.far_plane();
+            }
+
+            OxideStatus::Ok
+        }
+    )
 }

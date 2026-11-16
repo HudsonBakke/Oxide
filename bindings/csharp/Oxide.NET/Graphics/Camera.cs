@@ -164,4 +164,75 @@ public sealed class Camera
                 )
         );
     }
+
+    public float NearPlane
+    {
+        get
+        {
+            NativeMethods.Check(
+                NativeMethods
+                    .oxide_camera_get_near_plane(
+                        Handle,
+                        out float result
+                    )
+            );
+
+            return result;
+        }
+    }
+
+    public float FarPlane
+    {
+        get
+        {
+            NativeMethods.Check(
+                NativeMethods
+                    .oxide_camera_get_far_plane(
+                        Handle,
+                        out float result
+                    )
+            );
+
+            return result;
+        }
+    }
+
+    public void RotatePitchBy(
+        Angle angle
+    )
+    {
+        NativeMethods.Check(
+            NativeMethods
+                .oxide_camera_rotate_pitch_by(
+                    Handle,
+                    angle
+                )
+        );
+    }
+
+    public void RotateYawBy(
+        Angle angle
+    )
+    {
+        NativeMethods.Check(
+            NativeMethods
+                .oxide_camera_rotate_yaw_by(
+                    Handle,
+                    angle
+                )
+        );
+    }
+
+    public void RotateRollBy(
+        Angle angle
+    )
+    {
+        NativeMethods.Check(
+            NativeMethods
+                .oxide_camera_rotate_roll_by(
+                    Handle,
+                    angle
+                )
+        );
+    }
 }
