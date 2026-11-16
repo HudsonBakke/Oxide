@@ -34,6 +34,11 @@ public struct Vec3
         float length =
             Length;
 
+        if (length == 0.0f)
+        {
+            return default;
+        }
+
         return new Vec3(
             X / length,
             Y / length,
@@ -45,6 +50,11 @@ public struct Vec3
     {
         float length =
             Length;
+
+        if (length == 0.0f)
+        {
+            return;
+        }
 
         X /= length;
         Y /= length;

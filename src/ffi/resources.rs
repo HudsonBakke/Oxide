@@ -1,7 +1,9 @@
-use std::sync::{
-    Mutex,
-    MutexGuard,
-    OnceLock,
+use std::{
+    sync::{
+        Mutex,
+        MutexGuard,
+        OnceLock,
+    },
 };
 
 use crate::{

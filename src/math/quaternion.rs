@@ -194,7 +194,7 @@ impl Quaternion {
     }
 
     /// Converts this quaternion into a rotation matrix.
-    pub fn to_matrix(&self) -> Mat4 {
+    pub(crate) fn to_matrix(&self) -> Mat4 {
         let q = self.normalized();
 
         let xx = q.x * q.x;

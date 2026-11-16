@@ -6,6 +6,7 @@ namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct Transform
+    : IEquatable<Transform>
 {
     private Vec3 _position;
     private Quaternion _rotation;
@@ -191,4 +192,46 @@ public struct Transform
 
         return result;
     }
+
+    public readonly bool Equals(
+        Transform other
+    )
+    {
+        return _position
+                == other._position
+            && _rotation
+                == other._rotation
+            && _scale
+                == other._scale;
+    }
+
+    public override readonly bool Equals(
+        object? obj
+    )
+    {
+        return obj
+            is Transform other
+            && Equals(other);
+    }
+
+    public override readonly int GetHashCode()
+    {
+        return HashCode.Combine(
+            _position,
+            _rotation,
+            _scale
+        );
+    }
+
+    public static bool operator ==(
+        Transform left,
+        Transform right
+    ) =>
+        left.Equals(right);
+
+    public static bool operator !=(
+        Transform left,
+        Transform right
+    ) =>
+        !left.Equals(right);
 }

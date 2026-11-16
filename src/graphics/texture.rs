@@ -55,7 +55,7 @@ pub struct Texture {
 
 impl Texture {
     /// Loads a texture from an image file.
-    pub fn load<P: AsRef<Path>>(
+    pub(crate) fn load<P: AsRef<Path>>(
         path: P,
     ) -> Result<Self, image::ImageError> {
         let image = image::open(path)?

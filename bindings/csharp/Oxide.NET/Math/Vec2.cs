@@ -30,6 +30,11 @@ public struct Vec2
         float length =
             Length;
 
+        if (length == 0.0f)
+        {
+            return default;
+        }
+
         return new Vec2(
             X / length,
             Y / length
@@ -40,6 +45,11 @@ public struct Vec2
     {
         float length =
             Length;
+
+        if (length == 0.0f)
+        {
+            return;
+        }
 
         X /= length;
         Y /= length;

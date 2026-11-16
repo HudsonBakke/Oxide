@@ -96,4 +96,56 @@ public struct Vec4
             right
         );
     }
+
+    public static Vec4 operator +(
+        Vec4 left,
+        Vec4 right
+    )
+    {
+        return new Vec4(
+            left.X + right.X,
+            left.Y + right.Y,
+            left.Z + right.Z,
+            left.W + right.W
+        );
+    }
+
+    public static Vec4 operator -(
+        Vec4 left,
+        Vec4 right
+    )
+    {
+        return new Vec4(
+            left.X - right.X,
+            left.Y - right.Y,
+            left.Z - right.Z,
+            left.W - right.W
+        );
+    }
+
+    public static Vec4 operator *(
+        Vec4 vector,
+        float scalar
+    )
+    {
+        return new Vec4(
+            vector.X * scalar,
+            vector.Y * scalar,
+            vector.Z * scalar,
+            vector.W * scalar
+        );
+    }
+
+    public static Vec4 operator /(
+        Vec4 vector,
+        float scalar
+    )
+    {
+        return new Vec4(
+            vector.X / scalar,
+            vector.Y / scalar,
+            vector.Z / scalar,
+            vector.W / scalar
+        );
+    }
 }
