@@ -19,6 +19,12 @@ pub struct OxideMaterialHandle(
     pub u64
 );
 
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct OxideTextureHandle(
+    pub u64
+);
+
 /// Opaque handle representing the Graphics object
 /// valid during a draw callback.
 ///

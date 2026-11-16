@@ -38,14 +38,24 @@ internal sealed class MyGame
             );
 
         _mesh =
-            _content.LoadMesh(
+            _content.Load<Mesh>(
                 "../../../assets/textured_material_cube.glb"
             );
 
         _material =
-            _content.LoadMaterial(
+            _content.Load<Material>(
                 "../../../assets/textured_material_cube.glb"
             );
+
+        Texture brick =
+            _content.Load<Texture>(
+                "../../../assets/brick.jpg"
+            );
+
+        Console.WriteLine(
+            $"Brick texture: " +
+            $"{brick.Width}x{brick.Height}"
+        );
 
         _testMesh =
             new Mesh(

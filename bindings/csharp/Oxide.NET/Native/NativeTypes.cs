@@ -26,6 +26,12 @@ internal struct NativeMaterialHandle
 }
 
 [StructLayout(LayoutKind.Sequential)]
+internal struct NativeTextureHandle
+{
+    public ulong Value;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 internal struct NativeGameTime
 {
     public double DeltaSeconds;

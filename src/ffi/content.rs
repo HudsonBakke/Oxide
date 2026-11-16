@@ -12,6 +12,7 @@ use crate::{
     graphics::{
         Material,
         Mesh,
+        Texture,
     },
 };
 
@@ -23,9 +24,11 @@ use super::{
     resources::{
         insert_material,
         insert_mesh,
+        insert_texture,
     },
     OxideMaterialHandle,
     OxideMeshHandle,
+    OxideTextureHandle,
     registry::Registry,
     OxideContentManagerHandle,
     OxideStatus,
@@ -305,4 +308,323 @@ pub(crate) fn with_manager_mut<R>(
             handle.0
         )
         .map(operation)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_load_texture(
+    manager: OxideContentManagerHandle,
+    path: *const std::ffi::c_char,
+    result: *mut OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let path =
+                match read_path(path) {
+                    Ok(path) => path,
+                    Err(status) =>
+                        return status,
+                };
+
+            let Some(load_result) =
+                with_manager_mut(
+                    manager,
+                    |manager| {
+                        manager.load::<Texture>(
+                            &path
+                        )
+                    },
+                )
+            else {
+                return invalid_handle();
+            };
+
+            match load_result {
+                Ok(texture) => {
+                    unsafe {
+                        *result =
+                            insert_texture(
+                                texture
+                            );
+                    }
+
+                    OxideStatus::Ok
+                }
+
+                Err(error) => {
+                    set_last_error(
+                        error.to_string()
+                    );
+
+                    OxideStatus::ContentError
+                }
+            }
+        }
+    )
+}
+
+fn read_subobject(
+    subobject:
+        *const std::ffi::c_char,
+) -> Result<String, OxideStatus> {
+    if subobject.is_null() {
+        set_last_error(
+            "subobject cannot be null"
+        );
+
+        return Err(
+            OxideStatus::InvalidArgument
+        );
+    }
+
+    let subobject =
+        unsafe {
+            CStr::from_ptr(
+                subobject
+            )
+        };
+
+    match subobject.to_str() {
+        Ok(subobject)
+            if !subobject.is_empty() =>
+        {
+            Ok(
+                subobject.to_owned()
+            )
+        }
+
+        Ok(_) => {
+            set_last_error(
+                "subobject cannot be empty"
+            );
+
+            Err(
+                OxideStatus::InvalidArgument
+            )
+        }
+
+        Err(_) => {
+            set_last_error(
+                "subobject must be valid UTF-8"
+            );
+
+            Err(
+                OxideStatus::InvalidArgument
+            )
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_load_mesh_sub(
+    manager: OxideContentManagerHandle,
+    path: *const std::ffi::c_char,
+    subobject: *const std::ffi::c_char,
+    result: *mut OxideMeshHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let path =
+                match read_path(path) {
+                    Ok(value) => value,
+                    Err(status) =>
+                        return status,
+                };
+
+            let subobject =
+                match read_subobject(
+                    subobject
+                ) {
+                    Ok(value) => value,
+                    Err(status) =>
+                        return status,
+                };
+
+            let Some(load_result) =
+                with_manager_mut(
+                    manager,
+                    |manager| {
+                        manager.load_sub::<Mesh>(
+                            &path,
+                            &subobject,
+                        )
+                    },
+                )
+            else {
+                return invalid_handle();
+            };
+
+            match load_result {
+                Ok(mesh) => {
+                    unsafe {
+                        *result =
+                            insert_mesh(mesh);
+                    }
+
+                    OxideStatus::Ok
+                }
+
+                Err(error) => {
+                    set_last_error(
+                        error.to_string()
+                    );
+
+                    OxideStatus::ContentError
+                }
+            }
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_load_material_sub(
+    manager: OxideContentManagerHandle,
+    path: *const std::ffi::c_char,
+    subobject: *const std::ffi::c_char,
+    result: *mut OxideMaterialHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let path =
+                match read_path(path) {
+                    Ok(value) => value,
+                    Err(status) =>
+                        return status,
+                };
+
+            let subobject =
+                match read_subobject(
+                    subobject
+                ) {
+                    Ok(value) => value,
+                    Err(status) =>
+                        return status,
+                };
+
+            let Some(load_result) =
+                with_manager_mut(
+                    manager,
+                    |manager| {
+                        manager.load_sub::<Material>(
+                            &path,
+                            &subobject,
+                        )
+                    },
+                )
+            else {
+                return invalid_handle();
+            };
+
+            match load_result {
+                Ok(material) => {
+                    unsafe {
+                        *result =
+                            insert_material(material);
+                    }
+
+                    OxideStatus::Ok
+                }
+
+                Err(error) => {
+                    set_last_error(
+                        error.to_string()
+                    );
+
+                    OxideStatus::ContentError
+                }
+            }
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_load_texture_sub(
+    manager: OxideContentManagerHandle,
+    path: *const std::ffi::c_char,
+    subobject: *const std::ffi::c_char,
+    result: *mut OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let path =
+                match read_path(path) {
+                    Ok(value) => value,
+                    Err(status) =>
+                        return status,
+                };
+
+            let subobject =
+                match read_subobject(
+                    subobject
+                ) {
+                    Ok(value) => value,
+                    Err(status) =>
+                        return status,
+                };
+
+            let Some(load_result) =
+                with_manager_mut(
+                    manager,
+                    |manager| {
+                        manager.load_sub::<Texture>(
+                            &path,
+                            &subobject,
+                        )
+                    },
+                )
+            else {
+                return invalid_handle();
+            };
+
+            match load_result {
+                Ok(texture) => {
+                    unsafe {
+                        *result =
+                            insert_texture(texture);
+                    }
+
+                    OxideStatus::Ok
+                }
+
+                Err(error) => {
+                    set_last_error(
+                        error.to_string()
+                    );
+
+                    OxideStatus::ContentError
+                }
+            }
+        }
+    )
 }

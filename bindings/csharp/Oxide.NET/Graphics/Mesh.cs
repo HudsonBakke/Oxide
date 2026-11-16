@@ -1,11 +1,12 @@
 using System;
 
 using Oxide.Math;
+using Oxide.Content;
 using Oxide.Native;
 
 namespace Oxide.Graphics;
 
-public sealed class Mesh
+public sealed class Mesh : IContentAsset
 {
     private readonly MeshSafeHandle
         _handle;

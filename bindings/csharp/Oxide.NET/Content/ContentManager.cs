@@ -41,14 +41,36 @@ public sealed class ContentManager
         }
     }
 
-    public Mesh LoadMesh(
-        string path
+    public T Load<T>(
+        string path,
+        string? subObject = null
     )
+        where T : IContentAsset
     {
         ArgumentException.ThrowIfNullOrEmpty(
             path
         );
 
+        if (string.IsNullOrEmpty(
+            subObject
+        ))
+        {
+            return LoadDefault<T>(
+                path
+            );
+        }
+
+        return LoadSubObject<T>(
+            path,
+            subObject
+        );
+    }
+
+    private T LoadDefault<T>(
+        string path
+    )
+        where T : IContentAsset
+    {
         IntPtr nativePath =
             Marshal.StringToCoTaskMemUTF8(
                 path
@@ -56,18 +78,60 @@ public sealed class ContentManager
 
         try
         {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_content_load_mesh(
-                        Handle,
-                        nativePath,
-                        out NativeMeshHandle handle
-                    )
-            );
+            object result;
 
-            return new Mesh(
-                handle
-            );
+            if (typeof(T)
+                == typeof(Mesh))
+            {
+                NativeMethods.Check(
+                    NativeMethods
+                        .oxide_content_load_mesh(
+                            Handle,
+                            nativePath,
+                            out NativeMeshHandle handle
+                        )
+                );
+
+                result =
+                    new Mesh(handle);
+            }
+            else if (typeof(T)
+                == typeof(Material))
+            {
+                NativeMethods.Check(
+                    NativeMethods
+                        .oxide_content_load_material(
+                            Handle,
+                            nativePath,
+                            out NativeMaterialHandle handle
+                        )
+                );
+
+                result =
+                    new Material(handle);
+            }
+            else if (typeof(T)
+                == typeof(Texture))
+            {
+                NativeMethods.Check(
+                    NativeMethods
+                        .oxide_content_load_texture(
+                            Handle,
+                            nativePath,
+                            out NativeTextureHandle handle
+                        )
+                );
+
+                result =
+                    new Texture(handle);
+            }
+            else {
+                throw new NotSupportedException(
+                    $"{typeof(T).Name} is not a supported Oxide content type."
+                );
+            }
+
+            return (T)result;
         }
         finally
         {
@@ -77,36 +141,88 @@ public sealed class ContentManager
         }
     }
 
-    public Material LoadMaterial(
-        string path
+    private T LoadSubObject<T>(
+        string path,
+        string subObject
     )
+        where T : IContentAsset
     {
-        ArgumentException.ThrowIfNullOrEmpty(
-            path
-        );
-
         IntPtr nativePath =
             Marshal.StringToCoTaskMemUTF8(
                 path
             );
 
-        try
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_content_load_material(
-                        Handle,
-                        nativePath,
-                        out NativeMaterialHandle handle
-                    )
+        IntPtr nativeSubObject =
+            Marshal.StringToCoTaskMemUTF8(
+                subObject
             );
 
-            return new Material(
-                handle
-            );
+        try
+        {
+            object result;
+
+            if (typeof(T)
+                == typeof(Mesh))
+            {
+                NativeMethods.Check(
+                    NativeMethods
+                        .oxide_content_load_mesh_sub(
+                            Handle,
+                            nativePath,
+                            nativeSubObject,
+                            out NativeMeshHandle handle
+                        )
+                );
+
+                result =
+                    new Mesh(handle);
+            }
+            else if (typeof(T)
+                == typeof(Material))
+            {
+                NativeMethods.Check(
+                    NativeMethods
+                        .oxide_content_load_material_sub(
+                            Handle,
+                            nativePath,
+                            nativeSubObject,
+                            out NativeMaterialHandle handle
+                        )
+                );
+
+                result =
+                    new Material(handle);
+            }
+            else if (typeof(T)
+                == typeof(Texture))
+            {
+                NativeMethods.Check(
+                    NativeMethods
+                        .oxide_content_load_texture_sub(
+                            Handle,
+                            nativePath,
+                            nativeSubObject,
+                            out NativeTextureHandle handle
+                        )
+                );
+
+                result =
+                    new Texture(handle);
+            }
+            else {
+                throw new NotSupportedException(
+                    $"{typeof(T).Name} is not a supported Oxide content type."
+                );
+            }
+
+            return (T)result;
         }
         finally
         {
+            Marshal.FreeCoTaskMem(
+                nativeSubObject
+            );
+
             Marshal.FreeCoTaskMem(
                 nativePath
             );

@@ -17,4 +17,5 @@ pub use types::{
     OxideGraphicsHandle,
     OxideMaterialHandle,
     OxideMeshHandle,
+    OxideTextureHandle,
 };

@@ -342,5 +342,77 @@ internal static class NativeMethods
 
             out NativeMeshHandle result
         );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_texture_destroy(
+        NativeTextureHandle texture
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_texture_solid(
+        Color color,
+        out NativeTextureHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_texture_width(
+        NativeTextureHandle texture,
+        out uint result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_texture_height(
+        NativeTextureHandle texture,
+        out uint result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_create(
+        NativeTextureHandle texture,
+        out NativeMaterialHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_solid(
+        Color color,
+        out NativeMaterialHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_base_texture(
+        NativeMaterialHandle material,
+        out NativeTextureHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_content_load_texture(
+        NativeContentManagerHandle manager,
+        IntPtr path,
+        out NativeTextureHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_content_load_mesh_sub(
+        NativeContentManagerHandle manager,
+        IntPtr path,
+        IntPtr subObject,
+        out NativeMeshHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_content_load_material_sub(
+        NativeContentManagerHandle manager,
+        IntPtr path,
+        IntPtr subObject,
+        out NativeMaterialHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_content_load_texture_sub(
+        NativeContentManagerHandle manager,
+        IntPtr path,
+        IntPtr subObject,
+        out NativeTextureHandle result
+    );
 }
 

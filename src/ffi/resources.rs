@@ -9,6 +9,8 @@ use crate::{
         Material,
         Mesh,
         Vertex,
+        Texture,
+        Color,
     },
     math::Vec3,
 };
@@ -21,8 +23,315 @@ use super::{
     registry::Registry,
     OxideMaterialHandle,
     OxideMeshHandle,
+    OxideTextureHandle,
     OxideStatus,
 };
+
+static TEXTURES:
+    OnceLock<
+        Mutex<Registry<Texture>>
+    > =
+    OnceLock::new();
+
+fn textures()
+    -> &'static Mutex<Registry<Texture>>
+{
+    TEXTURES.get_or_init(
+        || {
+            Mutex::new(
+                Registry::new()
+            )
+        }
+    )
+}
+
+fn lock_textures()
+    -> MutexGuard<
+        'static,
+        Registry<Texture>,
+    >
+{
+    textures()
+        .lock()
+        .unwrap_or_else(
+            |poisoned| {
+                poisoned.into_inner()
+            }
+        )
+}
+
+pub(crate) fn insert_texture(
+    texture: Texture,
+) -> OxideTextureHandle {
+    OxideTextureHandle(
+        lock_textures()
+            .insert(texture)
+    )
+}
+
+pub(crate) fn with_texture<R>(
+    handle: OxideTextureHandle,
+    operation:
+        impl FnOnce(&Texture) -> R,
+) -> Option<R> {
+    let registry =
+        lock_textures();
+
+    registry
+        .get(handle.0)
+        .map(operation)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_texture_solid(
+    color: Color,
+    result: *mut OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let texture =
+                Texture::solid(color);
+
+            unsafe {
+                *result =
+                    insert_texture(
+                        texture
+                    );
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_texture_width(
+    texture: OxideTextureHandle,
+    result: *mut u32,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(width) =
+                with_texture(
+                    texture,
+                    |texture| {
+                        texture.width()
+                    },
+                )
+            else {
+                set_last_error(
+                    "texture handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = width;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_texture_height(
+    texture: OxideTextureHandle,
+    result: *mut u32,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(height) =
+                with_texture(
+                    texture,
+                    |texture| {
+                        texture.height()
+                    },
+                )
+            else {
+                set_last_error(
+                    "texture handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result = height;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_material_create(
+    texture: OxideTextureHandle,
+    result: *mut OxideMaterialHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(texture) =
+                with_texture(
+                    texture,
+                    |texture| {
+                        texture.clone()
+                    },
+                )
+            else {
+                set_last_error(
+                    "texture handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            let material =
+                Material::new(
+                    texture
+                );
+
+            unsafe {
+                *result =
+                    insert_material(
+                        material
+                    );
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_material_solid(
+    color: Color,
+    result: *mut OxideMaterialHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            unsafe {
+                *result =
+                    insert_material(
+                        Material::solid(
+                            color
+                        )
+                    );
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_material_base_texture(
+    material: OxideMaterialHandle,
+    result: *mut OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(texture) =
+                with_material(
+                    material,
+                    |material| {
+                        material
+                            .base_texture()
+                            .clone()
+                    },
+                )
+            else {
+                set_last_error(
+                    "material handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            };
+
+            unsafe {
+                *result =
+                    insert_texture(
+                        texture
+                    );
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_texture_destroy(
+    texture: OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if texture.0 == 0
+                || lock_textures()
+                    .remove(texture.0)
+                    .is_none()
+            {
+                set_last_error(
+                    "texture handle is invalid"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
 
 static MESHES:
     OnceLock<
