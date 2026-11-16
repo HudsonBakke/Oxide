@@ -414,5 +414,39 @@ internal static class NativeMethods
         IntPtr subObject,
         out NativeTextureHandle result
     );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern OxideStatus
+        oxide_content_manager_create_with_cache_directory(
+            IntPtr path,
+            out NativeContentManagerHandle result
+        );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern OxideStatus
+        oxide_content_manager_cache_directory_length(
+            NativeContentManagerHandle manager,
+            out nuint result
+        );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern unsafe OxideStatus
+        oxide_content_manager_copy_cache_directory(
+            NativeContentManagerHandle manager,
+            byte* destination,
+            nuint capacity
+        );
 }
 

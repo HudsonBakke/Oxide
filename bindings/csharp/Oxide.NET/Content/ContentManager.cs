@@ -10,6 +10,51 @@ public sealed class ContentManager
         ContentManagerSafeHandle
         _handle;
 
+    public unsafe string CacheDirectory
+    {
+        get
+        {
+            NativeMethods.Check(
+                NativeMethods
+                    .oxide_content_manager_cache_directory_length(
+                        Handle,
+                        out nuint length
+                    )
+            );
+
+            int byteCount =
+                checked(
+                    (int)length
+                );
+
+            // Include space for the terminating null.
+            var buffer =
+                new byte[
+                    byteCount + 1
+                ];
+
+            fixed (byte* pointer =
+                buffer)
+            {
+                NativeMethods.Check(
+                    NativeMethods
+                        .oxide_content_manager_copy_cache_directory(
+                            Handle,
+                            pointer,
+                            (nuint)buffer.Length
+                        )
+                );
+            }
+
+            return System.Text.Encoding.UTF8
+                .GetString(
+                    buffer,
+                    0,
+                    byteCount
+                );
+        }
+    }
+
     public ContentManager()
     {
         NativeMethods.Check(
@@ -23,6 +68,42 @@ public sealed class ContentManager
             new ContentManagerSafeHandle(
                 handle
             );
+    }
+
+    public ContentManager(
+        string cacheDirectory
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(
+            cacheDirectory
+        );
+
+        IntPtr nativePath =
+            Marshal.StringToCoTaskMemUTF8(
+                cacheDirectory
+            );
+
+        try
+        {
+            NativeMethods.Check(
+                NativeMethods
+                    .oxide_content_manager_create_with_cache_directory(
+                        nativePath,
+                        out NativeContentManagerHandle handle
+                    )
+            );
+
+            _handle =
+                new ContentManagerSafeHandle(
+                    handle
+                );
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(
+                nativePath
+            );
+        }
     }
 
     internal NativeContentManagerHandle Handle

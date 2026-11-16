@@ -628,3 +628,148 @@ pub extern "C" fn oxide_content_load_texture_sub(
         }
     )
 }
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_manager_create_with_cache_directory(
+    path: *const std::ffi::c_char,
+    result: *mut OxideContentManagerHandle,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let path =
+                match read_path(path) {
+                    Ok(path) => path,
+                    Err(status) =>
+                        return status,
+                };
+
+            let handle =
+                lock_managers()
+                    .insert(
+                        ContentManager
+                            ::with_cache_directory(
+                                path
+                            )
+                    );
+
+            unsafe {
+                *result =
+                    OxideContentManagerHandle(
+                        handle
+                    );
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_manager_cache_directory_length(
+    manager: OxideContentManagerHandle,
+    result: *mut usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            if result.is_null() {
+                set_last_error(
+                    "result pointer cannot be null"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            let Some(length) =
+                with_manager_mut(
+                    manager,
+                    |manager| {
+                        manager
+                            .cache_directory()
+                            .to_string_lossy()
+                            .as_bytes()
+                            .len()
+                    },
+                )
+            else {
+                return invalid_handle();
+            };
+
+            unsafe {
+                *result = length;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_manager_copy_cache_directory(
+    manager: OxideContentManagerHandle,
+    destination: *mut u8,
+    capacity: usize,
+) -> OxideStatus {
+    ffi_boundary(
+        || {
+            let Some(result) =
+                with_manager_mut(
+                    manager,
+                    |manager| {
+                        let path =
+                            manager
+                                .cache_directory()
+                                .to_string_lossy();
+
+                        let bytes =
+                            path.as_bytes();
+
+                        // +1 for the null terminator.
+                        if capacity
+                            < bytes.len() + 1
+                        {
+                            return false;
+                        }
+
+                        if destination.is_null() {
+                            return false;
+                        }
+
+                        unsafe {
+                            std::ptr::copy_nonoverlapping(
+                                bytes.as_ptr(),
+                                destination,
+                                bytes.len(),
+                            );
+
+                            *destination
+                                .add(bytes.len()) =
+                                0;
+                        }
+
+                        true
+                    },
+                )
+            else {
+                return invalid_handle();
+            };
+
+            if !result {
+                set_last_error(
+                    "cache directory destination buffer is null or too small"
+                );
+
+                return OxideStatus::InvalidArgument;
+            }
+
+            OxideStatus::Ok
+        }
+    )
+}

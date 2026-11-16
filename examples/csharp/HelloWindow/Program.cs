@@ -19,7 +19,10 @@ internal sealed class MyGame
             1.0f
         );
     private readonly ContentManager
-        _content = new();
+        _content =
+            new(
+                "test-csharp-cache"
+            );
 
     private Mesh? _mesh;
     private Mesh? _testMesh;
@@ -30,6 +33,11 @@ internal sealed class MyGame
 
     protected override void Initialize()
     {
+        Console.WriteLine(
+            $"Content cache: " +
+            $"{_content.CacheDirectory}"
+        );
+
         _camera.Position =
             new Vec3(
                 0.0f,
