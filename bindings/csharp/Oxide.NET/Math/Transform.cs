@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using Oxide.Graphics;
+using Oxide.Native;
 
 namespace Oxide.Math;
 
@@ -146,5 +148,47 @@ public struct Transform
                 _scale.Y * scale.Y,
                 _scale.Z * scale.Z
             );
+    }
+
+    public static Transform FromAttachment(
+        Mesh parent,
+        Transform parentTransform,
+        Vec3 parentAttachPoint,
+
+        Mesh child,
+        Vec3 childAttachPoint,
+
+        Vec3 direction,
+        Angle rotation,
+        Vec3 scale
+    )
+    {
+        ArgumentNullException.ThrowIfNull(
+            parent
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            child
+        );
+
+        NativeMethods.Check(
+            NativeMethods
+                .oxide_transform_from_attachment(
+                    parent.Handle,
+                    parentTransform,
+                    parentAttachPoint,
+
+                    child.Handle,
+                    childAttachPoint,
+
+                    direction,
+                    rotation,
+                    scale,
+
+                    out Transform result
+                )
+        );
+
+        return result;
     }
 }

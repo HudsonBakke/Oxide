@@ -448,5 +448,26 @@ internal static class NativeMethods
             byte* destination,
             nuint capacity
         );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern OxideStatus
+        oxide_transform_from_attachment(
+            NativeMeshHandle parent,
+            Transform parentTransform,
+            Vec3 parentAttachPoint,
+
+            NativeMeshHandle child,
+            Vec3 childAttachPoint,
+
+            Vec3 direction,
+            Angle rotation,
+            Vec3 scale,
+
+            out Transform result
+        );
 }
 

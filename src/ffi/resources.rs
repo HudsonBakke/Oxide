@@ -1261,3 +1261,33 @@ pub extern "C" fn oxide_mesh_create(
         }
     )
 }
+
+pub(crate) fn with_two_meshes<R>(
+    first: OxideMeshHandle,
+    second: OxideMeshHandle,
+    operation:
+        impl FnOnce(
+            &Mesh,
+            &Mesh,
+        ) -> R,
+) -> Option<R> {
+    let registry =
+        lock_meshes();
+
+    let first =
+        registry.get(
+            first.0
+        )?;
+
+    let second =
+        registry.get(
+            second.0
+        )?;
+
+    Some(
+        operation(
+            first,
+            second,
+        )
+    )
+}

@@ -24,11 +24,14 @@ internal sealed class MyGame
                 "test-csharp-cache"
             );
 
-    private Mesh? _mesh;
-    private Mesh? _testMesh;
+    private Mesh? _parentMesh;
+    private Mesh? _childMesh;
     private Material? _material;
 
-    private Transform _transform =
+    private Transform _parentTransform =
+        new();
+
+    private Transform _childTransform =
         new();
 
     protected override void Initialize()
@@ -45,86 +48,58 @@ internal sealed class MyGame
                 5.0f
             );
 
-        _mesh =
+        _parentMesh =
             _content.Load<Mesh>(
-                "../../../assets/textured_material_cube.glb"
+                "../../../assets/blender_cube.glb"
             );
 
-        _material =
-            _content.Load<Material>(
-                "../../../assets/textured_material_cube.glb"
+        _childMesh =
+            _content.Load<Mesh>(
+                "../../../assets/blender_cube.glb"
             );
 
-        Texture brick =
-            _content.Load<Texture>(
-                "../../../assets/brick.jpg"
+        _material = _content.Load<Material>
+            ("../../../assets/textured_material_cube.glb");
+
+        _parentTransform.Position =
+            new Vec3(
+                -1.0f,
+                0.0f,
+                0.0f
             );
 
-        Console.WriteLine(
-            $"Brick texture: " +
-            $"{brick.Width}x{brick.Height}"
-        );
+        _childTransform =
+            Transform.FromAttachment(
+                _parentMesh,
+                _parentTransform,
 
-        _testMesh =
-            new Mesh(
-                [
-                    new(
-                        new Vec3(
-                            -1.0f,
-                            -1.0f,
-                            0.0f
-                        ),
-                        new Vec3(
-                            0.0f,
-                            0.0f,
-                            1.0f
-                        ),
-                        new Vec2(
-                            0.0f,
-                            1.0f
-                        )
-                    ),
+                new Vec3(
+                    1.0f,
+                    0.0f,
+                    0.0f
+                ),
 
-                    new(
-                        new Vec3(
-                            0.0f,
-                            1.0f,
-                            0.0f
-                        ),
-                        new Vec3(
-                            0.0f,
-                            0.0f,
-                            1.0f
-                        ),
-                        new Vec2(
-                            0.5f,
-                            0.0f
-                        )
-                    ),
+                _childMesh,
 
-                    new(
-                        new Vec3(
-                            1.0f,
-                            -1.0f,
-                            0.0f
-                        ),
-                        new Vec3(
-                            0.0f,
-                            0.0f,
-                            1.0f
-                        ),
-                        new Vec2(
-                            1.0f,
-                            1.0f
-                        )
-                    ),
-                ],
+                new Vec3(
+                    -1.0f,
+                    0.0f,
+                    0.0f
+                ),
 
-                [
-                    0,
-                    1,
-                    2,
-                ]
+                new Vec3(
+                    1.0f,
+                    0.0f,
+                    0.0f
+                ),
+
+                Angle.Degrees(45.0f),
+
+                new Vec3(
+                    1.0f,
+                    1.0f,
+                    1.0f
+                )
             );
 
         _camera.Position =
@@ -139,20 +114,6 @@ internal sealed class MyGame
         GameTime time
     )
     {
-        float delta =
-            (float)time.DeltaSeconds;
-
-        _transform.RotateYawBy(
-            Angle.Radians(
-                0.8f * delta
-            )
-        );
-
-        _transform.RotatePitchBy(
-            Angle.Radians(
-                0.35f * delta
-            )
-        );
     }
 
     protected override void Draw(
@@ -169,15 +130,15 @@ internal sealed class MyGame
         );
 
         graphics.DrawMesh(
-            _mesh!,
+            _parentMesh!,
             _material!,
-            _transform
+            _parentTransform
         );
 
         graphics.DrawMesh(
-            _testMesh!,
+            _childMesh!,
             _material!,
-            _transform
+            _childTransform
         );
     }
 }

@@ -1,4 +1,5 @@
 mod app;
+mod attachment;
 mod camera;
 mod content;
 mod error;
