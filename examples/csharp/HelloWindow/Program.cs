@@ -4,10 +4,13 @@ using Oxide.App;
 using Oxide.Content;
 using Oxide.Graphics;
 using Oxide.Math;
+using Oxide.Collision;
 
 internal sealed class MyGame
     : Game
 {
+    private bool? _previousCollision;
+
     private readonly Camera _camera =
         new();
 
@@ -69,61 +72,53 @@ internal sealed class MyGame
 
         _parentTransform.Position =
             new Vec3(
-                -1.0f,
+                0.0f,
                 0.0f,
                 0.0f
             );
 
         _childTransform =
-            Transform.FromAttachment(
-                _parentMesh,
-                _parentTransform,
-
-                new Vec3(
-                    1.0f,
-                    0.0f,
-                    0.0f
-                ),
-
-                _childMesh,
-
-                new Vec3(
-                    -1.0f,
-                    0.0f,
-                    0.0f
-                ),
-
-                new Vec3(
-                    1.0f,
-                    0.0f,
-                    0.0f
-                ),
-
-                Angle.Degrees(
-                    45.0f
-                ),
-
-                new Vec3(
-                    1.0f,
-                    1.0f,
-                    1.0f
-                )
-            );
+            new Transform();
     }
 
     protected override void Update(
         GameTime time
     )
     {
-        float t =
-            (float)time.TotalSeconds;
+        float x =
+            MathF.Sin(
+                (float)time.TotalSeconds
+            )
+            * 3.0f;
 
-        _light.Direction =
+        _childTransform.Position =
             new Vec3(
-                MathF.Sin(t),
-                -1.0f,
-                -1.0f
+                x,
+                0.0f,
+                0.0f
             );
+
+        bool collision =
+            Collision.Collides(
+                _parentMesh!,
+                _parentTransform,
+
+                _childMesh!,
+                _childTransform
+            );
+
+        if (_previousCollision
+            != collision)
+        {
+            Console.WriteLine(
+                collision
+                    ? "Cubes are colliding"
+                    : "Cubes are separated"
+            );
+
+            _previousCollision =
+                collision;
+        }
     }
 
     protected override void Draw(

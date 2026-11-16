@@ -1,6 +1,7 @@
 mod app;
 mod attachment;
 mod camera;
+mod collision;
 mod content;
 mod error;
 mod graphics;

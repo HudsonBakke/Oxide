@@ -223,11 +223,6 @@ impl Bvh {
         let right_index =
             self.build_node(right);
 
-        debug_assert_eq!(
-            right_index,
-            left_index + 1
-        );
-
         self.nodes[node_index as usize] =
             BvhNode {
                 bounds,

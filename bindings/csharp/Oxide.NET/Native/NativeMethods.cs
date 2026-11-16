@@ -499,5 +499,21 @@ internal static class NativeMethods
         NativeCameraHandle camera,
         out float result
     );
+
+    [DllImport(
+        "oxide",
+        CallingConvention =
+            CallingConvention.Cdecl
+    )]
+    internal static extern OxideStatus
+        oxide_collision_collides(
+            NativeMeshHandle meshA,
+            Transform transformA,
+
+            NativeMeshHandle meshB,
+            Transform transformB,
+
+            out byte result
+        );
 }
 
