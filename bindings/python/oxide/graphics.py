@@ -1,0 +1,592 @@
+from __future__ import annotations
+
+import ctypes
+import math
+import weakref
+
+from . import _native
+from .math import (
+    Angle,
+    Quaternion,
+    Rect,
+    Vec3,
+)
+
+
+class Color(ctypes.Structure):
+    _fields_ = [
+        ("r", ctypes.c_float),
+        ("g", ctypes.c_float),
+        ("b", ctypes.c_float),
+        ("a", ctypes.c_float),
+    ]
+
+    def __init__(
+        self,
+        r: float = 0.0,
+        g: float = 0.0,
+        b: float = 0.0,
+        a: float = 1.0,
+    ) -> None:
+        super().__init__(
+            float(r),
+            float(g),
+            float(b),
+            float(a),
+        )
+
+    @classmethod
+    def rgb(
+        cls,
+        r: float,
+        g: float,
+        b: float,
+    ) -> Color:
+        return cls(
+            r,
+            g,
+            b,
+            1.0,
+        )
+
+    @classmethod
+    def rgba(
+        cls,
+        r: float,
+        g: float,
+        b: float,
+        a: float,
+    ) -> Color:
+        return cls(
+            r,
+            g,
+            b,
+            a,
+        )
+
+    def __eq__(
+        self,
+        other: object,
+    ) -> bool:
+        if not isinstance(
+            other,
+            Color,
+        ):
+            return NotImplemented
+
+        return (
+            self.r == other.r
+            and self.g == other.g
+            and self.b == other.b
+            and self.a == other.a
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"Color("
+            f"{self.r}, "
+            f"{self.g}, "
+            f"{self.b}, "
+            f"{self.a}"
+            f")"
+        )
+
+
+# Python class attributes corresponding to the Rust/C# constants.
+Color.BLACK = Color.rgb(
+    0.0,
+    0.0,
+    0.0,
+)
+
+Color.WHITE = Color.rgb(
+    1.0,
+    1.0,
+    1.0,
+)
+
+Color.RED = Color.rgb(
+    1.0,
+    0.0,
+    0.0,
+)
+
+Color.GREEN = Color.rgb(
+    0.0,
+    1.0,
+    0.0,
+)
+
+Color.BLUE = Color.rgb(
+    0.0,
+    0.0,
+    1.0,
+)
+
+Color.YELLOW = Color.rgb(
+    1.0,
+    1.0,
+    0.0,
+)
+
+
+class PointLight(ctypes.Structure):
+    _fields_ = [
+        ("position", Vec3),
+        ("color", Color),
+        ("intensity", ctypes.c_float),
+    ]
+
+    def __init__(
+        self,
+        position: Vec3,
+        color: Color,
+        intensity: float,
+    ) -> None:
+        if intensity < 0.0:
+            raise ValueError(
+                "Light intensity cannot be negative."
+            )
+
+        super().__init__(
+            position,
+            color,
+            float(intensity),
+        )
+
+
+class SpotLight(ctypes.Structure):
+    _fields_ = [
+        ("position", Vec3),
+        ("direction", Vec3),
+        ("angle", Angle),
+        ("color", Color),
+        ("intensity", ctypes.c_float),
+    ]
+
+    def __init__(
+        self,
+        position: Vec3,
+        direction: Vec3,
+        angle: Angle,
+        color: Color,
+        intensity: float,
+    ) -> None:
+        if direction.length <= 1.0e-6:
+            raise ValueError(
+                "Spot light direction cannot be zero."
+            )
+
+        if (
+            angle.as_radians <= 0.0
+            or angle.as_radians >= math.pi
+        ):
+            raise ValueError(
+                "Spot light angle must be "
+                "between 0 and pi radians."
+            )
+
+        if intensity < 0.0:
+            raise ValueError(
+                "Light intensity cannot be negative."
+            )
+
+        super().__init__(
+            position,
+            direction.normalized(),
+            angle,
+            color,
+            float(intensity),
+        )
+
+
+class DirectionalLight(ctypes.Structure):
+    _fields_ = [
+        ("direction", Vec3),
+        ("color", Color),
+        ("intensity", ctypes.c_float),
+    ]
+
+    def __init__(
+        self,
+        direction: Vec3,
+        color: Color,
+        intensity: float,
+    ) -> None:
+        if direction.length <= 1.0e-6:
+            raise ValueError(
+                "Directional light direction cannot be zero."
+            )
+
+        if intensity < 0.0:
+            raise ValueError(
+                "Light intensity cannot be negative."
+            )
+
+        super().__init__(
+            direction.normalized(),
+            color,
+            float(intensity),
+        )
+
+
+class Camera:
+    def __init__(self) -> None:
+        handle = (
+            _native.NativeCameraHandle()
+        )
+
+        _native.check(
+            _native.lib.oxide_camera_create(
+                ctypes.byref(handle)
+            )
+        )
+
+        self._handle = handle
+
+        self._finalizer = weakref.finalize(
+            self,
+            Camera._destroy,
+            handle,
+        )
+
+    @staticmethod
+    def _destroy(
+        handle: _native.NativeCameraHandle,
+    ) -> None:
+        # Finalizers must not raise.
+        _native.lib.oxide_camera_destroy(
+            handle
+        )
+
+    @property
+    def position(self) -> Vec3:
+        result = Vec3()
+
+        _native.check(
+            _native.lib
+            .oxide_camera_get_position(
+                self._handle,
+                ctypes.byref(result),
+            )
+        )
+
+        return result
+
+    @position.setter
+    def position(
+        self,
+        value: Vec3,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_set_position(
+                self._handle,
+                value,
+            )
+        )
+
+    @property
+    def rotation(self) -> Quaternion:
+        result = Quaternion()
+
+        _native.check(
+            _native.lib
+            .oxide_camera_get_rotation(
+                self._handle,
+                ctypes.byref(result),
+            )
+        )
+
+        return result
+
+    @rotation.setter
+    def rotation(
+        self,
+        value: Quaternion,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_set_rotation(
+                self._handle,
+                value,
+            )
+        )
+
+    @property
+    def field_of_view(self) -> Angle:
+        result = Angle()
+
+        _native.check(
+            _native.lib
+            .oxide_camera_get_field_of_view(
+                self._handle,
+                ctypes.byref(result),
+            )
+        )
+
+        return result
+
+    @field_of_view.setter
+    def field_of_view(
+        self,
+        value: Angle,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_set_field_of_view(
+                self._handle,
+                value,
+            )
+        )
+
+    @property
+    def near_plane(self) -> float:
+        result = ctypes.c_float()
+
+        _native.check(
+            _native.lib
+            .oxide_camera_get_near_plane(
+                self._handle,
+                ctypes.byref(result),
+            )
+        )
+
+        return float(
+            result.value
+        )
+
+    @property
+    def far_plane(self) -> float:
+        result = ctypes.c_float()
+
+        _native.check(
+            _native.lib
+            .oxide_camera_get_far_plane(
+                self._handle,
+                ctypes.byref(result),
+            )
+        )
+
+        return float(
+            result.value
+        )
+
+    def translate_by(
+        self,
+        translation: Vec3,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_translate_by(
+                self._handle,
+                translation,
+            )
+        )
+
+    def set_euler(
+        self,
+        pitch: Angle,
+        yaw: Angle,
+        roll: Angle,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_set_euler(
+                self._handle,
+                pitch,
+                yaw,
+                roll,
+            )
+        )
+
+    def rotate_pitch_by(
+        self,
+        angle: Angle,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_rotate_pitch_by(
+                self._handle,
+                angle,
+            )
+        )
+
+    def rotate_yaw_by(
+        self,
+        angle: Angle,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_rotate_yaw_by(
+                self._handle,
+                angle,
+            )
+        )
+
+    def rotate_roll_by(
+        self,
+        angle: Angle,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_rotate_roll_by(
+                self._handle,
+                angle,
+            )
+        )
+
+    def set_clip_planes(
+        self,
+        near_plane: float,
+        far_plane: float,
+    ) -> None:
+        _native.check(
+            _native.lib
+            .oxide_camera_set_clip_planes(
+                self._handle,
+                float(near_plane),
+                float(far_plane),
+            )
+        )
+
+
+class Graphics:
+    def __init__(
+        self,
+        handle: _native.NativeGraphicsHandle,
+    ) -> None:
+        self._handle = handle
+        self._valid = True
+
+    def _require_valid(self) -> None:
+        if not self._valid:
+            raise RuntimeError(
+                "Graphics is only valid during "
+                "the current draw callback."
+            )
+
+    def _invalidate(self) -> None:
+        self._valid = False
+
+    @property
+    def full_rect(self) -> Rect:
+        self._require_valid()
+
+        result = Rect()
+
+        _native.check(
+            _native.lib
+            .oxide_graphics_full_rect(
+                self._handle,
+                ctypes.byref(result),
+            )
+        )
+
+        return result
+
+    def bind_camera(
+        self,
+        camera: Camera,
+        destination: Rect,
+    ) -> None:
+        self._require_valid()
+
+        _native.check(
+            _native.lib
+            .oxide_graphics_bind_camera(
+                self._handle,
+                camera._handle,
+                destination,
+            )
+        )
+
+    def clear_lights(self) -> None:
+        self._require_valid()
+
+        _native.check(
+            _native.lib
+            .oxide_graphics_clear_lights(
+                self._handle
+            )
+        )
+
+    def add_light(
+        self,
+        light: (
+            PointLight
+            | SpotLight
+            | DirectionalLight
+        ),
+    ) -> None:
+        self._require_valid()
+
+        if isinstance(
+            light,
+            PointLight,
+        ):
+            status = (
+                _native.lib
+                .oxide_graphics_add_point_light(
+                    self._handle,
+                    light,
+                )
+            )
+
+        elif isinstance(
+            light,
+            SpotLight,
+        ):
+            status = (
+                _native.lib
+                .oxide_graphics_add_spot_light(
+                    self._handle,
+                    light,
+                )
+            )
+
+        elif isinstance(
+            light,
+            DirectionalLight,
+        ):
+            status = (
+                _native.lib
+                .oxide_graphics_add_directional_light(
+                    self._handle,
+                    light,
+                )
+            )
+
+        else:
+            raise TypeError(
+                "light must be a PointLight, "
+                "SpotLight, or DirectionalLight"
+            )
+
+        _native.check(
+            status
+        )
+
+_native.lib.oxide_graphics_add_point_light.argtypes = [
+    _native.NativeGraphicsHandle,
+    PointLight,
+]
+_native.lib.oxide_graphics_add_point_light.restype = (
+    ctypes.c_int
+)
+
+_native.lib.oxide_graphics_add_spot_light.argtypes = [
+    _native.NativeGraphicsHandle,
+    SpotLight,
+]
+_native.lib.oxide_graphics_add_spot_light.restype = (
+    ctypes.c_int
+)
+
+_native.lib.oxide_graphics_add_directional_light.argtypes = [
+    _native.NativeGraphicsHandle,
+    DirectionalLight,
+]
+_native.lib.oxide_graphics_add_directional_light.restype = (
+    ctypes.c_int
+)
