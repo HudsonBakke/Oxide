@@ -46,6 +46,22 @@ class NativeCameraHandle(
     ]
 
 
+class NativeMeshHandle(ctypes.Structure):
+    _fields_ = [("value", ctypes.c_uint64)]
+
+
+class NativeMaterialHandle(ctypes.Structure):
+    _fields_ = [("value", ctypes.c_uint64)]
+
+
+class NativeTextureHandle(ctypes.Structure):
+    _fields_ = [("value", ctypes.c_uint64)]
+
+
+class NativeContentManagerHandle(ctypes.Structure):
+    _fields_ = [("value", ctypes.c_uint64)]
+
+
 class NativeAppConfig(ctypes.Structure):
     _fields_ = [
         ("title", ctypes.c_char_p),
@@ -300,6 +316,81 @@ lib.oxide_graphics_clear_lights.argtypes = [
 lib.oxide_graphics_clear_lights.restype = (
     ctypes.c_int
 )
+
+
+# Resource/content signatures. Vertex and Color are assigned in their
+# defining public modules to avoid circular imports.
+lib.oxide_mesh_destroy.argtypes = [NativeMeshHandle]
+lib.oxide_mesh_destroy.restype = ctypes.c_int
+lib.oxide_mesh_vertex_count.argtypes = [NativeMeshHandle, ctypes.POINTER(ctypes.c_size_t)]
+lib.oxide_mesh_vertex_count.restype = ctypes.c_int
+lib.oxide_mesh_index_count.argtypes = [NativeMeshHandle, ctypes.POINTER(ctypes.c_size_t)]
+lib.oxide_mesh_index_count.restype = ctypes.c_int
+lib.oxide_mesh_get_pivot.argtypes = [NativeMeshHandle, ctypes.POINTER(Vec3)]
+lib.oxide_mesh_get_pivot.restype = ctypes.c_int
+lib.oxide_mesh_set_pivot.argtypes = [NativeMeshHandle, Vec3]
+lib.oxide_mesh_set_pivot.restype = ctypes.c_int
+lib.oxide_mesh_recalculate_pivot.argtypes = [NativeMeshHandle]
+lib.oxide_mesh_recalculate_pivot.restype = ctypes.c_int
+lib.oxide_mesh_get_direction.argtypes = [NativeMeshHandle, ctypes.POINTER(Vec3)]
+lib.oxide_mesh_get_direction.restype = ctypes.c_int
+lib.oxide_mesh_set_direction.argtypes = [NativeMeshHandle, Vec3]
+lib.oxide_mesh_set_direction.restype = ctypes.c_int
+lib.oxide_mesh_get_reference.argtypes = [NativeMeshHandle, ctypes.POINTER(Vec3)]
+lib.oxide_mesh_get_reference.restype = ctypes.c_int
+lib.oxide_mesh_set_reference.argtypes = [NativeMeshHandle, Vec3]
+lib.oxide_mesh_set_reference.restype = ctypes.c_int
+lib.oxide_mesh_get_side.argtypes = [NativeMeshHandle, ctypes.POINTER(Vec3)]
+lib.oxide_mesh_get_side.restype = ctypes.c_int
+lib.oxide_mesh_set_orientation.argtypes = [NativeMeshHandle, Vec3, Vec3]
+lib.oxide_mesh_set_orientation.restype = ctypes.c_int
+
+lib.oxide_texture_destroy.argtypes = [NativeTextureHandle]
+lib.oxide_texture_destroy.restype = ctypes.c_int
+lib.oxide_texture_width.argtypes = [NativeTextureHandle, ctypes.POINTER(ctypes.c_uint32)]
+lib.oxide_texture_width.restype = ctypes.c_int
+lib.oxide_texture_height.argtypes = [NativeTextureHandle, ctypes.POINTER(ctypes.c_uint32)]
+lib.oxide_texture_height.restype = ctypes.c_int
+
+lib.oxide_material_destroy.argtypes = [NativeMaterialHandle]
+lib.oxide_material_destroy.restype = ctypes.c_int
+lib.oxide_material_create.argtypes = [NativeTextureHandle, ctypes.POINTER(NativeMaterialHandle)]
+lib.oxide_material_create.restype = ctypes.c_int
+lib.oxide_material_base_texture.argtypes = [NativeMaterialHandle, ctypes.POINTER(NativeTextureHandle)]
+lib.oxide_material_base_texture.restype = ctypes.c_int
+
+lib.oxide_content_manager_create.argtypes = [ctypes.POINTER(NativeContentManagerHandle)]
+lib.oxide_content_manager_create.restype = ctypes.c_int
+lib.oxide_content_manager_create_with_cache_directory.argtypes = [ctypes.c_char_p, ctypes.POINTER(NativeContentManagerHandle)]
+lib.oxide_content_manager_create_with_cache_directory.restype = ctypes.c_int
+lib.oxide_content_manager_destroy.argtypes = [NativeContentManagerHandle]
+lib.oxide_content_manager_destroy.restype = ctypes.c_int
+lib.oxide_content_manager_cache_directory_length.argtypes = [NativeContentManagerHandle, ctypes.POINTER(ctypes.c_size_t)]
+lib.oxide_content_manager_cache_directory_length.restype = ctypes.c_int
+lib.oxide_content_manager_copy_cache_directory.argtypes = [NativeContentManagerHandle, ctypes.c_void_p, ctypes.c_size_t]
+lib.oxide_content_manager_copy_cache_directory.restype = ctypes.c_int
+
+for _name, _handle in (
+    ("mesh", NativeMeshHandle),
+    ("material", NativeMaterialHandle),
+    ("texture", NativeTextureHandle),
+):
+    _default = getattr(lib, f"oxide_content_load_{_name}")
+    _default.argtypes = [
+        NativeContentManagerHandle,
+        ctypes.c_char_p,
+        ctypes.POINTER(_handle),
+    ]
+    _default.restype = ctypes.c_int
+
+    _sub = getattr(lib, f"oxide_content_load_{_name}_sub")
+    _sub.argtypes = [
+        NativeContentManagerHandle,
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        ctypes.POINTER(_handle),
+    ]
+    _sub.restype = ctypes.c_int
 
 
 def last_error_message() -> str:

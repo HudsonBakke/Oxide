@@ -9,8 +9,10 @@ from .math import (
     Angle,
     Quaternion,
     Rect,
+    Transform,
     Vec3,
 )
+from .content import Material, Mesh
 
 
 class Color(ctypes.Structure):
@@ -501,6 +503,29 @@ class Graphics:
             )
         )
 
+    def draw_mesh(
+        self,
+        mesh: Mesh,
+        material: Material,
+        transform: Transform,
+    ) -> None:
+        self._require_valid()
+
+        if not isinstance(mesh, Mesh):
+            raise TypeError("mesh must be a Mesh")
+
+        if not isinstance(material, Material):
+            raise TypeError("material must be a Material")
+
+        _native.check(
+            _native.lib.oxide_graphics_draw_mesh(
+                self._handle,
+                mesh._handle,
+                material._handle,
+                transform,
+            )
+        )
+
     def clear_lights(self) -> None:
         self._require_valid()
 
@@ -566,6 +591,27 @@ class Graphics:
         _native.check(
             status
         )
+
+
+_native.lib.oxide_graphics_draw_mesh.argtypes = [
+    _native.NativeGraphicsHandle,
+    _native.NativeMeshHandle,
+    _native.NativeMaterialHandle,
+    Transform,
+]
+_native.lib.oxide_graphics_draw_mesh.restype = ctypes.c_int
+
+_native.lib.oxide_texture_solid.argtypes = [
+    Color,
+    ctypes.POINTER(_native.NativeTextureHandle),
+]
+_native.lib.oxide_texture_solid.restype = ctypes.c_int
+
+_native.lib.oxide_material_solid.argtypes = [
+    Color,
+    ctypes.POINTER(_native.NativeMaterialHandle),
+]
+_native.lib.oxide_material_solid.restype = ctypes.c_int
 
 _native.lib.oxide_graphics_add_point_light.argtypes = [
     _native.NativeGraphicsHandle,

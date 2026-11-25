@@ -3,15 +3,22 @@ from oxide.app import (
     Game,
     GameTime,
 )
-
+from oxide.content import (
+    ContentManager,
+    Material,
+    Mesh,
+)
 from oxide.graphics import (
     Camera,
     Color,
     DirectionalLight,
     Graphics,
 )
-
-from oxide.math import Vec3
+from oxide.math import (
+    Angle,
+    Transform,
+    Vec3,
+)
 
 
 class MyGame(Game):
@@ -19,23 +26,20 @@ class MyGame(Game):
         super().__init__()
 
         self.camera = Camera()
+        self.content = ContentManager()
 
-        self.light = (
-            DirectionalLight(
-                Vec3(
-                    1.0,
-                    -1.0,
-                    -1.0,
-                ),
-                Color.WHITE,
-                1.0,
-            )
+        self.light = DirectionalLight(
+            Vec3(1.0, -1.0, -1.0),
+            Color.WHITE,
+            1.0,
         )
+
+        self.mesh: Mesh | None = None
+        self.material: Material | None = None
+        self.transform = Transform()
 
     def initialize(self) -> None:
-        print(
-            "Python Initialize!"
-        )
+        print("Python Initialize!")
 
         self.camera.position = Vec3(
             0.0,
@@ -43,23 +47,33 @@ class MyGame(Game):
             5.0,
         )
 
-        print(
-            "Camera position:",
-            self.camera.position,
+        self.mesh = self.content.load(
+            Mesh,
+            "assets/textured_material_cube.glb",
+        )
+
+        self.material = self.content.load(
+            Material,
+            "assets/textured_material_cube.glb",
         )
 
         print(
-            "Camera clips:",
-            self.camera.near_plane,
-            "-",
-            self.camera.far_plane,
+            "Loaded mesh:",
+            self.mesh.vertex_count,
+            "vertices,",
+            self.mesh.index_count,
+            "indices",
         )
 
     def update(
         self,
         time: GameTime,
     ) -> None:
-        pass
+        self.transform.rotate_yaw_by(
+            Angle.degrees(
+                45.0 * time.delta_seconds
+            )
+        )
 
     def draw(
         self,
@@ -74,12 +88,20 @@ class MyGame(Game):
             self.light
         )
 
+        if (
+            self.mesh is not None
+            and self.material is not None
+        ):
+            graphics.draw_mesh(
+                self.mesh,
+                self.material,
+                self.transform,
+            )
 
-game = MyGame()
 
-game.run(
+MyGame().run(
     AppConfig(
-        title="Oxide Python Graphics Test",
+        title="Oxide Python Model Test",
         width=1280,
         height=720,
     )
