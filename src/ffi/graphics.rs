@@ -20,6 +20,45 @@ fn graphics_from_handle<'a>(handle: OxideGraphicsHandle) -> Option<&'a mut Graph
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_get_exposure(
+    graphics: OxideGraphicsHandle,
+    result: *mut f32,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+            return OxideStatus::InvalidArgument;
+        };
+        if result.is_null() {
+            set_last_error("result pointer cannot be null");
+            return OxideStatus::InvalidArgument;
+        }
+        unsafe { *result = graphics.exposure(); }
+        OxideStatus::Ok
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_set_exposure(
+    graphics: OxideGraphicsHandle,
+    exposure: f32,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+            return OxideStatus::InvalidArgument;
+        };
+        match graphics.set_exposure(exposure) {
+            Ok(()) => OxideStatus::Ok,
+            Err(error) => {
+                set_last_error(error.to_string());
+                OxideStatus::InvalidArgument
+            }
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn oxide_graphics_draw_mesh(
     graphics: OxideGraphicsHandle,
     mesh: OxideMeshHandle,

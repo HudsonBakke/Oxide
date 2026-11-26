@@ -226,21 +226,17 @@ pub(crate) fn import_material(path: &Path, subobject: &str) -> ContentResult<Mat
                 message: "glTF material references missing image data".into(),
             })?;
 
-        let mut pixels = convert_image_to_rgba(image, path)?;
-
-        // glTF's base-color factor multiplies the
-        // base-color texture.
-        apply_base_color_factor(&mut pixels, factor);
+        let pixels = convert_image_to_rgba(image, path)?;
 
         Texture::from_rgba(image.width, image.height, pixels)
     } else {
-        Texture::solid(Color::rgba(factor[0], factor[1], factor[2], factor[3]))
+        Texture::solid(Color::WHITE)
     };
 
     let mut result = Material::new(texture);
 
-    // The base-color factor has already been baked into the imported
-    // texture above, preserving the existing importer behavior.
+    // Linear factors multiply decoded color samples in the shader.
+    result.set_base_color(Color::rgba(factor[0], factor[1], factor[2], factor[3]));
     result
         .set_metallic(pbr.metallic_factor())
         .expect("glTF metallic factor is defined in the unit interval");
@@ -277,16 +273,6 @@ pub(crate) fn import_material(path: &Path, subobject: &str) -> ContentResult<Mat
     }
 
     Ok(result)
-}
-
-fn apply_base_color_factor(pixels: &mut [u8], factor: [f32; 4]) {
-    for pixel in pixels.chunks_exact_mut(4) {
-        for channel in 0..4 {
-            let value = pixel[channel] as f32 * factor[channel];
-
-            pixel[channel] = value.clamp(0.0, 255.0).round() as u8;
-        }
-    }
 }
 
 struct MeshNode<'a> {

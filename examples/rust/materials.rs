@@ -1,6 +1,7 @@
 use oxide::{
     app::{AppConfig, Game},
     content::ContentManager,
+    input::{Keyboard, Keys},
     graphics::{
         Camera, Color, DirectionalLight, Environment, Graphics, Material, Mesh, PointLight,
         Texture, Vertex,
@@ -11,6 +12,7 @@ use oxide::{
 const STEPS: usize = 6;
 
 struct MaterialTest {
+    exposure: f32,
     camera: Camera,
     sphere: Mesh,
     materials: Vec<Material>,
@@ -63,6 +65,7 @@ impl MaterialTest {
         .unwrap();
 
         Self {
+            exposure: 1.0,
             camera: Camera::new(),
             sphere: sphere(24, 16),
             materials,
@@ -85,7 +88,16 @@ impl Game for MaterialTest {
         self.camera.set_position(Vec3::new(0.0, 0.0, 15.5));
     }
 
+    fn update(&mut self, _time: &oxide::app::GameTime) {
+        let keys = Keyboard::get_state();
+        if keys.is_key_pressed(Keys::Q) { self.exposure = (self.exposure * 0.5).max(1.0 / 64.0); }
+        if keys.is_key_pressed(Keys::E) { self.exposure = (self.exposure * 2.0).min(64.0); }
+        if keys.is_key_pressed(Keys::R) { self.exposure = 1.0; }
+        oxide::app::set_window_name(format!("Oxide Materials | exposure {} | Q/E adjust, R reset", self.exposure));
+    }
+
     fn draw(&mut self, graphics: &mut Graphics) {
+        graphics.set_exposure(self.exposure).unwrap();
         graphics
             .bind_camera(&self.camera, graphics.full_rect())
             .unwrap();

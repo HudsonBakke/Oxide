@@ -3,6 +3,7 @@ pub(crate) mod device;
 pub(crate) mod index_buffer;
 pub(crate) mod pipeline;
 pub(crate) mod renderer;
+pub(crate) mod render_target;
 pub(crate) mod shader;
 pub(crate) mod swap_chain;
 pub(crate) mod texture;

@@ -27,6 +27,8 @@ pub struct Texture {
 
     pixels: Vec<u8>,
     hdr_pixels: Option<Vec<f32>>,
+    // Encoded image bytes use sRGB for color sampling, never for data/normal sampling.
+    srgb_encoded: bool,
 }
 
 impl Texture {
@@ -61,10 +63,11 @@ impl Texture {
             height,
             pixels: image.into_raw(),
             hdr_pixels: None,
+            srgb_encoded: true,
         })
     }
 
-    /// Creates a 1x1 solid-color texture.
+    /// Creates a 1x1 texture from linear RGBA components, quantized to eight bits.
     pub fn solid(color: Color) -> Self {
         fn channel(value: f32) -> u8 {
             (value.clamp(0.0, 1.0) * 255.0).round() as u8
@@ -77,6 +80,7 @@ impl Texture {
             height: 1,
 
             hdr_pixels: None,
+            srgb_encoded: false,
 
             pixels: vec![
                 channel(color.r),
@@ -105,7 +109,8 @@ impl Texture {
         &self.pixels
     }
 
-    /// Creates a texture from row-major RGBA8 data.
+    /// Creates a texture from row-major RGBA8 data. Color sampling interprets RGB
+    /// as sRGB; normal/data sampling leaves the numeric channels unchanged.
     ///
     /// Returns an error if byte length differs from width * height * 4 or the
     /// dimensions overflow addressable storage. Color bytes are copied into GPU
@@ -183,8 +188,11 @@ impl Texture {
             height,
             pixels,
             hdr_pixels: None,
+            srgb_encoded: true,
         }
     }
+
+    pub(crate) fn srgb_encoded(&self) -> bool { self.srgb_encoded }
 
     pub(crate) fn hdr_pixels(&self) -> Option<&[f32]> {
         self.hdr_pixels.as_deref()
@@ -197,6 +205,7 @@ impl Texture {
             height,
             pixels: Vec::new(),
             hdr_pixels: Some(pixels),
+            srgb_encoded: false,
         }
     }
 }
@@ -260,11 +269,11 @@ fn sample_direction(texture: &Texture, direction: crate::math::Vec3) -> [f32; 3]
         if let Some(hdr) = &texture.hdr_pixels {
             [hdr[index], hdr[index + 1], hdr[index + 2]]
         } else {
-            [
-                texture.pixels[index] as f32 / 255.0,
-                texture.pixels[index + 1] as f32 / 255.0,
-                texture.pixels[index + 2] as f32 / 255.0,
-            ]
+            let channel = |offset: usize| {
+                let value = texture.pixels[index + offset] as f32 / 255.0;
+                if texture.srgb_encoded { srgb_to_linear(value) } else { value }
+            };
+            [channel(0), channel(1), channel(2)]
         }
     };
 
@@ -361,13 +370,14 @@ impl Clone for Texture {
             height: self.height,
             pixels: self.pixels.clone(),
             hdr_pixels: self.hdr_pixels.clone(),
+            srgb_encoded: self.srgb_encoded,
         }
     }
 }
 
 impl ContentAssetInternal for Texture {
     fn compiler_version() -> u32 {
-        3
+        4
     }
 
     fn asset_type_name() -> &'static str {
@@ -432,7 +442,7 @@ impl ContentAssetInternal for Texture {
         writer.write_all(&self.height.to_le_bytes())?;
 
         let is_hdr = self.hdr_pixels.is_some();
-        writer.write_all(&[is_hdr as u8])?;
+        writer.write_all(&[(is_hdr as u8) | ((self.srgb_encoded as u8) << 1)])?;
 
         if let Some(pixels) = &self.hdr_pixels {
             let pixel_count = u64::try_from(pixels.len()).map_err(|_| {
@@ -474,7 +484,11 @@ impl ContentAssetInternal for Texture {
 
         let mut format = [0_u8; 1];
         reader.read_exact(&mut format)?;
-        let is_hdr = format[0] != 0;
+        if format[0] > 2 {
+            return Err(ContentError::InvalidCache("invalid texture encoding".into()));
+        }
+        let is_hdr = format[0] & 1 != 0;
+        let srgb_encoded = format[0] & 2 != 0;
 
         let mut u64_bytes = [0u8; 8];
         reader.read_exact(&mut u64_bytes)?;
@@ -526,9 +540,70 @@ impl ContentAssetInternal for Texture {
                 height,
                 pixels,
                 hdr_pixels: None,
+            srgb_encoded,
             })
         }
     }
 }
 
 impl ContentAsset for Texture {}
+
+
+fn srgb_to_linear(value: f32) -> f32 {
+    if value <= 0.04045 { value / 12.92 } else { ((value + 0.055) / 1.055).powf(2.4) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::math::Vec3;
+
+    fn sample(texture: &Texture) -> [f32; 3] {
+        sample_direction(texture, Vec3::new(1.0, 0.0, 0.0))
+    }
+
+    #[test]
+    fn environment_sampling_decodes_srgb_before_filtering() {
+        let gray = Texture::rgba(1, 1, vec![128, 128, 128, 255]).unwrap();
+        assert!((sample(&gray)[0] - 0.21586).abs() < 0.00001);
+        let contrast = Texture::rgba(2, 1, vec![0, 0, 0, 255, 255, 255, 255, 255]).unwrap();
+        // Bilinear interpolation averages linear black and white, not encoded gray.
+        assert!((sample(&contrast)[0] - 0.5).abs() < 0.00001);
+    }
+
+    #[test]
+    fn solid_colors_and_hdr_radiance_are_not_srgb_decoded() {
+        let solid = Texture::solid(Color::rgb(0.5, 0.5, 0.5));
+        assert!((sample(&solid)[0] - 128.0 / 255.0).abs() < 0.00001);
+        let hdr = Texture::from_hdr_rgba(1, 1, vec![4.0, 2.0, 1.0, 1.0]);
+        assert_eq!(sample(&hdr), [4.0, 2.0, 1.0]);
+    }
+
+    #[test]
+    fn constant_hdr_environment_preserves_radiance_and_irradiance_energy() {
+        let texture = Texture::from_hdr_rgba(1, 1, vec![4.0, 2.0, 1.0, 1.0]);
+        let normal = Vec3::new(0.0, 1.0, 0.0);
+        let irradiance = integrate_irradiance(&texture, normal, 96);
+        let specular = integrate_ggx(&texture, normal, 0.7, 64);
+        for channel in 0..3 {
+            let radiance = [4.0, 2.0, 1.0][channel];
+            assert!((irradiance[channel] - std::f32::consts::PI * radiance).abs() < 0.0001);
+            assert!((specular[channel] - radiance).abs() < 0.0001);
+        }
+    }
+
+    #[test]
+    fn texture_cache_preserves_linear_srgb_and_hdr_encodings() {
+        for texture in [
+            Texture::solid(Color::rgb(0.5, 0.25, 0.75)),
+            Texture::rgba(1, 1, vec![128, 64, 192, 255]).unwrap(),
+            Texture::from_hdr_rgba(1, 1, vec![8.0, 2.0, 0.5, 1.0]),
+        ] {
+            let mut bytes = Vec::new();
+            texture.write_compiled(&mut bytes).unwrap();
+            let restored = Texture::read_compiled(&mut bytes.as_slice(), bytes.len() as u64).unwrap();
+            assert_eq!(texture.srgb_encoded(), restored.srgb_encoded());
+            assert_eq!(sample(&texture), sample(&restored));
+        }
+    }
+}

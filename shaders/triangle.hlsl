@@ -173,7 +173,9 @@ float3 evaluate_environment(float3 normal, float3 view_direction, float3 albedo,
         irradiance_texture.Sample(base_sampler, direction_to_equirectangular_uv(normal)).rgb;
 
     float intensity = environment_params.x;
-    float3 diffuse = diffuse_environment * intensity * albedo * (1.0 - metallic) * (1.0 - fresnel);
+    // The precomputed map stores irradiance; Lambert's BRDF contributes 1/pi.
+    float3 diffuse = diffuse_environment * intensity * albedo * (1.0 - metallic) *
+                     (1.0 - fresnel) / 3.14159265;
 
     float specular_energy = 1.0 - 0.45 * roughness;
 

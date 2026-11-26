@@ -17,6 +17,23 @@ pub struct Graphics {
 }
 
 impl Graphics {
+    /// Linear exposure multiplier for the final display pass; defaults to one.
+    ///
+    /// Persists across frames. The last value set during draw applies to the
+    /// entire surface, including all camera viewports and backgrounds.
+    pub fn exposure(&self) -> f32 {
+        self.renderer.exposure()
+    }
+
+    /// Sets final-pass exposure; zero produces black.
+    ///
+    /// Returns InvalidArgument for negative, infinite, or NaN values.
+    pub fn set_exposure(&mut self, exposure: f32) -> crate::OxideResult<()> {
+        validate_exposure(exposure)?;
+        self.renderer.set_exposure(exposure);
+        Ok(())
+    }
+
     /// Creates the graphics subsystem for the given window.
     pub(crate) fn new(window: &PlatformWindow) -> GraphicsResult<Self> {
         let size = window.inner().inner_size();
@@ -94,7 +111,7 @@ impl Graphics {
 
     /// Binds a camera and destination rectangle for subsequent draw calls.
     pub fn bind_camera(&mut self, camera: &Camera, destination: Rect) -> GraphicsResult<()> {
-        self.renderer.bind_camera(camera, destination)?;
+        self.renderer.bind_camera(&self.device, camera, destination)?;
 
         Ok(())
     }
@@ -142,5 +159,30 @@ impl Graphics {
 
     pub(crate) fn add_directional_light_internal(&mut self, light: &DirectionalLight) {
         self.renderer.add_directional_light(light);
+    }
+}
+
+fn validate_exposure(exposure: f32) -> crate::OxideResult<()> {
+    if !exposure.is_finite() || exposure < 0.0 {
+        return Err(crate::OxideError::InvalidArgument {
+            argument: "exposure",
+            message: "exposure must be finite and non-negative",
+        });
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_exposure;
+
+    #[test]
+    fn exposure_accepts_black_and_bright_values_but_rejects_invalid_inputs() {
+        for valid in [0.0, 1.0, 8.0, f32::MAX] {
+            assert!(validate_exposure(valid).is_ok());
+        }
+        for invalid in [-1.0, f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert!(validate_exposure(invalid).is_err());
+        }
     }
 }

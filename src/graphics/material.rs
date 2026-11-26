@@ -162,7 +162,7 @@ impl ContentAssetInternal for Material {
         AssetType::Material
     }
     fn compiler_version() -> u32 {
-        3
+        4
     }
 
     fn write_compiled(&self, writer: &mut impl Write) -> ContentResult<()> {
@@ -252,48 +252,29 @@ impl ContentAssetInternal for Material {
 }
 
 fn write_embedded_texture(texture: &Texture, writer: &mut impl Write) -> ContentResult<()> {
-    writer.write_all(&texture.width().to_le_bytes())?;
-    writer.write_all(&texture.height().to_le_bytes())?;
-    let pixels = texture.pixels();
-    let count = u64::try_from(pixels.len()).map_err(|_| {
-        crate::content::ContentError::InvalidCache("embedded texture is too large".into())
-    })?;
-    writer.write_all(&count.to_le_bytes())?;
-    writer.write_all(pixels)?;
+    let mut payload = Vec::new();
+    texture.write_compiled(&mut payload)?;
+    writer.write_all(&(payload.len() as u64).to_le_bytes())?;
+    writer.write_all(&payload)?;
     Ok(())
 }
 
 fn read_embedded_texture(reader: &mut impl Read, available: u64) -> ContentResult<(Texture, u64)> {
-    const HEADER: u64 = 16;
-    if available < HEADER {
-        return Err(crate::content::ContentError::InvalidCache(
-            "embedded texture payload is too small".into(),
-        ));
+    if available < 8 {
+        return Err(crate::content::ContentError::InvalidCache("missing embedded texture length".into()));
     }
-    let mut u32_bytes = [0_u8; 4];
-    reader.read_exact(&mut u32_bytes)?;
-    let width = u32::from_le_bytes(u32_bytes);
-    reader.read_exact(&mut u32_bytes)?;
-    let height = u32::from_le_bytes(u32_bytes);
-    let mut u64_bytes = [0_u8; 8];
-    reader.read_exact(&mut u64_bytes)?;
-    let count = u64::from_le_bytes(u64_bytes);
-    let expected = u64::from(width)
-        .checked_mul(u64::from(height))
-        .and_then(|v| v.checked_mul(4))
-        .ok_or_else(|| {
-            crate::content::ContentError::InvalidCache(
-                "embedded texture dimensions overflow".into(),
-            )
-        })?;
-    if count != expected || HEADER + count > available {
-        return Err(crate::content::ContentError::InvalidCache(
-            "invalid embedded texture payload".into(),
-        ));
+    let mut bytes = [0_u8; 8];
+    reader.read_exact(&mut bytes)?;
+    let length = u64::from_le_bytes(bytes);
+    if length > available - 8 {
+        return Err(crate::content::ContentError::InvalidCache("embedded texture exceeds material payload".into()));
     }
-    let mut pixels = vec![0_u8; count as usize];
-    reader.read_exact(&mut pixels)?;
-    Ok((Texture::from_rgba(width, height, pixels), HEADER + count))
+    let mut limited = reader.take(length);
+    let texture = Texture::read_compiled(&mut limited, length)?;
+    if limited.limit() != 0 {
+        return Err(crate::content::ContentError::InvalidCache("incomplete embedded texture payload".into()));
+    }
+    Ok((texture, 8 + length))
 }
 
 impl ContentAsset for Material {}
