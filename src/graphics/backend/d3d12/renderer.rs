@@ -892,7 +892,7 @@ impl D3D12Renderer {
                 let specular_index = self.next_texture_descriptor;
                 assert!(specular_index < MAX_TEXTURES);
                 self.next_texture_descriptor += 1;
-                let specular = D3D12Texture::new_rgba_levels(
+                let specular = D3D12Texture::new_float_levels(
                     device,
                     &self.command_list,
                     &prefilter.specular,
@@ -905,7 +905,7 @@ impl D3D12Renderer {
                 assert!(irradiance_index < MAX_TEXTURES);
                 self.next_texture_descriptor += 1;
                 let irradiance_level = vec![prefilter.irradiance];
-                let irradiance = D3D12Texture::new_rgba_levels(
+                let irradiance = D3D12Texture::new_float_levels(
                     device,
                     &self.command_list,
                     &irradiance_level,
@@ -1015,7 +1015,7 @@ impl D3D12Renderer {
         handle.ptr += texture.descriptor_index() as usize * self.texture_descriptor_size as usize;
 
         let desc = D3D12_SHADER_RESOURCE_VIEW_DESC {
-            Format: DXGI_FORMAT_R8G8B8A8_UNORM,
+            Format: texture.format(),
 
             ViewDimension: D3D12_SRV_DIMENSION_TEXTURE2D,
 

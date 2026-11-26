@@ -26,12 +26,29 @@ pub struct Texture {
     height: u32,
 
     pixels: Vec<u8>,
+    hdr_pixels: Option<Vec<f32>>,
 }
 
 impl Texture {
     /// Loads a texture from an image file.
     pub(crate) fn load<P: AsRef<Path>>(path: P) -> Result<Self, image::ImageError> {
-        let image = image::open(path)?.to_rgba8();
+        let path = path.as_ref();
+        let image = image::open(path)?;
+
+        if path.extension().and_then(|v| v.to_str())
+            .is_some_and(|v| v.eq_ignore_ascii_case("hdr"))
+        {
+            let image = image.to_rgb32f();
+            let width = image.width();
+            let height = image.height();
+            let mut pixels = Vec::with_capacity(width as usize * height as usize * 4);
+            for pixel in image.pixels() {
+                pixels.extend_from_slice(&[pixel[0], pixel[1], pixel[2], 1.0]);
+            }
+            return Ok(Self::from_hdr_rgba(width, height, pixels));
+        }
+
+        let image = image.to_rgba8();
 
         let width = image.width();
         let height = image.height();
@@ -41,6 +58,7 @@ impl Texture {
             width,
             height,
             pixels: image.into_raw(),
+            hdr_pixels: None,
         })
     }
 
@@ -55,6 +73,8 @@ impl Texture {
 
             width: 1,
             height: 1,
+
+            hdr_pixels: None,
 
             pixels: vec![
                 channel(color.r),
@@ -117,7 +137,7 @@ impl Texture {
             let roughness = level as f32 / (SPECULAR_LEVELS - 1) as f32;
             let width = (self.width >> level).max(1);
             let height = (self.height >> level).max(1);
-            let mut pixels = vec![0_u8; width as usize * height as usize * 4];
+            let mut pixels = vec![0.0_f32; width as usize * height as usize * 4];
 
             for y in 0..height {
                 for x in 0..width {
@@ -137,7 +157,7 @@ impl Texture {
         let irradiance_width = self.width.min(64).max(1);
         let irradiance_height = (irradiance_width / 2).max(1);
         let mut irradiance =
-            vec![0_u8; irradiance_width as usize * irradiance_height as usize * 4];
+            vec![0.0_f32; irradiance_width as usize * irradiance_height as usize * 4];
 
         for y in 0..irradiance_height {
             for x in 0..irradiance_width {
@@ -161,14 +181,21 @@ impl Texture {
             width,
             height,
             pixels,
+            hdr_pixels: None,
         }
+    }
+
+    pub(crate) fn hdr_pixels(&self) -> Option<&[f32]> { self.hdr_pixels.as_deref() }
+
+    pub(crate) fn from_hdr_rgba(width: u32, height: u32, pixels: Vec<f32>) -> Self {
+        Self { id: next_texture_id(), width, height, pixels: Vec::new(), hdr_pixels: Some(pixels) }
     }
 }
 
 
 pub(crate) struct EnvironmentPrefilter {
-    pub(crate) specular: Vec<(u32, u32, Vec<u8>)>,
-    pub(crate) irradiance: (u32, u32, Vec<u8>),
+    pub(crate) specular: Vec<(u32, u32, Vec<f32>)>,
+    pub(crate) irradiance: (u32, u32, Vec<f32>),
 }
 
 fn radical_inverse_vdc(mut bits: u32) -> f32 {
@@ -222,11 +249,15 @@ fn sample_direction(texture: &Texture, direction: crate::math::Vec3) -> [f32; 3]
         let x = x.rem_euclid(texture.width as i32) as u32;
         let y = y.clamp(0, texture.height as i32 - 1) as u32;
         let index = ((y * texture.width + x) * 4) as usize;
-        [
-            texture.pixels[index] as f32 / 255.0,
-            texture.pixels[index + 1] as f32 / 255.0,
-            texture.pixels[index + 2] as f32 / 255.0,
-        ]
+        if let Some(hdr) = &texture.hdr_pixels {
+            [hdr[index], hdr[index + 1], hdr[index + 2]]
+        } else {
+            [
+                texture.pixels[index] as f32 / 255.0,
+                texture.pixels[index + 1] as f32 / 255.0,
+                texture.pixels[index + 2] as f32 / 255.0,
+            ]
+        }
     };
 
     let a = fetch(x0, y0);
@@ -319,13 +350,12 @@ fn integrate_ggx(
     [sum[0] / weight, sum[1] / weight, sum[2] / weight]
 }
 
-fn write_rgb(pixels: &mut [u8], x: u32, y: u32, width: u32, color: [f32; 3]) {
+fn write_rgb(pixels: &mut [f32], x: u32, y: u32, width: u32, color: [f32; 3]) {
     let index = ((y * width + x) * 4) as usize;
     for channel in 0..3 {
-        pixels[index + channel] =
-            (color[channel].clamp(0.0, 1.0) * 255.0).round() as u8;
+        pixels[index + channel] = color[channel].max(0.0);
     }
-    pixels[index + 3] = 255;
+    pixels[index + 3] = 1.0;
 }
 
 impl Clone for Texture {
@@ -337,13 +367,14 @@ impl Clone for Texture {
             width: self.width,
             height: self.height,
             pixels: self.pixels.clone(),
+            hdr_pixels: self.hdr_pixels.clone(),
         }
     }
 }
 
 impl ContentAssetInternal for Texture {
     fn compiler_version() -> u32 {
-        2
+        3
     }
 
     fn asset_type_name() -> &'static str {
@@ -353,7 +384,7 @@ impl ContentAssetInternal for Texture {
     fn supports_extension(extension: &str) -> bool {
         matches!(
             extension,
-            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tif" | "tiff" | "webp" | "gltf" | "glb"
+            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tif" | "tiff" | "webp" | "hdr" | "gltf" | "glb"
         )
     }
 
@@ -396,18 +427,28 @@ impl ContentAssetInternal for Texture {
 
         writer.write_all(&self.height.to_le_bytes())?;
 
-        let pixel_count = u64::try_from(self.pixels.len())
-            .map_err(|_| ContentError::InvalidCache("texture pixel data is too large".into()))?;
+        let is_hdr = self.hdr_pixels.is_some();
+        writer.write_all(&[is_hdr as u8])?;
 
-        writer.write_all(&pixel_count.to_le_bytes())?;
-
-        writer.write_all(&self.pixels)?;
+        if let Some(pixels) = &self.hdr_pixels {
+            let pixel_count = u64::try_from(pixels.len())
+                .map_err(|_| ContentError::InvalidCache("texture pixel data is too large".into()))?;
+            writer.write_all(&pixel_count.to_le_bytes())?;
+            for value in pixels {
+                writer.write_all(&value.to_le_bytes())?;
+            }
+        } else {
+            let pixel_count = u64::try_from(self.pixels.len())
+                .map_err(|_| ContentError::InvalidCache("texture pixel data is too large".into()))?;
+            writer.write_all(&pixel_count.to_le_bytes())?;
+            writer.write_all(&self.pixels)?;
+        }
 
         Ok(())
     }
 
     fn read_compiled(reader: &mut impl Read, payload_size: u64) -> ContentResult<Self> {
-        const HEADER_SIZE: u64 = 4 + 4 + 8;
+        const HEADER_SIZE: u64 = 4 + 4 + 1 + 8;
 
         if payload_size < HEADER_SIZE {
             return Err(ContentError::InvalidCache(
@@ -425,8 +466,11 @@ impl ContentAssetInternal for Texture {
 
         let height = u32::from_le_bytes(u32_bytes);
 
-        let mut u64_bytes = [0u8; 8];
+        let mut format = [0_u8; 1];
+        reader.read_exact(&mut format)?;
+        let is_hdr = format[0] != 0;
 
+        let mut u64_bytes = [0u8; 8];
         reader.read_exact(&mut u64_bytes)?;
 
         let pixel_count = u64::from_le_bytes(u64_bytes);
@@ -442,7 +486,8 @@ impl ContentAssetInternal for Texture {
             ));
         }
 
-        if payload_size != HEADER_SIZE + pixel_count {
+        let byte_count = if is_hdr { pixel_count.checked_mul(4).ok_or_else(|| ContentError::InvalidCache("HDR texture byte count overflow".into()))? } else { pixel_count };
+        if payload_size != HEADER_SIZE + byte_count {
             return Err(ContentError::InvalidCache(
                 "texture payload size is inconsistent".into(),
             ));
@@ -452,16 +497,25 @@ impl ContentAssetInternal for Texture {
             ContentError::InvalidCache("texture is too large for this platform".into())
         })?;
 
-        let mut pixels = vec![0u8; pixel_count];
-
-        reader.read_exact(&mut pixels)?;
-
-        Ok(Self {
-            id: next_texture_id(),
-            width,
-            height,
-            pixels,
-        })
+        if is_hdr {
+            let mut pixels = Vec::with_capacity(pixel_count);
+            let mut bytes = [0_u8; 4];
+            for _ in 0..pixel_count {
+                reader.read_exact(&mut bytes)?;
+                pixels.push(f32::from_le_bytes(bytes));
+            }
+            Ok(Self::from_hdr_rgba(width, height, pixels))
+        } else {
+            let mut pixels = vec![0u8; pixel_count];
+            reader.read_exact(&mut pixels)?;
+            Ok(Self {
+                id: next_texture_id(),
+                width,
+                height,
+                pixels,
+                hdr_pixels: None,
+            })
+        }
     }
 }
 

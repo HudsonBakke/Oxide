@@ -42,6 +42,16 @@ impl D3D12Texture {
         texture: &Texture,
         descriptor_index: u32,
     ) -> Result<Self> {
+        if let Some(pixels) = texture.hdr_pixels() {
+            let levels = vec![(texture.width(), texture.height(), pixels.to_vec())];
+            return Self::new_float_levels_inner(
+                device,
+                command_list,
+                &levels,
+                descriptor_index,
+            );
+        }
+
         let texture_desc = D3D12_RESOURCE_DESC {
             Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D,
             Alignment: 0,

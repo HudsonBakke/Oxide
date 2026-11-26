@@ -47,5 +47,13 @@ float4 ps_main(VsOut input) : SV_TARGET
         + camera_right.xyz * ndc.x * projection_params.x * projection_params.y
         + camera_up.xyz * ndc.y * projection_params.x
     );
-    return background_texture.Sample(background_sampler, direction_to_uv(direction));
+    float3 hdr = background_texture.Sample(
+        background_sampler,
+        direction_to_uv(direction)
+    ).rgb;
+
+    // Display transform only. IBL samples remain unclamped linear radiance.
+    float3 mapped = hdr / (hdr + 1.0);
+    mapped = pow(mapped, 1.0 / 2.2);
+    return float4(mapped, 1.0);
 }
