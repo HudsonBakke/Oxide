@@ -659,7 +659,7 @@ internal static class NativeMethods
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
     internal static extern OxideStatus oxide_graphics_set_environment(
         NativeGraphicsHandle graphics,
-        Environment environment
+        Graphics.Environment environment
     );
 
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
