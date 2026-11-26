@@ -158,7 +158,11 @@ impl D3D12Pipeline {
                     signature_blob.GetBufferPointer() as *const u8,
                     signature_blob.GetBufferSize(),
                 ),
-            )?
+            )
+            .map_err(|error| {
+                eprintln!("Oxide D3D12: CreateRootSignature failed: {error:?}");
+                error
+            })?
         };
 
         let vertex_bytecode = D3D12_SHADER_BYTECODE {
@@ -290,7 +294,13 @@ impl D3D12Pipeline {
         let pipeline_state: ID3D12PipelineState = unsafe {
             device
                 .device()
-                .CreateGraphicsPipelineState(&pipeline_desc)?
+                .CreateGraphicsPipelineState(&pipeline_desc)
+                .map_err(|error| {
+                    eprintln!(
+                        "Oxide D3D12: CreateGraphicsPipelineState failed: {error:?}"
+                    );
+                    error
+                })?
         };
 
         unsafe {
