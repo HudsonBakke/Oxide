@@ -12,6 +12,14 @@ use std::time::Instant;
 
 use crate::platform::window::PlatformWindow;
 use crate::graphics::Graphics;
+use crate::input::{
+    advance_keyboard_frame,
+    advance_mouse_frame,
+    handle_cursor_moved,
+    handle_keyboard_input,
+    handle_mouse_input,
+    handle_mouse_wheel,
+};
 
 struct App<G: Game> {
     game: G,
@@ -54,6 +62,9 @@ impl<G: Game> App<G> {
                 .end_frame()
                 .expect("failed to finish Oxide graphics frame");
         }
+
+        advance_keyboard_frame();
+        advance_mouse_frame();
 
         if let Some(window) = &self.window {
             window.inner().request_redraw();
@@ -127,6 +138,42 @@ impl<G: Game> ApplicationHandler for App<G> {
 
             WindowEvent::Resized(size) => {
                 self.resize(size.width, size.height);
+            }
+
+            WindowEvent::KeyboardInput { event, .. } => {
+                handle_keyboard_input(
+                    event.physical_key,
+                    event.state,
+                );
+            }
+
+            WindowEvent::MouseInput {
+                state,
+                button,
+                ..
+            } => {
+                handle_mouse_input(
+                    button,
+                    state,
+                );
+            }
+
+            WindowEvent::CursorMoved {
+                position,
+                ..
+            } => {
+                handle_cursor_moved(
+                    position,
+                );
+            }
+
+            WindowEvent::MouseWheel {
+                delta,
+                ..
+            } => {
+                handle_mouse_wheel(
+                    delta,
+                );
             }
 
             _ => {}

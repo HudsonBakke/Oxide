@@ -3,6 +3,7 @@ pub mod math;
 pub mod graphics;
 pub mod collision;
 pub mod content;
+pub mod input;
 
 mod platform;
 mod error;
