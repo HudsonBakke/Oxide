@@ -52,7 +52,7 @@ impl D3D12Pipeline {
 
         let environment_range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            NumDescriptors: 2,
+            NumDescriptors: 3,
             BaseShaderRegister: 2,
             RegisterSpace: 0,
             OffsetInDescriptorsFromTableStart: 0,

@@ -17,7 +17,8 @@ cbuffer ViewConstants : register(b1)
 Texture2D base_texture : register(t0);
 Texture2D normal_texture : register(t1);
 Texture2D environment_texture : register(t2);
-Texture2D background_texture : register(t3);
+Texture2D irradiance_texture : register(t3);
+Texture2D background_texture : register(t4);
 SamplerState base_sampler : register(s0);
 
 struct PointLight
@@ -221,13 +222,11 @@ float3 evaluate_environment(
     float3 specular_environment =
         filtered_environment(reflection_direction, roughness);
 
-    // A small directional diffuse estimate. Full irradiance convolution can
-    // replace this without changing the public Environment API.
     float3 diffuse_environment =
-        (
-            sample_environment_texture(normal)
-            + sample_environment_texture(float3(0.0, 1.0, 0.0))
-        ) * 0.5;
+        irradiance_texture.Sample(
+            base_sampler,
+            direction_to_equirectangular_uv(normal)
+        ).rgb;
 
     float intensity = environment_params.x;
     float3 diffuse =

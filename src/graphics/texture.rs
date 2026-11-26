@@ -106,52 +106,53 @@ impl Texture {
     }
 
 
-    /// Builds a five-level prefiltered environment mip chain. Each level uses
-    /// a progressively wider circular filter in equirectangular space.
-    pub(crate) fn environment_mips(&self) -> Vec<(u32, u32, Vec<u8>)> {
-        let mut levels = Vec::with_capacity(5);
-        levels.push((self.width, self.height, self.pixels.clone()));
+    pub(crate) fn environment_prefilter(&self) -> EnvironmentPrefilter {
+        const SPECULAR_LEVELS: u32 = 5;
+        const SPECULAR_SAMPLES: u32 = 64;
+        const IRRADIANCE_SAMPLES: u32 = 96;
 
-        for level in 1..5_u32 {
+        let mut specular = Vec::with_capacity(SPECULAR_LEVELS as usize);
+
+        for level in 0..SPECULAR_LEVELS {
+            let roughness = level as f32 / (SPECULAR_LEVELS - 1) as f32;
             let width = (self.width >> level).max(1);
             let height = (self.height >> level).max(1);
-            let radius = 1_i32 << level;
             let mut pixels = vec![0_u8; width as usize * height as usize * 4];
 
             for y in 0..height {
                 for x in 0..width {
-                    let source_x = ((x as f32 + 0.5) * self.width as f32 / width as f32) as i32;
-                    let source_y = ((y as f32 + 0.5) * self.height as f32 / height as f32) as i32;
-                    let mut sum = [0_u32; 3];
-                    let mut weight = 0_u32;
-
-                    for oy in -radius..=radius {
-                        for ox in -radius..=radius {
-                            if ox * ox + oy * oy > radius * radius {
-                                continue;
-                            }
-                            let sx = (source_x + ox).rem_euclid(self.width as i32) as u32;
-                            let sy = (source_y + oy).clamp(0, self.height as i32 - 1) as u32;
-                            let index = ((sy * self.width + sx) * 4) as usize;
-                            sum[0] += self.pixels[index] as u32;
-                            sum[1] += self.pixels[index + 1] as u32;
-                            sum[2] += self.pixels[index + 2] as u32;
-                            weight += 1;
-                        }
-                    }
-
-                    let index = ((y * width + x) * 4) as usize;
-                    pixels[index] = (sum[0] / weight) as u8;
-                    pixels[index + 1] = (sum[1] / weight) as u8;
-                    pixels[index + 2] = (sum[2] / weight) as u8;
-                    pixels[index + 3] = 255;
+                    let direction = equirectangular_direction(x, y, width, height);
+                    let color = if level == 0 {
+                        sample_direction(self, direction)
+                    } else {
+                        integrate_ggx(self, direction, roughness, SPECULAR_SAMPLES)
+                    };
+                    write_rgb(&mut pixels, x, y, width, color);
                 }
             }
 
-            levels.push((width, height, pixels));
+            specular.push((width, height, pixels));
         }
 
-        levels
+        let irradiance_width = self.width.min(64).max(1);
+        let irradiance_height = (irradiance_width / 2).max(1);
+        let mut irradiance =
+            vec![0_u8; irradiance_width as usize * irradiance_height as usize * 4];
+
+        for y in 0..irradiance_height {
+            for x in 0..irradiance_width {
+                let normal = equirectangular_direction(
+                    x, y, irradiance_width, irradiance_height
+                );
+                let color = integrate_irradiance(self, normal, IRRADIANCE_SAMPLES);
+                write_rgb(&mut irradiance, x, y, irradiance_width, color);
+            }
+        }
+
+        EnvironmentPrefilter {
+            specular,
+            irradiance: (irradiance_width, irradiance_height, irradiance),
+        }
     }
 
     pub(crate) fn from_rgba(width: u32, height: u32, pixels: Vec<u8>) -> Self {
@@ -162,6 +163,169 @@ impl Texture {
             pixels,
         }
     }
+}
+
+
+pub(crate) struct EnvironmentPrefilter {
+    pub(crate) specular: Vec<(u32, u32, Vec<u8>)>,
+    pub(crate) irradiance: (u32, u32, Vec<u8>),
+}
+
+fn radical_inverse_vdc(mut bits: u32) -> f32 {
+    bits = (bits << 16) | (bits >> 16);
+    bits = ((bits & 0x5555_5555) << 1) | ((bits & 0xAAAA_AAAA) >> 1);
+    bits = ((bits & 0x3333_3333) << 2) | ((bits & 0xCCCC_CCCC) >> 2);
+    bits = ((bits & 0x0F0F_0F0F) << 4) | ((bits & 0xF0F0_F0F0) >> 4);
+    bits = ((bits & 0x00FF_00FF) << 8) | ((bits & 0xFF00_FF00) >> 8);
+    bits as f32 * 2.3283064365386963e-10
+}
+
+fn hammersley(i: u32, count: u32) -> (f32, f32) {
+    (i as f32 / count as f32, radical_inverse_vdc(i))
+}
+
+fn equirectangular_direction(x: u32, y: u32, width: u32, height: u32) -> crate::math::Vec3 {
+    let u = (x as f32 + 0.5) / width as f32;
+    let v = (y as f32 + 0.5) / height as f32;
+    let phi = (u - 0.5) * std::f32::consts::TAU;
+    let theta = v * std::f32::consts::PI;
+    crate::math::Vec3::new(
+        theta.sin() * phi.cos(),
+        theta.cos(),
+        theta.sin() * phi.sin(),
+    )
+}
+
+fn basis(normal: crate::math::Vec3) -> (crate::math::Vec3, crate::math::Vec3) {
+    let up = if normal.y.abs() < 0.999 {
+        crate::math::Vec3::new(0.0, 1.0, 0.0)
+    } else {
+        crate::math::Vec3::new(1.0, 0.0, 0.0)
+    };
+    let tangent = up.cross(&normal).normalized();
+    let bitangent = normal.cross(&tangent).normalized();
+    (tangent, bitangent)
+}
+
+fn sample_direction(texture: &Texture, direction: crate::math::Vec3) -> [f32; 3] {
+    let d = direction.normalized();
+    let u = (d.z.atan2(d.x) / std::f32::consts::TAU + 0.5).rem_euclid(1.0);
+    let v = d.y.clamp(-1.0, 1.0).acos() / std::f32::consts::PI;
+    let fx = u * texture.width as f32 - 0.5;
+    let fy = v * texture.height as f32 - 0.5;
+    let x0 = fx.floor() as i32;
+    let y0 = fy.floor() as i32;
+    let tx = fx - fx.floor();
+    let ty = fy - fy.floor();
+
+    let fetch = |x: i32, y: i32| {
+        let x = x.rem_euclid(texture.width as i32) as u32;
+        let y = y.clamp(0, texture.height as i32 - 1) as u32;
+        let index = ((y * texture.width + x) * 4) as usize;
+        [
+            texture.pixels[index] as f32 / 255.0,
+            texture.pixels[index + 1] as f32 / 255.0,
+            texture.pixels[index + 2] as f32 / 255.0,
+        ]
+    };
+
+    let a = fetch(x0, y0);
+    let b = fetch(x0 + 1, y0);
+    let c = fetch(x0, y0 + 1);
+    let d = fetch(x0 + 1, y0 + 1);
+    let mut result = [0.0; 3];
+    for channel in 0..3 {
+        let top = a[channel] * (1.0 - tx) + b[channel] * tx;
+        let bottom = c[channel] * (1.0 - tx) + d[channel] * tx;
+        result[channel] = top * (1.0 - ty) + bottom * ty;
+    }
+    result
+}
+
+fn integrate_irradiance(
+    texture: &Texture,
+    normal: crate::math::Vec3,
+    samples: u32,
+) -> [f32; 3] {
+    let (tangent, bitangent) = basis(normal);
+    let mut sum = [0.0_f32; 3];
+
+    // Cosine-weighted hemisphere sampling. Because p(L)=N.L/pi,
+    // the Monte Carlo irradiance estimator reduces to pi * average(Li).
+    for i in 0..samples {
+        let (u1, u2) = hammersley(i, samples);
+        let r = u1.sqrt();
+        let phi = std::f32::consts::TAU * u2;
+        let local = crate::math::Vec3::new(
+            r * phi.cos(),
+            r * phi.sin(),
+            (1.0 - u1).sqrt(),
+        );
+        let direction =
+            tangent * local.x + bitangent * local.y + normal * local.z;
+        let sample = sample_direction(texture, direction);
+        for channel in 0..3 {
+            sum[channel] += sample[channel];
+        }
+    }
+
+    let scale = std::f32::consts::PI / samples as f32;
+    [sum[0] * scale, sum[1] * scale, sum[2] * scale]
+}
+
+fn integrate_ggx(
+    texture: &Texture,
+    normal: crate::math::Vec3,
+    roughness: f32,
+    samples: u32,
+) -> [f32; 3] {
+    let view = normal;
+    let (tangent, bitangent) = basis(normal);
+    let alpha = (roughness * roughness).max(0.001);
+    let alpha2 = alpha * alpha;
+    let mut sum = [0.0_f32; 3];
+    let mut weight = 0.0_f32;
+
+    for i in 0..samples {
+        let (u1, u2) = hammersley(i, samples);
+        let phi = std::f32::consts::TAU * u1;
+        let cos_theta =
+            ((1.0 - u2) / (1.0 + (alpha2 - 1.0) * u2)).sqrt();
+        let sin_theta = (1.0 - cos_theta * cos_theta).max(0.0).sqrt();
+        let half_local = crate::math::Vec3::new(
+            sin_theta * phi.cos(),
+            sin_theta * phi.sin(),
+            cos_theta,
+        );
+        let half_vector = (
+            tangent * half_local.x
+            + bitangent * half_local.y
+            + normal * half_local.z
+        ).normalized();
+        let light = (half_vector * (2.0 * view.dot(&half_vector)) - view).normalized();
+        let n_dot_l = normal.dot(&light).max(0.0);
+        if n_dot_l > 0.0 {
+            let sample = sample_direction(texture, light);
+            for channel in 0..3 {
+                sum[channel] += sample[channel] * n_dot_l;
+            }
+            weight += n_dot_l;
+        }
+    }
+
+    if weight <= 1.0e-6 {
+        return sample_direction(texture, normal);
+    }
+    [sum[0] / weight, sum[1] / weight, sum[2] / weight]
+}
+
+fn write_rgb(pixels: &mut [u8], x: u32, y: u32, width: u32, color: [f32; 3]) {
+    let index = ((y * width + x) * 4) as usize;
+    for channel in 0..3 {
+        pixels[index + channel] =
+            (color[channel].clamp(0.0, 1.0) * 255.0).round() as u8;
+    }
+    pixels[index + 3] = 255;
 }
 
 impl Clone for Texture {

@@ -224,6 +224,7 @@ pub(crate) struct D3D12Renderer {
     active_lights: Vec<ActiveLight>,
     environment: Option<Environment>,
     environment_descriptor_cache: HashMap<(Option<TextureId>, Option<TextureId>), u32>,
+    irradiance_cache: HashMap<TextureId, D3D12Texture>,
     fallback_environment_texture: crate::graphics::Texture,
     texture_cache: HashMap<TextureId, D3D12Texture>,
     material_descriptor_cache: HashMap<(TextureId, TextureId), u32>,
@@ -314,6 +315,7 @@ impl D3D12Renderer {
             active_lights: Vec::new(),
             environment: None,
             environment_descriptor_cache: HashMap::new(),
+            irradiance_cache: HashMap::new(),
             fallback_environment_texture: crate::graphics::Texture::solid(crate::graphics::Color::BLACK),
             texture_cache: HashMap::new(),
             material_descriptor_cache: HashMap::new(),
@@ -878,57 +880,100 @@ impl D3D12Renderer {
             .environment
             .as_ref()
             .and_then(|environment| environment.background_texture.as_ref());
-        let first = environment_texture.unwrap_or(&self.fallback_environment_texture);
-        let second = background_texture.unwrap_or(&self.fallback_environment_texture);
 
-        let first_id = first.id();
-        let second_id = second.id();
+        let environment_id = environment_texture.map(|texture| texture.id());
+        let background_id = background_texture.map(|texture| texture.id());
 
-        for texture in [first, second] {
-            if !self.texture_cache.contains_key(&texture.id()) {
-                let descriptor_index = self.next_texture_descriptor;
-                assert!(descriptor_index < MAX_TEXTURES);
+        if let Some(texture) = environment_texture {
+            let id = texture.id();
+            if !self.texture_cache.contains_key(&id) {
+                let prefilter = texture.environment_prefilter();
+
+                let specular_index = self.next_texture_descriptor;
+                assert!(specular_index < MAX_TEXTURES);
                 self.next_texture_descriptor += 1;
-                let gpu = if environment_texture
-                    .map(|candidate| candidate.id() == texture.id())
-                    .unwrap_or(false)
-                {
-                    D3D12Texture::new_environment(
-                        device,
-                        &self.command_list,
-                        texture,
-                        descriptor_index,
-                    )?
-                } else {
-                    D3D12Texture::new(
-                        device,
-                        &self.command_list,
-                        texture,
-                        descriptor_index,
-                    )?
-                };
-                self.create_texture_srv(device, &gpu);
-                self.texture_cache.insert(texture.id(), gpu);
+                let specular = D3D12Texture::new_rgba_levels(
+                    device,
+                    &self.command_list,
+                    &prefilter.specular,
+                    specular_index,
+                )?;
+                self.create_texture_srv(device, &specular);
+                self.texture_cache.insert(id, specular);
+
+                let irradiance_index = self.next_texture_descriptor;
+                assert!(irradiance_index < MAX_TEXTURES);
+                self.next_texture_descriptor += 1;
+                let irradiance_level = vec![prefilter.irradiance];
+                let irradiance = D3D12Texture::new_rgba_levels(
+                    device,
+                    &self.command_list,
+                    &irradiance_level,
+                    irradiance_index,
+                )?;
+                self.create_texture_srv(device, &irradiance);
+                self.irradiance_cache.insert(id, irradiance);
             }
         }
 
-        let key = (
-            environment_texture.map(|texture| texture.id()),
-            background_texture.map(|texture| texture.id()),
-        );
+        if let Some(texture) = background_texture {
+            let id = texture.id();
+            if !self.texture_cache.contains_key(&id) {
+                let index = self.next_texture_descriptor;
+                assert!(index < MAX_TEXTURES);
+                self.next_texture_descriptor += 1;
+                let gpu = D3D12Texture::new(
+                    device,
+                    &self.command_list,
+                    texture,
+                    index,
+                )?;
+                self.create_texture_srv(device, &gpu);
+                self.texture_cache.insert(id, gpu);
+            }
+        }
 
+        let fallback_id = self.fallback_environment_texture.id();
+        if !self.texture_cache.contains_key(&fallback_id) {
+            let index = self.next_texture_descriptor;
+            assert!(index < MAX_TEXTURES);
+            self.next_texture_descriptor += 1;
+            let gpu = D3D12Texture::new(
+                device,
+                &self.command_list,
+                &self.fallback_environment_texture,
+                index,
+            )?;
+            self.create_texture_srv(device, &gpu);
+            self.texture_cache.insert(fallback_id, gpu);
+        }
+
+        let key = (environment_id, background_id);
         let descriptor_index = if let Some(&index) =
             self.environment_descriptor_cache.get(&key)
         {
             index
         } else {
             let index = self.next_texture_descriptor;
-            assert!(index + 1 < MAX_TEXTURES);
-            self.next_texture_descriptor += 2;
-            let first_descriptor = self.texture_cache[&first_id].descriptor_index();
-            let second_descriptor = self.texture_cache[&second_id].descriptor_index();
-            self.copy_texture_descriptor(device, first_descriptor, index);
-            self.copy_texture_descriptor(device, second_descriptor, index + 1);
+            assert!(index + 2 < MAX_TEXTURES);
+            self.next_texture_descriptor += 3;
+
+            let fallback_descriptor =
+                self.texture_cache[&fallback_id].descriptor_index();
+            let specular_descriptor = environment_id
+                .map(|id| self.texture_cache[&id].descriptor_index())
+                .unwrap_or(fallback_descriptor);
+            let irradiance_descriptor = environment_id
+                .and_then(|id| self.irradiance_cache.get(&id))
+                .map(|texture| texture.descriptor_index())
+                .unwrap_or(fallback_descriptor);
+            let background_descriptor = background_id
+                .map(|id| self.texture_cache[&id].descriptor_index())
+                .unwrap_or(fallback_descriptor);
+
+            self.copy_texture_descriptor(device, specular_descriptor, index);
+            self.copy_texture_descriptor(device, irradiance_descriptor, index + 1);
+            self.copy_texture_descriptor(device, background_descriptor, index + 2);
             self.environment_descriptor_cache.insert(key, index);
             index
         };
