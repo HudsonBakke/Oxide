@@ -6,7 +6,7 @@ from os import PathLike
 from typing import TypeVar
 
 from . import _native
-from .math import Vec2, Vec3
+from .math import Vec2, Vec3, Vec4
 
 
 class Vertex(ctypes.Structure):
@@ -14,6 +14,7 @@ class Vertex(ctypes.Structure):
         ("position", Vec3),
         ("normal", Vec3),
         ("tex_coord", Vec2),
+        ("tangent", Vec4),
     ]
 
     def __init__(
@@ -21,11 +22,13 @@ class Vertex(ctypes.Structure):
         position: Vec3,
         normal: Vec3,
         tex_coord: Vec2,
+        tangent: Vec4 | None = None,
     ) -> None:
         super().__init__(
             position,
             normal,
             tex_coord,
+            tangent if tangent is not None else Vec4(0.0, 0.0, 0.0, 1.0),
         )
 
     def __eq__(
@@ -39,7 +42,15 @@ class Vertex(ctypes.Structure):
             self.position == other.position
             and self.normal == other.normal
             and self.tex_coord == other.tex_coord
+            and self.tangent == other.tangent
         )
+
+
+if ctypes.sizeof(Vertex) != 48:
+    raise RuntimeError(
+        f"Oxide Python Vertex ABI mismatch: expected 48 bytes, "
+        f"got {ctypes.sizeof(Vertex)}"
+    )
 
 
 class _OwnedResource:
