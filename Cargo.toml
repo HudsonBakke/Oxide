@@ -20,12 +20,30 @@ criterion = "0.8.2"
 name = "collision"
 harness = false
 
+[[example]]
+name = "attachment"
+path = "examples/rust/attachment.rs"
+
+[[example]]
+name = "cube"
+path = "examples/rust/cube.rs"
 
 [[example]]
 name = "first_person"
 path = "examples/rust/first_person.rs"
 
+[[example]]
+name = "hello_window"
+path = "examples/rust/hello_window.rs"
 
 [[example]]
 name = "materials"
 path = "examples/rust/materials.rs"
+
+[[example]]
+name = "model"
+path = "examples/rust/model.rs"
+
+[[example]]
+name = "split_screen"
+path = "examples/rust/split_screen.rs"

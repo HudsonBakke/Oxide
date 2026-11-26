@@ -1,0 +1,83 @@
+name: Windows build and checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select stable Rust with the MSVC toolchain
+        run: |
+          rustup toolchain install stable-x86_64-pc-windows-msvc --profile minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup default stable-x86_64-pc-windows-msvc
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Compile all embedded HLSL shaders
+        run: ./scripts/build-shaders.ps1
+
+      - name: Check Rust library, examples, tests, and benchmarks
+        run: cargo check --locked --all-targets
+
+      - name: Run Rust unit and integration tests
+        run: cargo test --locked --lib --tests
+
+      - name: Build native DLL and every Rust example
+        run: cargo build --locked --lib --examples
+
+      - name: Build C# bindings and every C# example
+        run: |
+          dotnet build bindings/csharp/Oxide.NET/Oxide.NET.csproj --configuration Debug
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem examples/csharp -Recurse -Filter *.csproj | ForEach-Object {
+            dotnet build $_.FullName --configuration Debug
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Compile and link the C example against oxide.dll
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat"
+          if errorlevel 1 exit /b %errorlevel%
+          cl /nologo /std:c11 /W4 /Fe:target\debug\hello_window_c.exe /Fo:target\debug\hello_window_c.obj examples\c\hello_window.c /link /LIBPATH:target\debug oxide.dll.lib
+
+      - name: Install Python bindings
+        run: python -m pip install --editable ./bindings/python
+
+      - name: Check Python syntax and native-library imports
+        env:
+          OXIDE_LIBRARY: ${{ github.workspace }}\target\debug\oxide.dll
+        run: |
+          python -m compileall -q bindings/python/oxide examples/python
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import oxide; import oxide.app; import oxide.collision; import oxide.content; import oxide.graphics; import oxide.input; import oxide.math"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python examples/python/math_test.py
