@@ -44,7 +44,7 @@ impl MaterialTest {
         emissive.set_emissive_color(Color::rgb(0.1, 0.65, 1.0));
         emissive.set_emissive_strength(4.0).unwrap();
 
-        let content = ContentManager::new("materials-hdr-cache");
+        let mut content = ContentManager::with_cache_directory("materials-hdr-cache");
         let environment_texture = content
             .load::<Texture>("assets/hdr_background_test.exr")
             .expect("failed to load assets/hdr_background_test.exr");
