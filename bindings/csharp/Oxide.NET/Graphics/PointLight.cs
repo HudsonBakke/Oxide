@@ -13,6 +13,7 @@ public struct PointLight
     private Color _color;
     private float _intensity;
 
+    /// <summary>Creates or accesses PointLight.</summary>
     public PointLight(
         Vec3 position,
         Color color,
@@ -32,18 +33,21 @@ public struct PointLight
         _intensity = intensity;
     }
 
+    /// <summary>Light position in world space.</summary>
     public Vec3 Position
     {
         readonly get => _position;
         set => _position = value;
     }
 
+    /// <summary>Light color.</summary>
     public Color Color
     {
         readonly get => _color;
         set => _color = value;
     }
 
+    /// <summary>Non-negative light intensity.</summary>
     public float Intensity
     {
         readonly get => _intensity;

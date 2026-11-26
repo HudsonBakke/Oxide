@@ -38,6 +38,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Number of vertices in the mesh.</summary>
     public int VertexCount
     {
         get
@@ -56,6 +57,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Number of indices in the mesh.</summary>
     public int IndexCount
     {
         get
@@ -74,6 +76,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Mesh pivot used as the transform origin.</summary>
     public Vec3 Pivot
     {
         get
@@ -101,6 +104,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Primary orientation direction of the mesh.</summary>
     public Vec3 Direction
     {
         get
@@ -128,6 +132,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Reference direction used to define mesh orientation.</summary>
     public Vec3 Reference
     {
         get
@@ -155,6 +160,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Derived side direction of the mesh orientation basis.</summary>
     public Vec3 Side
     {
         get
@@ -258,6 +264,7 @@ public unsafe uint[] GetIndices()
         return indices;
     }
 
+    /// <summary>Replaces the mesh vertex data.</summary>
     public unsafe void SetVertices(
         Vertex[] vertices
     )
@@ -280,6 +287,7 @@ public unsafe uint[] GetIndices()
         }
     }
 
+    /// <summary>Replaces the mesh index data.</summary>
     public unsafe void SetIndices(
         uint[] indices
     )
@@ -302,6 +310,7 @@ public unsafe uint[] GetIndices()
         }
     }
 
+    /// <summary>Creates or accesses Mesh.</summary>
     public unsafe Mesh(
         Vertex[] vertices,
         uint[] indices

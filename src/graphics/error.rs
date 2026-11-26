@@ -1,6 +1,7 @@
 use std::{error::Error, fmt, io};
 
 #[derive(Debug)]
+/// Error produced by graphics initialization or rendering operations.
 pub enum GraphicsError {
     Windows(windows::core::Error),
     Io(io::Error),

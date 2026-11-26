@@ -15,6 +15,7 @@ public struct SpotLight
     private Color _color;
     private float _intensity;
 
+    /// <summary>Creates or accesses SpotLight.</summary>
     public SpotLight(
         Vec3 position,
         Vec3 direction,
@@ -59,6 +60,7 @@ public struct SpotLight
         _intensity = intensity;
     }
 
+    /// <summary>Light position in world space.</summary>
     public Vec3 Position
     {
         readonly get =>
@@ -68,6 +70,7 @@ public struct SpotLight
             _position = value;
     }
 
+    /// <summary>Normalized direction in which the light travels.</summary>
     public Vec3 Direction
     {
         readonly get =>
@@ -89,6 +92,7 @@ public struct SpotLight
         }
     }
 
+    /// <summary>Full cone angle of the spotlight.</summary>
     public Angle Angle
     {
         readonly get =>
@@ -109,6 +113,7 @@ public struct SpotLight
         }
     }
 
+    /// <summary>Light color.</summary>
     public Color Color
     {
         readonly get =>
@@ -118,6 +123,7 @@ public struct SpotLight
             _color = value;
     }
 
+    /// <summary>Non-negative light intensity.</summary>
     public float Intensity
     {
         readonly get =>

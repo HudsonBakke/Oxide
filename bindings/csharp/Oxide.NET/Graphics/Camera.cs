@@ -9,6 +9,7 @@ public sealed class Camera
     private readonly CameraSafeHandle
         _handle;
 
+    /// <summary>Initializes or accesses Camera.</summary>
     public Camera()
     {
         NativeMethods.Check(
@@ -124,6 +125,7 @@ public Angle FieldOfView
         }
     }
 
+    /// <summary>Translates the camera in world space.</summary>
     public void TranslateBy(
         Vec3 translation
     )
@@ -137,6 +139,7 @@ public Angle FieldOfView
         );
     }
 
+    /// <summary>Sets camera orientation from pitch, yaw, and roll.</summary>
     public void SetEuler(
         Angle pitch,
         Angle yaw,
@@ -204,6 +207,7 @@ public float FarPlane
         }
     }
 
+    /// <summary>Applies an incremental pitch rotation.</summary>
     public void RotatePitchBy(
         Angle angle
     )
@@ -217,6 +221,7 @@ public float FarPlane
         );
     }
 
+    /// <summary>Applies an incremental yaw rotation.</summary>
     public void RotateYawBy(
         Angle angle
     )
@@ -230,6 +235,7 @@ public float FarPlane
         );
     }
 
+    /// <summary>Applies an incremental roll rotation.</summary>
     public void RotateRollBy(
         Angle angle
     )

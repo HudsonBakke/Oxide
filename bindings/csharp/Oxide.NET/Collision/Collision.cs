@@ -7,6 +7,7 @@ namespace Oxide.Collision;
 /// <summary>Static collision queries between transformed meshes.</summary>
 public static class Collision
 {
+    /// <summary>Returns whether the two transformed meshes intersect.</summary>
     public static bool Collides(
         Mesh meshA,
         Transform transformA,

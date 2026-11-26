@@ -1,5 +1,6 @@
 namespace Oxide.Input;
 
+/// <summary>Keyboard keys recognized by Oxide input snapshots.</summary>
 public enum Keys
 {
     A, B, C, D, E, F, G, H, I, J, K, L, M,

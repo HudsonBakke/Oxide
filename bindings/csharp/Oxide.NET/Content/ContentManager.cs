@@ -58,6 +58,7 @@ public unsafe string CacheDirectory
         }
     }
 
+    /// <summary>Creates a content manager.</summary>
     public ContentManager()
     {
         NativeMethods.Check(
@@ -73,6 +74,7 @@ public unsafe string CacheDirectory
             );
     }
 
+    /// <summary>Creates a content manager.</summary>
     public ContentManager(
         string cacheDirectory
     )

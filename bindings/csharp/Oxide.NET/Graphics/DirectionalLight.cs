@@ -13,6 +13,7 @@ public struct DirectionalLight
     private Color _color;
     private float _intensity;
 
+    /// <summary>Creates or accesses DirectionalLight.</summary>
     public DirectionalLight(
         Vec3 direction,
         Color color,
@@ -43,6 +44,7 @@ public struct DirectionalLight
         _intensity = intensity;
     }
 
+    /// <summary>Normalized direction in which the light travels.</summary>
     public Vec3 Direction
     {
         readonly get =>
@@ -64,12 +66,14 @@ public struct DirectionalLight
         }
     }
 
+    /// <summary>Light color.</summary>
     public Color Color
     {
         readonly get => _color;
         set => _color = value;
     }
 
+    /// <summary>Non-negative light intensity.</summary>
     public float Intensity
     {
         readonly get => _intensity;

@@ -16,6 +16,7 @@ public enum MouseButtons
 /// <summary>Provides snapshots of mouse input.</summary>
 public static class Mouse
 {
+    /// <summary>Returns an input snapshot for the current frame.</summary>
     public static MouseState GetState()
     {
         NativeMethods.Check(
@@ -34,8 +35,11 @@ public readonly struct MouseState
     private readonly ulong _current;
     private readonly ulong _previous;
 
+    /// <summary>Current cursor position in window coordinates.</summary>
     public Vec2 Position { get; }
+    /// <summary>Cursor movement accumulated during the current frame.</summary>
     public Vec2 Delta { get; }
+    /// <summary>Scroll-wheel movement accumulated during the current frame.</summary>
     public Vec2 ScrollDelta { get; }
 
     internal MouseState(NativeMouseState state)
@@ -47,9 +51,11 @@ public readonly struct MouseState
         ScrollDelta = state.ScrollDelta;
     }
 
+    /// <summary>Returns whether the button is held.</summary>
     public bool IsButtonDown(MouseButtons button) =>
         IsSet((int)button);
 
+    /// <summary>Returns whether the button is not held.</summary>
     public bool IsButtonUp(MouseButtons button) =>
         !IsButtonDown(button);
 
@@ -63,16 +69,20 @@ public bool IsButtonReleased(MouseButtons button) =>
         !IsSet(_current, (int)button)
         && IsSet(_previous, (int)button);
 
+    /// <summary>Returns whether an additional mouse button is held.</summary>
     public bool IsOtherButtonDown(ushort button) =>
         IsSet(5 + button);
 
+    /// <summary>Returns whether an additional mouse button is not held.</summary>
     public bool IsOtherButtonUp(ushort button) =>
         !IsOtherButtonDown(button);
 
+    /// <summary>Returns true only when an additional button transitions from up to down.</summary>
     public bool IsOtherButtonPressed(ushort button) =>
         IsSet(_current, 5 + button)
         && !IsSet(_previous, 5 + button);
 
+    /// <summary>Returns true only when an additional button transitions from down to up.</summary>
     public bool IsOtherButtonReleased(ushort button) =>
         !IsSet(_current, 5 + button)
         && IsSet(_previous, 5 + button);

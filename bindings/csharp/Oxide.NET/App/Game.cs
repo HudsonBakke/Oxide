@@ -25,6 +25,7 @@ protected virtual void Initialize()
     {
     }
 
+    /// <summary>Called once per update with timing information.</summary>
     protected virtual void Update(
         GameTime time
     )
@@ -38,15 +39,19 @@ protected virtual void Draw(
     {
     }
 
+    /// <summary>Current window width in pixels.</summary>
     public uint WindowWidth =>
         NativeMethods.oxide_app_window_width();
 
+    /// <summary>Current window height in pixels.</summary>
     public uint WindowHeight =>
         NativeMethods.oxide_app_window_height();
 
+    /// <summary>Whether the Oxide window currently has input focus.</summary>
     public bool IsWindowFocused =>
         NativeMethods.oxide_app_is_window_focused() != 0;
 
+    /// <summary>Gets or sets fullscreen mode.</summary>
     public bool IsFullscreen
     {
         get =>
@@ -130,6 +135,7 @@ public void SetPreferredBackbufferSize(
         );
     }
 
+    /// <summary>Requests a new backbuffer width while preserving height.</summary>
     public void SetPreferredBackbufferWidth(
         uint width
     )
@@ -140,6 +146,7 @@ public void SetPreferredBackbufferSize(
         );
     }
 
+    /// <summary>Requests a new backbuffer height while preserving width.</summary>
     public void SetPreferredBackbufferHeight(
         uint height
     )
@@ -182,6 +189,7 @@ public void Run()
         );
     }
 
+    /// <summary>Starts the application loop; a Game instance can run only once.</summary>
     public void Run(
         AppConfig config
     )
@@ -275,6 +283,7 @@ public void Run()
         }
     }
 
+    /// <summary>Releases managed resources associated with the game instance.</summary>
     public void Dispose()
     {
         if (_disposed)

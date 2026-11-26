@@ -8,11 +8,16 @@ namespace Oxide.Math;
 public struct Vec4
     : IEquatable<Vec4>
 {
+    /// <summary>X component.</summary>
     public float X;
+    /// <summary>Y component.</summary>
     public float Y;
+    /// <summary>Z component.</summary>
     public float Z;
+    /// <summary>W component.</summary>
     public float W;
 
+    /// <summary>Creates or accesses Vec4.</summary>
     public Vec4(
         float x,
         float y,
@@ -26,6 +31,7 @@ public struct Vec4
         W = w;
     }
 
+    /// <summary>Creates homogeneous coordinates for a position with W = 1.</summary>
     public static Vec4 FromPosition(
         Vec3 position
     )
@@ -38,6 +44,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Creates homogeneous coordinates for a direction with W = 0.</summary>
     public static Vec4 FromDirection(
         Vec3 direction
     )
@@ -50,6 +57,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Tests value equality.</summary>
     public readonly bool Equals(
         Vec4 other
     )

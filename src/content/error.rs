@@ -1,6 +1,7 @@
 use std::{fmt, io, path::PathBuf};
 
 #[derive(Debug)]
+/// Error produced while validating, importing, caching, or loading content.
 pub enum ContentError {
     FileNotFound {
         path: PathBuf,

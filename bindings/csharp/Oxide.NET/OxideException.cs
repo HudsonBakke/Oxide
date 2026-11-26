@@ -4,6 +4,7 @@ using Oxide.Native;
 
 namespace Oxide;
 
+/// <summary>Base exception reported by the Oxide native runtime.</summary>
 public enum OxideErrorKind
 {
     InvalidArgument = 1,

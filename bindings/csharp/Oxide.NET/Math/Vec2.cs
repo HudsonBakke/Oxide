@@ -8,9 +8,12 @@ namespace Oxide.Math;
 public struct Vec2
     : IEquatable<Vec2>
 {
+    /// <summary>X component.</summary>
     public float X;
+    /// <summary>Y component.</summary>
     public float Y;
 
+    /// <summary>Creates or accesses Vec2.</summary>
     public Vec2(
         float x,
         float y
@@ -20,12 +23,14 @@ public struct Vec2
         Y = y;
     }
 
+    /// <summary>Vector magnitude.</summary>
     public readonly float Length =>
         MathF.Sqrt(
             X * X
             + Y * Y
         );
 
+    /// <summary>Returns a normalized copy; zero vectors remain zero.</summary>
     public readonly Vec2 Normalized()
     {
         float length =
@@ -42,6 +47,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Normalizes this vector in place; zero vectors remain zero.</summary>
     public void Normalize()
     {
         float length =
@@ -56,6 +62,7 @@ public struct Vec2
         Y /= length;
     }
 
+    /// <summary>Returns the dot product with another vector.</summary>
     public readonly float Dot(
         Vec2 other
     )
@@ -126,6 +133,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Tests value equality.</summary>
     public readonly bool Equals(
         Vec2 other
     )

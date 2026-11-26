@@ -5,6 +5,7 @@ namespace Oxide.Input;
 /// <summary>Provides snapshots of keyboard input.</summary>
 public static class Keyboard
 {
+    /// <summary>Returns an input snapshot for the current frame.</summary>
     public static KeyboardState GetState()
     {
         NativeMethods.Check(
@@ -35,9 +36,11 @@ public readonly struct KeyboardState
         _previous1 = state.Previous1;
     }
 
+    /// <summary>Returns whether the key is held.</summary>
     public bool IsKeyDown(Keys key) =>
         IsSet(_current0, _current1, (int)key);
 
+    /// <summary>Returns whether the key is not held.</summary>
     public bool IsKeyUp(Keys key) =>
         !IsKeyDown(key);
 

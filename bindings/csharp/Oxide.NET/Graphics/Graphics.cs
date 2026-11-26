@@ -22,6 +22,7 @@ public sealed class Graphics
         _valid = true;
     }
 
+    /// <summary>Gets the current backbuffer width or requests a new width.</summary>
     public uint PreferredBackbufferWidth
     {
         get => NativeMethods.oxide_app_window_width();
@@ -45,6 +46,7 @@ public sealed class Graphics
         }
     }
 
+    /// <summary>Gets the current backbuffer height or requests a new height.</summary>
     public uint PreferredBackbufferHeight
     {
         get => NativeMethods.oxide_app_window_height();
@@ -68,6 +70,7 @@ public sealed class Graphics
         }
     }
 
+    /// <summary>Rectangle covering the current backbuffer.</summary>
     public Rect FullRect
     {
         get
@@ -167,6 +170,7 @@ public void BindCamera(
         );
     }
 
+    /// <summary>Adds a light to the current frame's lighting state.</summary>
     public void AddLight(
         PointLight light
     )
@@ -182,6 +186,7 @@ public void BindCamera(
         );
     }
 
+    /// <summary>Adds a light to the current frame's lighting state.</summary>
     public void AddLight(
         SpotLight light
     )
@@ -197,6 +202,7 @@ public void BindCamera(
         );
     }
 
+    /// <summary>Adds a light to the current frame's lighting state.</summary>
     public void AddLight(
         DirectionalLight light
     )
