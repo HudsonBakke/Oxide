@@ -36,7 +36,10 @@ impl Texture {
         let image = image::open(path)?;
 
         if path.extension().and_then(|v| v.to_str())
-            .is_some_and(|v| v.eq_ignore_ascii_case("hdr"))
+            .is_some_and(|v| {
+                v.eq_ignore_ascii_case("hdr")
+                    || v.eq_ignore_ascii_case("exr")
+            })
         {
             let image = image.to_rgb32f();
             let width = image.width();
@@ -384,7 +387,7 @@ impl ContentAssetInternal for Texture {
     fn supports_extension(extension: &str) -> bool {
         matches!(
             extension,
-            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tif" | "tiff" | "webp" | "hdr" | "gltf" | "glb"
+            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tif" | "tiff" | "webp" | "hdr" | "exr" | "gltf" | "glb"
         )
     }
 

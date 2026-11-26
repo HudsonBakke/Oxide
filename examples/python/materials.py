@@ -1,7 +1,7 @@
 import math
 
 from oxide.app import AppConfig, Game
-from oxide.content import Material, Mesh, Texture, Vertex
+from oxide.content import ContentManager, Material, Mesh, Texture, Vertex
 from oxide.graphics import Camera, Color, DirectionalLight, Environment, Graphics, PointLight
 from oxide.math import Transform, Vec2, Vec3
 
@@ -107,13 +107,18 @@ class MaterialTest(Game):
         self.emissive.emissive_color = Color.rgb(0.1,0.65,1.0)
         self.emissive.emissive_strength = 4.0
 
+        content = ContentManager("materials-hdr-python-cache")
+        environment_texture_value = content.load(
+            Texture,
+            "assets/hdr_background_test.exr",
+        )
         self.environment = Environment(
             Color.WHITE,
-            0.08,
-            environment_texture(),
-            0.65,
-            environment_texture(),
-            Color.rgb(0.10,0.15,0.25),
+            0.03,
+            environment_texture_value,
+            1.0,
+            environment_texture_value,
+            Color.BLACK,
         )
 
         self.light = PointLight(Vec3(-2.5,5.5,5), Color.WHITE, 65.0)

@@ -1,3 +1,4 @@
+using Oxide.Content;
 using Oxide.App;
 using Oxide.Graphics;
 using Oxide.Math;
@@ -20,13 +21,17 @@ internal sealed class MaterialTest : Game
 
     public MaterialTest()
     {
+        var content = new ContentManager("materials-hdr-csharp-cache");
+        Texture environmentTexture =
+            content.Load<Texture>("assets/hdr_background_test.exr");
+
         _environment = new Oxide.Graphics.Environment(
             Color.White,
-            0.08f,
-            EnvironmentTexture(),
-            0.65f,
-            EnvironmentTexture(),
-            new Color(0.10f,0.15f,0.25f,1)
+            0.03f,
+            environmentTexture,
+            1.0f,
+            environmentTexture,
+            Color.Black
         );
         _normalMapped.Roughness = 0.55f;
         _normalMapped.NormalTexture = ProceduralNormalMap();

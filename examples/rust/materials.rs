@@ -1,5 +1,6 @@
 use oxide::{
     app::{AppConfig, Game},
+    content::ContentManager,
     graphics::{Camera, Color, DirectionalLight, Environment, Graphics, Material, Mesh, PointLight, Texture, Vertex},
     math::{Transform, Vec2, Vec3},
 };
@@ -43,13 +44,18 @@ impl MaterialTest {
         emissive.set_emissive_color(Color::rgb(0.1, 0.65, 1.0));
         emissive.set_emissive_strength(4.0).unwrap();
 
+        let content = ContentManager::new("materials-hdr-cache");
+        let environment_texture = content
+            .load::<Texture>("assets/hdr_background_test.exr")
+            .expect("failed to load assets/hdr_background_test.exr");
+
         let environment = Environment::new(
             Color::WHITE,
-            0.08,
-            Some(environment_texture()),
-            0.65,
-            Some(environment_texture()),
-            Color::rgb(0.10, 0.15, 0.25),
+            0.03,
+            Some(environment_texture.clone()),
+            1.0,
+            Some(environment_texture),
+            Color::BLACK,
         )
         .unwrap();
 
