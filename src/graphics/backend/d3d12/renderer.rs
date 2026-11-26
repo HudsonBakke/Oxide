@@ -1287,3 +1287,34 @@ impl Drop for D3D12Renderer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn directional_shadow_pipelines_and_depth_views_are_valid_on_d3d12() {
+        let device = D3D12Device::warp_for_test().unwrap();
+        // Creating the real PSOs checks shader/root-signature compatibility,
+        // including comparison sampling and the depth-only output layout.
+        let mut renderer = D3D12Renderer::new(&device).unwrap();
+        let mut srv = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        srv.ptr += renderer.texture_descriptor_size as usize;
+        for resolution in [128, 1024] {
+            let map = ShadowMap::new(&device, resolution, srv).unwrap();
+            assert_eq!(map.resolution, resolution);
+            assert_eq!(unsafe { map.resource.GetDesc() }.Width, resolution as u64);
+        }
+        let light = DirectionalLight::new(crate::math::Vec3::new(0.0, -1.0, 0.0), crate::graphics::Color::WHITE, 1.0).unwrap();
+        let settings = DirectionalShadowSettings::default();
+        // These errors must be raised before recording any GPU commands.
+        renderer.scene_started = true;
+        assert!(renderer.begin_shadow_pass(&device, &light, &settings).is_err());
+        renderer.scene_started = false;
+        renderer.shadow_ready = true;
+        assert!(renderer.begin_shadow_pass(&device, &light, &settings).is_err());
+        renderer.shadow_ready = false;
+        let mesh = Mesh::new(Vec::new(), Vec::new());
+        assert!(renderer.draw_shadow_mesh(&device, &mesh, &Transform::new()).is_err());
+    }
+}

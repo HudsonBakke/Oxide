@@ -554,14 +554,26 @@ class DirectionalShadowSettings(ctypes.Structure):
         ("normal_bias", ctypes.c_float),
     ]
 
-    def __init__(self, center: Vec3 | None = None, size: float = 30.0,
-                 depth: float = 60.0, resolution: int = 1024,
-                 depth_bias: float = 0.0001, normal_bias: float = 0.01) -> None:
+    def __init__(
+        self,
+        center: Vec3 | None = None,
+        size: float = 30.0,
+        depth: float = 60.0,
+        resolution: int = 1024,
+        depth_bias: float = 0.0001,
+        normal_bias: float = 0.01,
+    ) -> None:
         """Creates shadow settings; the native begin call validates field values."""
-        if not isinstance(resolution, int) or not 128 <= resolution <= 4096 or resolution & (resolution - 1):
+        if (
+            not isinstance(resolution, int)
+            or not 128 <= resolution <= 4096
+            or resolution & (resolution - 1)
+        ):
             raise ValueError("resolution must be a power of two from 128 through 4096")
-        super().__init__(center if center is not None else Vec3(), size, depth,
-                         resolution, depth_bias, normal_bias)
+        super().__init__(
+            center if center is not None else Vec3(),
+            size, depth, resolution, depth_bias, normal_bias,
+        )
 
 
 class Graphics:
@@ -682,7 +694,9 @@ class Graphics:
             )
         )
 
-    def begin_shadow_pass(self, light: DirectionalLight, settings: DirectionalShadowSettings) -> None:
+    def begin_shadow_pass(
+        self, light: DirectionalLight, settings: DirectionalShadowSettings
+    ) -> None:
         """Begins the frame's single directional shadow pass before binding a camera.
 
         Add the same unchanged light for scene draws. Submit opaque casters,
@@ -693,7 +707,9 @@ class Graphics:
             raise TypeError("light must be a DirectionalLight")
         if not isinstance(settings, DirectionalShadowSettings):
             raise TypeError("settings must be DirectionalShadowSettings")
-        _native.check(_native.lib.oxide_graphics_begin_shadow_pass(self._handle, light, settings))
+        _native.check(
+            _native.lib.oxide_graphics_begin_shadow_pass(self._handle, light, settings)
+        )
 
     def draw_shadow_mesh(self, mesh: Mesh, transform: Transform) -> None:
         """Submits an opaque caster during an open shadow pass using its scene transform.
@@ -705,7 +721,9 @@ class Graphics:
             raise TypeError("mesh must be a Mesh")
         if not isinstance(transform, Transform):
             raise TypeError("transform must be a Transform")
-        _native.check(_native.lib.oxide_graphics_draw_shadow_mesh(self._handle, mesh._handle, transform))
+        _native.check(
+            _native.lib.oxide_graphics_draw_shadow_mesh(self._handle, mesh._handle, transform)
+        )
 
     def end_shadow_pass(self) -> None:
         """Ends the shadow pass. Bind a camera before scene draws; all viewports share this frame's map."""

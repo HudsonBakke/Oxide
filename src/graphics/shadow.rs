@@ -41,12 +41,19 @@ impl Default for DirectionalShadowSettings {
 impl DirectionalShadowSettings {
     /// Checks coverage, resolution, and bias, returning InvalidArgument on invalid values.
     pub fn validate(&self) -> OxideResult<()> {
-        let valid = [self.center.x, self.center.y, self.center.z].iter().all(|v| v.is_finite())
-            && self.size.is_finite() && self.size > 0.0
-            && self.depth.is_finite() && self.depth > 0.0
-            && (128..=4096).contains(&self.resolution) && self.resolution.is_power_of_two()
-            && self.depth_bias.is_finite() && self.depth_bias >= 0.0
-            && self.normal_bias.is_finite() && self.normal_bias >= 0.0;
+        let valid = [self.center.x, self.center.y, self.center.z]
+            .iter()
+            .all(|v| v.is_finite())
+            && self.size.is_finite()
+            && self.size > 0.0
+            && self.depth.is_finite()
+            && self.depth > 0.0
+            && (128..=4096).contains(&self.resolution)
+            && self.resolution.is_power_of_two()
+            && self.depth_bias.is_finite()
+            && self.depth_bias >= 0.0
+            && self.normal_bias.is_finite()
+            && self.normal_bias >= 0.0;
         if !valid {
             return Err(OxideError::InvalidArgument {
                 argument: "shadow settings",
@@ -78,9 +85,15 @@ impl DirectionalShadowSettings {
         let xy = 2.0 / self.size;
         let z = 1.0 / self.depth;
         let matrix = Mat4::from_array([
-            [right.x * xy, right.y * xy, right.z * xy, -right.dot(&self.center) * xy],
+            [
+                right.x * xy, right.y * xy, right.z * xy,
+                -right.dot(&self.center) * xy,
+            ],
             [up.x * xy, up.y * xy, up.z * xy, -up.dot(&self.center) * xy],
-            [forward.x * z, forward.y * z, forward.z * z, 0.5 - forward.dot(&self.center) * z],
+            [
+                forward.x * z, forward.y * z, forward.z * z,
+                0.5 - forward.dot(&self.center) * z,
+            ],
             [0.0, 0.0, 0.0, 1.0],
         ]);
         if matrix.as_array().iter().flatten().any(|v| !v.is_finite()) {
