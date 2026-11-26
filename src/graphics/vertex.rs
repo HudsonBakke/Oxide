@@ -21,7 +21,12 @@ impl Vertex {
             position,
             normal,
             tex_coord,
-            tangent: Vec4::new(0.0, 0.0, 0.0, 1.0),
+            tangent: Vec4 {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
         }
     }
 

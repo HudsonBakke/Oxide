@@ -381,10 +381,11 @@ impl D3D12Renderer {
             self.texture_cache.insert(texture_id, gpu_texture);
         }
 
-        let gpu_texture = self
+        let base_descriptor_index = self
             .texture_cache
             .get(&texture_id)
-            .expect("texture should be cached after upload");
+            .expect("texture should be cached after upload")
+            .descriptor_index();
 
         let normal_texture = material.normal_texture();
         let normal_texture_id = normal_texture.id();
@@ -402,10 +403,11 @@ impl D3D12Renderer {
             self.texture_cache.insert(normal_texture_id, gpu_normal);
         }
 
-        let gpu_normal = self
+        let normal_descriptor_index = self
             .texture_cache
             .get(&normal_texture_id)
-            .expect("normal texture should be cached after upload");
+            .expect("normal texture should be cached after upload")
+            .descriptor_index();
 
         // t0 and t1 must be consecutive in the descriptor table. Cache one
         // stable descriptor pair for each base/normal texture combination.
@@ -423,12 +425,12 @@ impl D3D12Renderer {
             self.next_texture_descriptor += 2;
             self.copy_texture_descriptor(
                 device,
-                gpu_texture.descriptor_index(),
+                base_descriptor_index,
                 index,
             );
             self.copy_texture_descriptor(
                 device,
-                gpu_normal.descriptor_index(),
+                normal_descriptor_index,
                 index + 1,
             );
             self.material_descriptor_cache.insert(pair_key, index);
