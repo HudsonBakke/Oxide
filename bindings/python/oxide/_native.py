@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import ctypes
 import os
-from enum import IntEnum
 from pathlib import Path
 
+from .errors import OxideStatus, error_type_for
 from .math import (
     Angle,
     Quaternion,
@@ -14,15 +14,6 @@ from .math import (
     Vec3,
     Vec4,
 )
-
-
-class OxideStatus(IntEnum):
-    OK = 0
-    INVALID_ARGUMENT = 1
-    INVALID_OPERATION = 2
-    CONTENT_ERROR = 3
-    GRAPHICS_ERROR = 4
-    INTERNAL_ERROR = 5
 
 
 class NativeGameTime(ctypes.Structure):
@@ -436,6 +427,16 @@ def check(
     if status == OxideStatus.OK:
         return
 
-    raise RuntimeError(
-        last_error_message()
+    try:
+        typed_status = OxideStatus(status)
+    except ValueError:
+        typed_status = OxideStatus.INTERNAL_ERROR
+
+    error_type = error_type_for(
+        typed_status
+    )
+
+    raise error_type(
+        typed_status,
+        last_error_message(),
     )

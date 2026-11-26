@@ -1,3 +1,12 @@
+from .errors import (
+    ContentError,
+    GraphicsError,
+    InternalError,
+    InvalidArgumentError,
+    InvalidOperationError,
+    OxideError,
+    OxideStatus,
+)
 from .collision import collides
 from .app import (
     AppConfig,
@@ -33,6 +42,13 @@ from .graphics import (
 )
 
 __all__ = [
+    "ContentError",
+    "GraphicsError",
+    "InternalError",
+    "InvalidArgumentError",
+    "InvalidOperationError",
+    "OxideError",
+    "OxideStatus",
     "collides",
     "Angle",
     "AppConfig",

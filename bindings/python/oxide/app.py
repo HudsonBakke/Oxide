@@ -52,14 +52,19 @@ class Game:
         if config is None:
             config = AppConfig()
 
-        if config.width <= 0:
-            raise ValueError(
-                "width must be greater than zero"
+        if not isinstance(config.title, str):
+            raise TypeError(
+                "title must be a string"
             )
 
-        if config.height <= 0:
+        if not 1 <= config.width <= 0xFFFFFFFF:
             raise ValueError(
-                "height must be greater than zero"
+                "width must be between 1 and 4294967295"
+            )
+
+        if not 1 <= config.height <= 0xFFFFFFFF:
+            raise ValueError(
+                "height must be between 1 and 4294967295"
             )
 
         title = config.title.encode(
