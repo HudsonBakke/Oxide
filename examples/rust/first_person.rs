@@ -1,7 +1,7 @@
 use oxide::{
     app::{self, AppConfig, Game, GameTime},
     graphics::{
-        Camera, Color, DirectionalLight, Graphics, Material, Mesh, Vertex,
+        Camera, Color, DirectionalLight, Graphics, Material, Mesh, PointLight, SpotLight, Vertex,
     },
     input::{Keyboard, Keys, Mouse},
     math::{Angle, Quaternion, Transform, Vec2, Vec3},
@@ -17,7 +17,11 @@ struct Demo {
     dark: Material,
     brown: Material,
     red: Material,
-    sun: DirectionalLight,
+    directional_lights: [DirectionalLight; 4],
+    sun: PointLight,
+    flashlight: SpotLight,
+    yellow: Material,
+    gray: Material,
     captured: bool,
 }
 
@@ -34,11 +38,22 @@ impl Demo {
             brown: Material::solid(Color::rgb(0.45, 0.25, 0.10)),
             red: Material::solid(Color::rgb(0.65, 0.16, 0.10)),
             captured: false,
-            sun: DirectionalLight::new(
-                Vec3::new(-0.5, -1.0, -0.35),
+            directional_lights: [
+                DirectionalLight::new(Vec3::new(0.0, -1.0, 0.0), Color::rgb(1.0, 0.75, 0.65), 0.30).unwrap(),
+                DirectionalLight::new(Vec3::new(0.0, 1.0, 0.0), Color::rgb(0.45, 0.55, 1.0), 0.18).unwrap(),
+                DirectionalLight::new(Vec3::new(-1.0, 0.0, 0.0), Color::rgb(1.0, 0.35, 0.30), 0.22).unwrap(),
+                DirectionalLight::new(Vec3::new(1.0, 0.0, 0.0), Color::rgb(0.30, 1.0, 0.45), 0.22).unwrap(),
+            ],
+            sun: PointLight::new(Vec3::new(6.0, 7.0, -8.0), Color::rgb(1.0, 0.85, 0.55), 7.0).unwrap(),
+            flashlight: SpotLight::new(
+                Vec3::new(-4.0, 1.2, -3.0),
+                Vec3::new(0.8, -0.15, -1.0),
+                Angle::degrees(32.0),
                 Color::WHITE,
-                1.25,
+                5.0,
             ).unwrap(),
+            yellow: Material::solid(Color::rgb(1.0, 0.75, 0.10)),
+            gray: Material::solid(Color::rgb(0.22, 0.24, 0.28)),
         }
     }
 
@@ -129,7 +144,11 @@ impl Game for Demo {
 
     fn draw(&mut self, graphics: &mut Graphics) {
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
+        for light in &self.directional_lights {
+            graphics.add_light(light);
+        }
         graphics.add_light(&self.sun);
+        graphics.add_light(&self.flashlight);
 
         for x in -5..=5 {
             for z in -5..=5 {
@@ -145,6 +164,14 @@ impl Game for Demo {
                 graphics.draw_mesh(&self.floor, material, &transform).unwrap();
             }
         }
+
+        // Visible sun marker at exactly the point-light position.
+        Self::draw_box(graphics, &self.cube, &self.yellow, Vec3::new(6.0, 7.0, -8.0), Vec3::new(1.2, 1.2, 1.2));
+
+        // Flashlight body. The spotlight originates at its bright front cap
+        // and points diagonally across the floor toward the scarecrow.
+        Self::draw_box(graphics, &self.cube, &self.gray, Vec3::new(-4.35, 1.25, -2.55), Vec3::new(0.45, 0.45, 1.4));
+        Self::draw_box(graphics, &self.cube, &self.yellow, Vec3::new(-4.0, 1.2, -3.0), Vec3::new(0.55, 0.55, 0.18));
 
         // Scarecrow: post, torso, head, arms, and hat.
         Self::draw_box(graphics, &self.cube, &self.brown, Vec3::new(0.0, 1.5, -6.0), Vec3::new(0.22, 3.0, 0.22));

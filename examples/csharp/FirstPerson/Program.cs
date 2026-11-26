@@ -14,11 +14,29 @@ internal sealed class FirstPersonGame : Game
     private readonly Material _brown = Material.Solid(new Color(0.45f, 0.25f, 0.10f, 1.0f));
     private readonly Material _red = Material.Solid(new Color(0.65f, 0.16f, 0.10f, 1.0f));
 
-    private readonly DirectionalLight _sun = new(
-        new Vec3(-0.5f, -1.0f, -0.35f),
-        Color.White,
-        1.25f
+    private readonly DirectionalLight[] _directionalLights = {
+        new(new Vec3(0,-1,0), new Color(1.0f,0.75f,0.65f,1), 0.30f),
+        new(new Vec3(0,1,0), new Color(0.45f,0.55f,1.0f,1), 0.18f),
+        new(new Vec3(-1,0,0), new Color(1.0f,0.35f,0.30f,1), 0.22f),
+        new(new Vec3(1,0,0), new Color(0.30f,1.0f,0.45f,1), 0.22f),
+    };
+
+    private readonly PointLight _sun = new(
+        new Vec3(6, 7, -8),
+        new Color(1.0f, 0.85f, 0.55f, 1),
+        7.0f
     );
+
+    private readonly SpotLight _flashlight = new(
+        new Vec3(-4, 1.2f, -3),
+        new Vec3(0.8f, -0.15f, -1),
+        Angle.Degrees(32),
+        Color.White,
+        5.0f
+    );
+
+    private readonly Material _yellow = Material.Solid(new Color(1.0f,0.75f,0.10f,1));
+    private readonly Material _gray = Material.Solid(new Color(0.22f,0.24f,0.28f,1));
 
     private float _yaw;
     private float _pitch;
@@ -111,7 +129,10 @@ internal sealed class FirstPersonGame : Game
     protected override void Draw(Graphics graphics)
     {
         graphics.BindCamera(_camera, graphics.FullRect);
+        foreach (DirectionalLight light in _directionalLights)
+            graphics.AddLight(light);
         graphics.AddLight(_sun);
+        graphics.AddLight(_flashlight);
 
         for (int x = -5; x <= 5; x++)
         {
@@ -126,6 +147,10 @@ internal sealed class FirstPersonGame : Game
                 );
             }
         }
+
+        DrawBox(graphics, _cube, _yellow, new Vec3(6,7,-8), new Vec3(1.2f,1.2f,1.2f));
+        DrawBox(graphics, _cube, _gray, new Vec3(-4.35f,1.25f,-2.55f), new Vec3(0.45f,0.45f,1.4f));
+        DrawBox(graphics, _cube, _yellow, new Vec3(-4,1.2f,-3), new Vec3(0.55f,0.55f,0.18f));
 
         DrawBox(graphics, _cube, _brown, new Vec3(0, 1.5f, -6), new Vec3(0.22f, 3, 0.22f));
         DrawBox(graphics, _cube, _red, new Vec3(0, 2.8f, -6), new Vec3(1.4f, 1.3f, 0.55f));

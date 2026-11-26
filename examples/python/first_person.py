@@ -1,6 +1,6 @@
 from oxide.app import AppConfig, Game, GameTime
 from oxide.content import Material, Mesh, Vertex
-from oxide.graphics import Camera, Color, DirectionalLight, Graphics
+from oxide.graphics import Camera, Color, DirectionalLight, Graphics, PointLight, SpotLight
 from oxide.input import Keyboard, Keys, Mouse, MouseButtons
 from oxide.math import Angle, Quaternion, Transform, Vec2, Vec3
 
@@ -55,11 +55,22 @@ class FirstPersonGame(Game):
         self.dark = Material.solid(Color.rgb(0.12, 0.18, 0.12))
         self.brown = Material.solid(Color.rgb(0.45, 0.25, 0.10))
         self.red = Material.solid(Color.rgb(0.65, 0.16, 0.10))
-        self.sun = DirectionalLight(
-            Vec3(-0.5, -1.0, -0.35),
+        self.directional_lights = [
+            DirectionalLight(Vec3(0,-1,0), Color.rgb(1.0,0.75,0.65), 0.30),
+            DirectionalLight(Vec3(0,1,0), Color.rgb(0.45,0.55,1.0), 0.18),
+            DirectionalLight(Vec3(-1,0,0), Color.rgb(1.0,0.35,0.30), 0.22),
+            DirectionalLight(Vec3(1,0,0), Color.rgb(0.30,1.0,0.45), 0.22),
+        ]
+        self.sun = PointLight(Vec3(6,7,-8), Color.rgb(1.0,0.85,0.55), 7.0)
+        self.flashlight = SpotLight(
+            Vec3(-4,1.2,-3),
+            Vec3(0.8,-0.15,-1),
+            Angle.degrees(32),
             Color.WHITE,
-            1.25,
+            5.0,
         )
+        self.yellow = Material.solid(Color.rgb(1.0,0.75,0.10))
+        self.gray = Material.solid(Color.rgb(0.22,0.24,0.28))
         self.yaw = 0.0
         self.pitch = 0.0
         self.captured = False
@@ -138,7 +149,10 @@ class FirstPersonGame(Game):
 
     def draw(self, graphics: Graphics) -> None:
         graphics.bind_camera(self.camera, graphics.full_rect)
+        for light in self.directional_lights:
+            graphics.add_light(light)
         graphics.add_light(self.sun)
+        graphics.add_light(self.flashlight)
 
         for x in range(-5, 6):
             for z in range(-5, 6):
@@ -149,6 +163,10 @@ class FirstPersonGame(Game):
                     Vec3(x * 2.0, 0.0, z * 2.0),
                     Vec3(2.0, 1.0, 2.0),
                 )
+
+        self.draw_box(graphics, self.cube, self.yellow, Vec3(6,7,-8), Vec3(1.2,1.2,1.2))
+        self.draw_box(graphics, self.cube, self.gray, Vec3(-4.35,1.25,-2.55), Vec3(0.45,0.45,1.4))
+        self.draw_box(graphics, self.cube, self.yellow, Vec3(-4,1.2,-3), Vec3(0.55,0.55,0.18))
 
         self.draw_box(graphics, self.cube, self.brown, Vec3(0,1.5,-6), Vec3(0.22,3,0.22))
         self.draw_box(graphics, self.cube, self.red, Vec3(0,2.8,-6), Vec3(1.4,1.3,0.55))
