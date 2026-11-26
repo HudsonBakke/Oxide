@@ -18,6 +18,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+
+
 #ifdef _WIN32
 /** Import visibility for declarations supplied by oxide.dll. */
 #define OXIDE_API __declspec(dllimport)
@@ -215,6 +217,25 @@ extern "C"
         /** Opaque callback token; do not dereference. */
         void *ptr;
     } OxideGraphicsHandle;
+
+/**
+ * @brief Reads the persistent linear exposure multiplier (default one).
+ * @param graphics Borrowed handle valid during the current draw callback.
+ * @param[out] result Non-NULL output pointer.
+ * @return OXIDE_STATUS_OK on success, or an error with a thread-local diagnostic.
+ */
+OXIDE_API OxideStatus oxide_graphics_get_exposure(OxideGraphicsHandle graphics, float* result);
+
+/**
+ * @brief Sets finite, non-negative linear exposure; zero produces black.
+ * The last value set in a draw callback applies to the entire final frame,
+ * including every viewport and background, and persists across frames.
+ * @param graphics Borrowed handle valid during the current draw callback.
+ * @param exposure Linear exposure multiplier; must be finite and non-negative.
+ * @return OXIDE_STATUS_OK on success, or an error with a thread-local diagnostic.
+ */
+OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, float exposure);
+
 
     /** Opaque owned Camera resource handle. Copying the number does not transfer or duplicate ownership. */
     typedef struct OxideCameraHandle

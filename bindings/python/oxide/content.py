@@ -346,7 +346,7 @@ class Texture(_OwnedResource):
         height: int,
         pixels: bytes | bytearray,
     ) -> Texture:
-        """Creates a texture from row-major RGBA8 bytes; requires exactly width * height * 4 bytes."""
+        """Creates a texture from RGBA8 bytes, interpreted as sRGB for color and numeric values for normal maps; requires width * height * 4 bytes."""
         data = bytes(pixels)
         array_type = ctypes.c_uint8 * len(data)
         array = array_type.from_buffer_copy(data)

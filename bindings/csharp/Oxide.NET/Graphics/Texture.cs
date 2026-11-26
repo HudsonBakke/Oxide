@@ -44,7 +44,7 @@ public sealed class Texture : IContentAsset
         }
     }
 
-    /// <summary>Creates a texture from row-major RGBA8 bytes; requires exactly width * height * 4 bytes.</summary>
+    /// <summary>Creates a texture from RGBA8 bytes, interpreted as sRGB for color and numeric values for normal maps; requires width * height * 4 bytes.</summary>
     public static unsafe Texture FromRgba(uint width, uint height, byte[] pixels)
     {
         ArgumentNullException.ThrowIfNull(pixels);

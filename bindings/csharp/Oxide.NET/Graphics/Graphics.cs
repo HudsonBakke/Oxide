@@ -13,6 +13,23 @@ public sealed class Graphics
 
     private bool _valid;
 
+    /// <summary>Finite non-negative linear exposure multiplier; defaults to one. Zero produces black.</summary>
+    /// <remarks>Persists across frames. The last value set during Draw applies to the entire surface and all viewports.</remarks>
+    public float Exposure
+    {
+        get
+        {
+            EnsureValid();
+            NativeMethods.Check(NativeMethods.oxide_graphics_get_exposure(_handle, out float value));
+            return value;
+        }
+        set
+        {
+            EnsureValid();
+            NativeMethods.Check(NativeMethods.oxide_graphics_set_exposure(_handle, value));
+        }
+    }
+
     internal Graphics(NativeGraphicsHandle handle)
     {
         _handle = handle;

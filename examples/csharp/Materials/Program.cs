@@ -2,10 +2,12 @@ using Oxide.Content;
 using Oxide.App;
 using Oxide.Graphics;
 using Oxide.Math;
+using Oxide.Input;
 
 internal sealed class MaterialTest : Game
 {
     private const int Steps = 6;
+    private float _exposure = 1.0f;
     private readonly Camera _camera = new();
     private readonly Mesh _sphere = MakeSphere(24, 16);
     private readonly List<Material> _materials = new();
@@ -44,8 +46,18 @@ internal sealed class MaterialTest : Game
         _camera.Position = new Vec3(0, 0, 15.5f);
     }
 
+    protected override void Update(GameTime time)
+    {
+        var keys = Keyboard.GetState();
+        if (keys.IsKeyPressed(Keys.Q)) _exposure = MathF.Max(_exposure * 0.5f, 1.0f / 64.0f);
+        if (keys.IsKeyPressed(Keys.E)) _exposure = MathF.Min(_exposure * 2.0f, 64.0f);
+        if (keys.IsKeyPressed(Keys.R)) _exposure = 1.0f;
+        SetWindowName($"Oxide Materials | exposure {_exposure} | Q/E adjust, R reset");
+    }
+
     protected override void Draw(Graphics graphics)
     {
+        graphics.Exposure = _exposure;
         graphics.BindCamera(_camera, graphics.FullRect);
         graphics.SetEnvironment(_environment);
         graphics.AddLight(_light);

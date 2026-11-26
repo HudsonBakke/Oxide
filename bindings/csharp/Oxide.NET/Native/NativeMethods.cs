@@ -9,6 +9,12 @@ namespace Oxide.Native;
 internal static class NativeMethods
 {
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_get_exposure(NativeGraphicsHandle graphics, out float result);
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_set_exposure(NativeGraphicsHandle graphics, float exposure);
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
     internal static extern OxideStatus oxide_run(NativeAppConfig config,
                                                  NativeGameCallbacks callbacks);
 

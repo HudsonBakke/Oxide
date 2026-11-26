@@ -7,7 +7,8 @@ use windows::{
             D3D12_GPU_DESCRIPTOR_HANDLE, D3D12_RESOURCE_BARRIER, D3D12_RESOURCE_BARRIER_0,
             D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_BARRIER_FLAG_NONE,
             D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_PRESENT,
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATES,
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            D3D12_RESOURCE_STATES,
             D3D12_RESOURCE_TRANSITION_BARRIER, D3D12_SHADER_RESOURCE_VIEW_DESC,
             D3D12_SRV_DIMENSION_TEXTURE2D, D3D12_TEX2D_SRV, ID3D12CommandAllocator,
             ID3D12CommandList, ID3D12DescriptorHeap, ID3D12GraphicsCommandList, ID3D12Resource,
@@ -25,6 +26,11 @@ use windows::{
 };
 
 use std::collections::HashMap;
+use super::render_target::HdrTarget;
+use windows::Win32::Graphics::Dxgi::Common::{
+    DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM,
+    DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+};
 
 use super::{
     D3D12ConstantBuffer, D3D12Device, D3D12IndexBuffer, D3D12Pipeline, D3D12Shader, D3D12SwapChain,
@@ -48,6 +54,11 @@ const BACKGROUND_VERTEX_SHADER: &[u8] =
     include_bytes!("../../../../shaders/compiled/background_vs.dxil");
 const BACKGROUND_PIXEL_SHADER: &[u8] =
     include_bytes!("../../../../shaders/compiled/background_ps.dxil");
+
+const TONEMAP_VERTEX_SHADER: &[u8] =
+    include_bytes!("../../../../shaders/compiled/tonemap_vs.dxil");
+const TONEMAP_PIXEL_SHADER: &[u8] =
+    include_bytes!("../../../../shaders/compiled/tonemap_ps.dxil");
 
 #[derive(Debug, Clone, Copy)]
 enum ActiveLight {
@@ -155,6 +166,7 @@ struct BackgroundConstants {
     camera_up: [f32; 4],
     camera_forward: [f32; 4],
     projection_params: [f32; 4],
+    fallback_color: [f32; 4],
 }
 
 #[repr(C)]
@@ -210,6 +222,10 @@ pub(crate) struct D3D12Renderer {
 
     pipeline: D3D12Pipeline,
     background_pipeline: D3D12Pipeline,
+    display_pipeline: D3D12Pipeline,
+    hdr_target: Option<HdrTarget>,
+    exposure: f32,
+    view_address: Option<u64>,
 
     mesh_cache: HashMap<MeshId, CachedMesh>,
 
@@ -223,6 +239,8 @@ pub(crate) struct D3D12Renderer {
     environment: Option<Environment>,
     environment_descriptor_cache: HashMap<(Option<TextureId>, Option<TextureId>), u32>,
     irradiance_cache: HashMap<TextureId, D3D12Texture>,
+    specular_cache: HashMap<TextureId, D3D12Texture>,
+    normal_descriptor_cache: HashMap<TextureId, u32>,
     fallback_environment_texture: crate::graphics::Texture,
     texture_cache: HashMap<TextureId, D3D12Texture>,
     material_descriptor_cache: HashMap<(TextureId, TextureId), u32>,
@@ -271,12 +289,19 @@ impl D3D12Renderer {
         let pixel_shader = D3D12Shader::from_bytes(TRIANGLE_PIXEL_SHADER);
 
         let pipeline = D3D12Pipeline::new(device, &vertex_shader, &pixel_shader)?;
-        let background_pipeline = D3D12Pipeline::new_background(
+        let background_pipeline = D3D12Pipeline::new_fullscreen(
             device,
             &D3D12Shader::from_bytes(BACKGROUND_VERTEX_SHADER),
             &D3D12Shader::from_bytes(BACKGROUND_PIXEL_SHADER),
+            DXGI_FORMAT_R16G16B16A16_FLOAT,
         )?;
 
+        let display_pipeline = D3D12Pipeline::new_fullscreen(
+            device,
+            &D3D12Shader::from_bytes(TONEMAP_VERTEX_SHADER),
+            &D3D12Shader::from_bytes(TONEMAP_PIXEL_SHADER),
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+        )?;
         let constant_buffer = D3D12ConstantBuffer::new(device)?;
 
         let texture_heap_desc = D3D12_DESCRIPTOR_HEAP_DESC {
@@ -301,6 +326,10 @@ impl D3D12Renderer {
 
             pipeline,
             background_pipeline,
+            display_pipeline,
+            hdr_target: None,
+            exposure: 1.0,
+            view_address: None,
 
             mesh_cache: HashMap::new(),
 
@@ -314,6 +343,8 @@ impl D3D12Renderer {
             environment: None,
             environment_descriptor_cache: HashMap::new(),
             irradiance_cache: HashMap::new(),
+            specular_cache: HashMap::new(),
+            normal_descriptor_cache: HashMap::new(),
             fallback_environment_texture: crate::graphics::Texture::solid(
                 crate::graphics::Color::BLACK,
             ),
@@ -321,7 +352,7 @@ impl D3D12Renderer {
             material_descriptor_cache: HashMap::new(),
             texture_heap,
             texture_descriptor_size,
-            next_texture_descriptor: 0,
+            next_texture_descriptor: 1, // Slot zero is reserved for scene color.
             pending_background: None,
             background_drawn: false,
         })
@@ -329,7 +360,7 @@ impl D3D12Renderer {
 
     pub(crate) fn begin_frame(
         &mut self,
-        _device: &D3D12Device,
+        device: &D3D12Device,
         swap_chain: &D3D12SwapChain,
     ) -> Result<()> {
         let frame_index = swap_chain.current_frame_index();
@@ -338,7 +369,8 @@ impl D3D12Renderer {
         self.constant_buffer.reset();
         self.active_lights.clear();
         self.background_drawn = false;
-        self.background_drawn = false;
+        self.pending_background = None;
+        self.view_address = None;
 
         unsafe {
             command_allocator.Reset()?;
@@ -352,13 +384,20 @@ impl D3D12Renderer {
                 .SetPipelineState(self.pipeline.pipeline_state());
         }
 
-        let render_target = swap_chain.current_render_target();
-
+        // End-frame waits for the GPU, so recreating this resource or its
+        // reserved descriptor cannot race a previous frame.
+        if self.hdr_target.as_ref().is_none_or(|target| {
+            target.width != swap_chain.width() || target.height != swap_chain.height()
+        }) {
+            let srv = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+            self.hdr_target = Some(HdrTarget::new(
+                device, swap_chain.width(), swap_chain.height(), srv,
+            )?);
+        }
+        let target = self.hdr_target.as_ref().unwrap();
         transition_resource(
-            &self.command_list,
-            render_target,
-            D3D12_RESOURCE_STATE_PRESENT,
-            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            &self.command_list, &target.resource,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET,
         );
 
         let clear_color = if let Some(environment) = &self.environment {
@@ -372,7 +411,7 @@ impl D3D12Renderer {
             [0.10, 0.15, 0.25, 1.0]
         };
 
-        let rtv = swap_chain.current_rtv();
+        let rtv = target.rtv;
         let dsv = swap_chain.current_dsv();
 
         unsafe {
@@ -407,6 +446,14 @@ impl D3D12Renderer {
             self.background_drawn = true;
         }
 
+        let view_address = self.view_address.ok_or_else(|| {
+            windows::core::Error::new(
+                windows::Win32::Foundation::E_INVALIDARG, "bind a camera before drawing a mesh",
+            )
+        })?;
+        unsafe {
+            self.command_list.SetGraphicsRootConstantBufferView(1, view_address);
+        }
         let model_matrix = transform.matrix_around(mesh.pivot());
 
         let normal_matrix = transform.normal_matrix();
@@ -455,11 +502,24 @@ impl D3D12Renderer {
             self.texture_cache.insert(normal_texture_id, gpu_normal);
         }
 
-        let normal_descriptor_index = self
-            .texture_cache
-            .get(&normal_texture_id)
-            .expect("normal texture should be cached after upload")
-            .descriptor_index();
+        let normal_descriptor_index = if let Some(&index) =
+            self.normal_descriptor_cache.get(&normal_texture_id)
+        {
+            index
+        } else {
+            let index = self.next_texture_descriptor;
+            assert!(index < MAX_TEXTURES);
+            self.next_texture_descriptor += 1;
+            let texture = &self.texture_cache[&normal_texture_id];
+            let format = if texture.format() == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB {
+                DXGI_FORMAT_R8G8B8A8_UNORM
+            } else {
+                texture.format()
+            };
+            self.create_texture_view(device, texture, index, format);
+            self.normal_descriptor_cache.insert(normal_texture_id, index);
+            index
+        };
 
         // t0 and t1 must be consecutive in the descriptor table. Cache one
         // stable descriptor pair for each base/normal texture combination.
@@ -651,7 +711,37 @@ impl D3D12Renderer {
         device: &D3D12Device,
         swap_chain: &D3D12SwapChain,
     ) -> Result<()> {
+        if !self.background_drawn {
+            self.draw_background(device)?;
+        }
+        let target = self.hdr_target.as_ref().unwrap();
         let render_target = swap_chain.current_render_target();
+        let rtv = swap_chain.current_rtv();
+        // Unbind HDR before sampling it. The depth buffer is not used by the display pass.
+        unsafe {
+            self.command_list.OMSetRenderTargets(0, None, false, None);
+        }
+        transition_resource(&self.command_list, &target.resource,
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        transition_resource(&self.command_list, render_target,
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        unsafe {
+            self.command_list.OMSetRenderTargets(1, Some(&rtv), false, None);
+        }
+        let display_address = self.constant_buffer.write(&[self.exposure, 0.0_f32, 0.0, 0.0]);
+        unsafe {
+            self.command_list.SetGraphicsRootSignature(self.display_pipeline.root_signature());
+            self.command_list.SetPipelineState(self.display_pipeline.pipeline_state());
+            self.command_list.SetGraphicsRootConstantBufferView(0, display_address);
+            self.command_list.SetGraphicsRootDescriptorTable(1, self.texture_heap.GetGPUDescriptorHandleForHeapStart());
+            self.command_list.RSSetViewports(&[D3D12_VIEWPORT {
+                Width: target.width as f32, Height: target.height as f32, MinDepth: 0.0, MaxDepth: 1.0,
+                ..Default::default()
+            }]);
+            self.command_list.RSSetScissorRects(&[RECT { left: 0, top: 0, right: target.width as i32, bottom: target.height as i32 }]);
+            self.command_list.DrawInstanced(3, 1, 0, 0);
+        }
+
 
         transition_resource(
             &self.command_list,
@@ -721,7 +811,17 @@ impl D3D12Renderer {
         Ok(())
     }
 
-    pub(crate) fn bind_camera(&mut self, camera: &Camera, destination: Rect) -> Result<()> {
+    pub(crate) fn bind_camera(
+        &mut self,
+        device: &D3D12Device,
+        camera: &Camera,
+        destination: Rect,
+    ) -> Result<()> {
+        // Flush a background-only viewport before replacing its camera and scissor.
+        if !self.background_drawn {
+            self.draw_background(device)?;
+        }
+        self.background_drawn = false;
         assert!(
             destination.width > 0.0 && destination.height > 0.0,
             "camera destination must have positive dimensions"
@@ -737,6 +837,7 @@ impl D3D12Renderer {
         let up = rotation.rotate_vector(crate::math::Vec3::new(0.0, 1.0, 0.0));
         let forward = rotation.rotate_vector(crate::math::Vec3::new(0.0, 0.0, -1.0));
         self.pending_background = Some(BackgroundConstants {
+            fallback_color: [0.0; 4],
             camera_right: [right.x, right.y, right.z, 0.0],
             camera_up: [up.x, up.y, up.z, 0.0],
             camera_forward: [forward.x, forward.y, forward.z, 0.0],
@@ -755,6 +856,7 @@ impl D3D12Renderer {
         };
 
         let view_address = self.constant_buffer.write(&view_constants);
+        self.view_address = Some(view_address);
 
         let viewport = D3D12_VIEWPORT {
             TopLeftX: destination.x,
@@ -809,16 +911,16 @@ impl D3D12Renderer {
     }
 
     fn draw_background(&mut self, device: &D3D12Device) -> Result<()> {
-        let Some(constants) = self.pending_background else {
+        let Some(mut constants) = self.pending_background else {
             return Ok(());
         };
-        let Some(texture) = self
-            .environment
-            .as_ref()
-            .and_then(|environment| environment.background_texture.as_ref())
-        else {
-            return Ok(());
-        };
+        let texture = self.environment.as_ref()
+            .and_then(|environment| environment.background_texture.as_ref());
+        constants.projection_params[2] = texture.is_some() as u8 as f32;
+        let color = self.environment.as_ref().map(|environment| environment.background_color)
+            .unwrap_or(crate::graphics::Color::rgba(0.10, 0.15, 0.25, 1.0));
+        constants.fallback_color = [color.r, color.g, color.b, color.a];
+        let texture = texture.unwrap_or(&self.fallback_environment_texture);
 
         let texture_id = texture.id();
         if !self.texture_cache.contains_key(&texture_id) {
@@ -870,7 +972,7 @@ impl D3D12Renderer {
 
         if let Some(texture) = environment_texture {
             let id = texture.id();
-            if !self.texture_cache.contains_key(&id) {
+            if !self.specular_cache.contains_key(&id) {
                 let prefilter = texture.environment_prefilter();
 
                 let specular_index = self.next_texture_descriptor;
@@ -883,7 +985,7 @@ impl D3D12Renderer {
                     specular_index,
                 )?;
                 self.create_texture_srv(device, &specular);
-                self.texture_cache.insert(id, specular);
+                self.specular_cache.insert(id, specular);
 
                 let irradiance_index = self.next_texture_descriptor;
                 assert!(irradiance_index < MAX_TEXTURES);
@@ -937,7 +1039,7 @@ impl D3D12Renderer {
 
             let fallback_descriptor = self.texture_cache[&fallback_id].descriptor_index();
             let specular_descriptor = environment_id
-                .map(|id| self.texture_cache[&id].descriptor_index())
+                .map(|id| self.specular_cache[&id].descriptor_index())
                 .unwrap_or(fallback_descriptor);
             let irradiance_descriptor = environment_id
                 .and_then(|id| self.irradiance_cache.get(&id))
@@ -983,13 +1085,30 @@ impl D3D12Renderer {
         }
     }
 
-    fn create_texture_srv(&self, device: &D3D12Device, texture: &D3D12Texture) {
-        let mut handle = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+    pub(crate) fn exposure(&self) -> f32 {
+        self.exposure
+    }
 
-        handle.ptr += texture.descriptor_index() as usize * self.texture_descriptor_size as usize;
+    pub(crate) fn set_exposure(&mut self, value: f32) {
+        self.exposure = value;
+    }
+
+    fn create_texture_srv(&self, device: &D3D12Device, texture: &D3D12Texture) {
+        self.create_texture_view(device, texture, texture.descriptor_index(), texture.format());
+    }
+
+    fn create_texture_view(
+        &self,
+        device: &D3D12Device,
+        texture: &D3D12Texture,
+        index: u32,
+        format: windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT,
+    ) {
+        let mut handle = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += index as usize * self.texture_descriptor_size as usize;
 
         let desc = D3D12_SHADER_RESOURCE_VIEW_DESC {
-            Format: texture.format(),
+            Format: format,
 
             ViewDimension: D3D12_SRV_DIMENSION_TEXTURE2D,
 

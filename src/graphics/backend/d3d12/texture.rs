@@ -14,7 +14,7 @@ use windows::{
             D3D12_TEXTURE_LAYOUT_UNKNOWN, ID3D12GraphicsCommandList, ID3D12Resource,
         },
         Dxgi::Common::{
-            DXGI_FORMAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32B32A32_FLOAT,
+            DXGI_FORMAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_R32G32B32A32_FLOAT,
             DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC,
         },
     },
@@ -65,7 +65,7 @@ impl D3D12Texture {
             DepthOrArraySize: 1,
             MipLevels: 1,
 
-            Format: DXGI_FORMAT_R8G8B8A8_UNORM,
+            Format: DXGI_FORMAT_R8G8B8A8_TYPELESS,
 
             SampleDesc: DXGI_SAMPLE_DESC {
                 Count: 1,
@@ -239,7 +239,7 @@ impl D3D12Texture {
             resource,
             _upload_resource: upload_resource,
             descriptor_index,
-            format: DXGI_FORMAT_R8G8B8A8_UNORM,
+            format: if texture.srgb_encoded() { DXGI_FORMAT_R8G8B8A8_UNORM_SRGB } else { DXGI_FORMAT_R8G8B8A8_UNORM },
         })
     }
 

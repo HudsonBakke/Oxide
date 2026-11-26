@@ -32,7 +32,7 @@ If Windows blocks local PowerShell scripts, invoke it with a process-only policy
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-shaders.ps1
 ```
 
-The script compiles both `vs_main` and `ps_main` in `triangle.hlsl` and `background.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, and `background_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
+The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, and `tonemap_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
 
 Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, and `materials`. Run from the repository root so relative asset paths resolve correctly.
 
@@ -100,6 +100,14 @@ python -c "import oxide; import oxide.app; import oxide.collision; import oxide.
 python examples/python/math_test.py
 ```
 
-[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all four shaders, checks every Rust target, runs existing Rust tests, builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, and the existing math example against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
+[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all six shaders, checks every Rust target, runs existing Rust tests, builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, and the existing math example against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
 
 CI does not launch graphical examples or verify rendered output. Run the materials and first-person scenes locally to check rendering and input on a D3D12-capable GPU.
+
+## Linear HDR rendering
+
+Lighting and backgrounds render into an RGBA16F linear scene target. One final
+Reinhard tone-mapping pass applies exposure and encodes sRGB for the SDR window.
+See [rendering and color conventions](docs/rendering.md) for texture semantics
+and the exposure API. In each materials example, **Q** halves exposure, **E**
+doubles it, and **R** resets it to one. The title shows the current multiplier.

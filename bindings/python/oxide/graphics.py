@@ -557,6 +557,27 @@ class Graphics:
         self._valid = False
 
     @property
+    def exposure(self) -> float:
+        """Linear exposure multiplier; defaults to one and persists across frames.
+
+        The last value set during draw applies to all viewports and backgrounds.
+        """
+        self._require_valid()
+        result = ctypes.c_float()
+        _native.check(
+            _native.lib.oxide_graphics_get_exposure(self._handle, ctypes.byref(result))
+        )
+        return result.value
+
+    @exposure.setter
+    def exposure(self, value: float) -> None:
+        """Set finite, non-negative exposure; zero produces black."""
+        self._require_valid()
+        _native.check(
+            _native.lib.oxide_graphics_set_exposure(self._handle, float(value))
+        )
+
+    @property
     def preferred_backbuffer_width(self) -> int:
         """Current client width in physical pixels; assignment requests a resize."""
         return _native.lib.oxide_app_window_width()

@@ -19,7 +19,8 @@ use windows::{
             ID3D12RootSignature,
         },
         Dxgi::Common::{
-            DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32_FLOAT,
+            DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT, DXGI_FORMAT_R16G16B16A16_FLOAT,
+            DXGI_FORMAT_R32G32_FLOAT,
             DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_UNKNOWN,
             DXGI_SAMPLE_DESC,
         },
@@ -237,7 +238,7 @@ impl D3D12Pipeline {
         };
 
         let mut rtv_formats = [DXGI_FORMAT_UNKNOWN; 8];
-        rtv_formats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        rtv_formats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
         let position_semantic = b"POSITION\0";
         let normal_semantic = b"NORMAL\0";
@@ -334,10 +335,11 @@ impl D3D12Pipeline {
         })
     }
 
-    pub(crate) fn new_background(
+    pub(crate) fn new_fullscreen(
         device: &D3D12Device,
         vertex_shader: &D3D12Shader,
         pixel_shader: &D3D12Shader,
+        output_format: DXGI_FORMAT,
     ) -> Result<Self> {
         let range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
@@ -371,7 +373,7 @@ impl D3D12Pipeline {
         let sampler = [D3D12_STATIC_SAMPLER_DESC {
             Filter: D3D12_FILTER_MIN_MAG_MIP_LINEAR,
             AddressU: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-            AddressV: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            AddressV: windows::Win32::Graphics::Direct3D12::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             AddressW: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             MipLODBias: 0.0,
             MaxAnisotropy: 1,
@@ -405,8 +407,8 @@ impl D3D12Pipeline {
             )?
         };
         let mut rtv = [DXGI_FORMAT_UNKNOWN; 8];
-        rtv[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        let pipeline_desc = D3D12_GRAPHICS_PIPELINE_STATE_DESC {
+        rtv[0] = output_format;
+        let mut pipeline_desc = D3D12_GRAPHICS_PIPELINE_STATE_DESC {
             pRootSignature: std::mem::ManuallyDrop::new(Some(root_signature.clone())),
             VS: D3D12_SHADER_BYTECODE {
                 pShaderBytecode: vertex_shader.bytecode().as_ptr() as *const _,
@@ -450,6 +452,9 @@ impl D3D12Pipeline {
                 .device()
                 .CreateGraphicsPipelineState(&pipeline_desc)?
         };
+        unsafe {
+            std::mem::ManuallyDrop::drop(&mut pipeline_desc.pRootSignature);
+        }
         Ok(Self {
             root_signature,
             pipeline_state,

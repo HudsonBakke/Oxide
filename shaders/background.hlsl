@@ -3,7 +3,8 @@ cbuffer BackgroundConstants : register(b0)
     float4 camera_right;
     float4 camera_up;
     float4 camera_forward;
-    float4 projection_params; // x=tan(fov/2), y=aspect
+    float4 projection_params; // x=tan(fov/2), y=aspect, z=has texture
+    float4 fallback_color;
 };
 
 Texture2D background_texture : register(t0);
@@ -34,6 +35,9 @@ float2 direction_to_uv(float3 direction)
 
 float4 ps_main(VsOut input) : SV_TARGET
 {
+    if (projection_params.z < 0.5)
+        return fallback_color;
+
     float2 ndc = input.uv * 2.0 - 1.0;
     ndc.y = -ndc.y;
     float3 direction = normalize(
@@ -41,8 +45,5 @@ float4 ps_main(VsOut input) : SV_TARGET
         camera_up.xyz * ndc.y * projection_params.x);
     float3 hdr = background_texture.Sample(background_sampler, direction_to_uv(direction)).rgb;
 
-    // Display transform only. IBL samples remain unclamped linear radiance.
-    float3 mapped = hdr / (hdr + 1.0);
-    mapped = pow(mapped, 1.0 / 2.2);
-    return float4(mapped, 1.0);
+    return float4(hdr, 1.0);
 }

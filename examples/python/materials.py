@@ -1,6 +1,7 @@
 import math
 
-from oxide.app import AppConfig, Game
+from oxide.app import AppConfig, Game, GameTime
+from oxide.input import Keyboard, Keys
 from oxide.content import ContentManager, Material, Mesh, Texture, Vertex
 from oxide.graphics import (
     Camera,
@@ -105,6 +106,7 @@ def procedural_normal_map() -> Texture:
 class MaterialTest(Game):
     def __init__(self) -> None:
         super().__init__()
+        self.exposure = 1.0
         self.camera = Camera()
         self.sphere = make_sphere(24, 16)
         self.materials: list[Material] = []
@@ -149,7 +151,20 @@ class MaterialTest(Game):
     def initialize(self) -> None:
         self.camera.position = Vec3(0, 0, 15.5)
 
+    def update(self, time: GameTime) -> None:
+        keys = Keyboard.get_state()
+        if keys.is_key_pressed(Keys.Q):
+            self.exposure = max(self.exposure * 0.5, 1.0 / 64.0)
+        if keys.is_key_pressed(Keys.E):
+            self.exposure = min(self.exposure * 2.0, 64.0)
+        if keys.is_key_pressed(Keys.R):
+            self.exposure = 1.0
+        self.set_window_name(
+            f"Oxide Materials | exposure {self.exposure:g} | Q/E adjust, R reset"
+        )
+
     def draw(self, graphics: Graphics) -> None:
+        graphics.exposure = self.exposure
         graphics.bind_camera(self.camera, graphics.full_rect)
         graphics.set_environment(self.environment)
         graphics.add_light(self.light)

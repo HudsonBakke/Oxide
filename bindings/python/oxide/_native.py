@@ -145,6 +145,13 @@ _library_path = _find_library()
 
 lib = ctypes.CDLL(str(_library_path))
 
+lib.oxide_graphics_get_exposure.argtypes = [
+    NativeGraphicsHandle, ctypes.POINTER(ctypes.c_float),
+]
+lib.oxide_graphics_get_exposure.restype = ctypes.c_int
+lib.oxide_graphics_set_exposure.argtypes = [NativeGraphicsHandle, ctypes.c_float]
+lib.oxide_graphics_set_exposure.restype = ctypes.c_int
+
 
 lib.oxide_last_error_message.argtypes = []
 lib.oxide_last_error_message.restype = ctypes.c_char_p
