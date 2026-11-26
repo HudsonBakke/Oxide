@@ -128,7 +128,7 @@ pub extern "C" fn oxide_graphics_set_environment_explicit(
             }
         };
 
-        graphics.set_environment(environment);
+        graphics.set_environment(&environment);
         OxideStatus::Ok
     })
 }
