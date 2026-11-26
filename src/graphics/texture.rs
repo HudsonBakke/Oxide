@@ -140,11 +140,18 @@ impl Texture {
         const IRRADIANCE_SAMPLES: u32 = 96;
 
         let mut specular = Vec::with_capacity(SPECULAR_LEVELS as usize);
+        // CPU convolution must not scale with the resolution of the visible sky.
+        // Preserve the source aspect ratio while bounding both axes to 512 pixels.
+        let largest_dimension = u64::from(self.width.max(self.height).max(1));
+        let filtered_width = ((u64::from(self.width) * 512 / largest_dimension)
+            .min(u64::from(self.width))).max(1) as u32;
+        let filtered_height = ((u64::from(self.height) * 512 / largest_dimension)
+            .min(u64::from(self.height))).max(1) as u32;
 
         for level in 0..SPECULAR_LEVELS {
             let roughness = level as f32 / (SPECULAR_LEVELS - 1) as f32;
-            let width = (self.width >> level).max(1);
-            let height = (self.height >> level).max(1);
+            let width = (filtered_width >> level).max(1);
+            let height = (filtered_height >> level).max(1);
             let mut pixels = vec![0.0_f32; width as usize * height as usize * 4];
 
             for y in 0..height {
@@ -614,6 +621,22 @@ mod tests {
             let restored = Texture::read_compiled(&mut bytes.as_slice(), bytes.len() as u64).unwrap();
             assert_eq!(texture.srgb_encoded(), restored.srgb_encoded());
             assert_eq!(sample(&texture), sample(&restored));
+        }
+    }
+
+    #[test]
+    fn environment_prefilter_bounds_resolution_without_clamping_hdr() {
+        let texture = Texture::from_hdr_rgba(640, 1, [4.0, 2.0, 1.0, 1.0].repeat(640));
+        let filtered = texture.environment_prefilter();
+        assert_eq!((texture.width(), texture.height()), (640, 1));
+        assert_eq!(filtered.specular.len(), 5);
+        assert_eq!((filtered.specular[0].0, filtered.specular[0].1), (512, 1));
+        for (width, height, pixels) in filtered.specular {
+            assert!(width <= 512 && height <= 512);
+            for pixel in pixels.chunks_exact(4) {
+                assert!((pixel[0] - 4.0).abs() < 0.0001);
+                assert!((pixel[1] - 2.0).abs() < 0.0001);
+            }
         }
     }
 }

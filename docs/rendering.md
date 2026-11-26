@@ -25,6 +25,9 @@ albedo and normal map receives separate sRGB and numeric shader-resource views.
 The GPU upload is shared. Raw backgrounds, GGX-filtered specular maps, and
 irradiance maps occupy separate cache entries even if they share a source image.
 CPU environment preprocessing decodes sRGB before bilinear filtering too.
+The GGX lighting map is bounded to 512 pixels on its longest axis and has five
+roughness levels; the original background keeps its full resolution. This keeps
+the one-time CPU convolution cost independent of the size of an imported sky.
 
 glTF base-color factors multiply decoded colors in the shader; factors are not
 baked into encoded bytes. Compiled texture and material payload revisions have
