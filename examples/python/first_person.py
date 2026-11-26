@@ -109,6 +109,11 @@ class FirstPersonGame(Game):
         self.captured = False
 
     def initialize(self) -> None:
+        self.yellow.emissive_color = Color.rgb(1.0, 0.65, 0.05)
+        self.yellow.emissive_strength = 3.0
+        self.gray.metallic = 0.75
+        self.gray.roughness = 0.28
+
         self.camera.position = Vec3(0.0, 1.7, 7.0)
         self.set_window_name("Oxide First Person Camera")
 

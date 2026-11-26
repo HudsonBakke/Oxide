@@ -410,6 +410,83 @@ class Material(_OwnedResource):
 
         return cls._from_handle(handle)
 
+
+    def _get_float(self, name: str) -> float:
+        result = ctypes.c_float()
+        _native.check(
+            getattr(_native.lib, f"oxide_material_get_{name}")(
+                self._handle, ctypes.byref(result)
+            )
+        )
+        return float(result.value)
+
+    def _set_float(self, name: str, value: float) -> None:
+        _native.check(
+            getattr(_native.lib, f"oxide_material_set_{name}")(
+                self._handle, float(value)
+            )
+        )
+
+    @property
+    def metallic(self) -> float:
+        return self._get_float("metallic")
+
+    @metallic.setter
+    def metallic(self, value: float) -> None:
+        self._set_float("metallic", value)
+
+    @property
+    def roughness(self) -> float:
+        return self._get_float("roughness")
+
+    @roughness.setter
+    def roughness(self, value: float) -> None:
+        self._set_float("roughness", value)
+
+    @property
+    def emissive_strength(self) -> float:
+        return self._get_float("emissive_strength")
+
+    @emissive_strength.setter
+    def emissive_strength(self, value: float) -> None:
+        self._set_float("emissive_strength", value)
+
+    def _get_color(self, name: str):
+        from .graphics import Color
+        result = Color()
+        _native.check(
+            getattr(_native.lib, f"oxide_material_get_{name}")(
+                self._handle, ctypes.byref(result)
+            )
+        )
+        return result
+
+    def _set_color(self, name: str, value) -> None:
+        from .graphics import Color
+        if not isinstance(value, Color):
+            raise TypeError("value must be a Color")
+        _native.check(
+            getattr(_native.lib, f"oxide_material_set_{name}")(
+                self._handle, value
+            )
+        )
+
+    @property
+    def base_color(self):
+        return self._get_color("base_color")
+
+    @base_color.setter
+    def base_color(self, value) -> None:
+        self._set_color("base_color", value)
+
+    @property
+    def emissive_color(self):
+        return self._get_color("emissive_color")
+
+    @emissive_color.setter
+    def emissive_color(self, value) -> None:
+        self._set_color("emissive_color", value)
+
     @property
     def base_texture(self) -> Texture:
         handle = (

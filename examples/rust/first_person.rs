@@ -75,6 +75,11 @@ impl Demo {
 
 impl Game for Demo {
     fn initialize(&mut self) {
+        self.yellow.set_emissive_color(Color::rgb(1.0, 0.65, 0.05));
+        self.yellow.set_emissive_strength(3.0).unwrap();
+        self.gray.set_metallic(0.75).unwrap();
+        self.gray.set_roughness(0.28).unwrap();
+
         self.camera.set_position(Vec3::new(0.0, 1.7, 7.0));
         app::set_window_name("Oxide First Person Camera");
 

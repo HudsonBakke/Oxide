@@ -464,6 +464,26 @@ lib.oxide_app_set_cursor_grabbed.argtypes = [ctypes.c_uint8]
 lib.oxide_app_set_cursor_grabbed.restype = ctypes.c_int
 
 
+for _name, _type in (
+    ("base_color", None),
+    ("metallic", ctypes.c_float),
+    ("roughness", ctypes.c_float),
+    ("emissive_color", None),
+    ("emissive_strength", ctypes.c_float),
+):
+    if _type is not None:
+        _get = getattr(lib, f"oxide_material_get_{_name}")
+        _get.argtypes = [
+            NativeMaterialHandle,
+            ctypes.POINTER(_type),
+        ]
+        _get.restype = ctypes.c_int
+
+        _set = getattr(lib, f"oxide_material_set_{_name}")
+        _set.argtypes = [NativeMaterialHandle, _type]
+        _set.restype = ctypes.c_int
+
+
 def last_error_message() -> str:
     message = (
         lib.oxide_last_error_message()

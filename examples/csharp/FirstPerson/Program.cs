@@ -45,6 +45,11 @@ internal sealed class FirstPersonGame : Game
 
     protected override void Initialize()
     {
+        _yellow.EmissiveColor = new Color(1.0f, 0.65f, 0.05f, 1.0f);
+        _yellow.EmissiveStrength = 3.0f;
+        _gray.Metallic = 0.75f;
+        _gray.Roughness = 0.28f;
+
         _camera.Position = new Vec3(0.0f, 1.7f, 7.0f);
         SetWindowName("Oxide First Person Camera");
     }

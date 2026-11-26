@@ -668,6 +668,22 @@ class Graphics:
         )
 
 
+
+for _name in ("base_color", "emissive_color"):
+    _get = getattr(_native.lib, f"oxide_material_get_{_name}")
+    _get.argtypes = [
+        _native.NativeMaterialHandle,
+        ctypes.POINTER(Color),
+    ]
+    _get.restype = ctypes.c_int
+
+    _set = getattr(_native.lib, f"oxide_material_set_{_name}")
+    _set.argtypes = [
+        _native.NativeMaterialHandle,
+        Color,
+    ]
+    _set.restype = ctypes.c_int
+
 _native.lib.oxide_graphics_draw_mesh.argtypes = [
     _native.NativeGraphicsHandle,
     _native.NativeMeshHandle,

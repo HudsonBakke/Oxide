@@ -137,6 +137,9 @@ struct LightConstants {
 struct ObjectConstants {
     model: [[f32; 4]; 4],
     normal: [[f32; 4]; 4],
+    base_color: [f32; 4],
+    material: [f32; 4],
+    emissive: [f32; 4],
 }
 
 #[repr(C)]
@@ -144,6 +147,7 @@ struct ObjectConstants {
 struct ViewConstants {
     view: [[f32; 4]; 4],
     projection: [[f32; 4]; 4],
+    camera_position: [f32; 4],
 }
 
 struct CachedMesh {
@@ -386,10 +390,26 @@ impl D3D12Renderer {
         gpu_handle.ptr +=
             gpu_texture.descriptor_index() as u64 * self.texture_descriptor_size as u64;
 
+        let base_color = material.base_color();
+        let emissive = material.emissive_color();
+
         let object_constants = ObjectConstants {
             model: model_matrix.transposed().as_array(),
-
             normal: normal_matrix.transposed().as_array(),
+            base_color: [
+                base_color.r, base_color.g,
+                base_color.b, base_color.a,
+            ],
+            material: [
+                material.metallic(),
+                material.roughness(),
+                material.emissive_strength(),
+                0.0,
+            ],
+            emissive: [
+                emissive.r, emissive.g,
+                emissive.b, emissive.a,
+            ],
         };
 
         let model_address = self.constant_buffer.write(&object_constants);
@@ -602,10 +622,12 @@ impl D3D12Renderer {
 
         let projection = camera.projection_matrix(destination.aspect_ratio());
 
+        let position = camera.position();
+
         let view_constants = ViewConstants {
             view: view.transposed().as_array(),
-
             projection: projection.transposed().as_array(),
+            camera_position: [position.x, position.y, position.z, 1.0],
         };
 
         let view_address = self.constant_buffer.write(&view_constants);

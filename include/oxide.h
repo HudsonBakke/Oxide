@@ -619,6 +619,18 @@ oxide_texture_height(
  * Material
  * ============================================================ */
 
+
+OXIDE_API OxideStatus oxide_material_get_base_color(OxideMaterialHandle material, OxideColor* result);
+OXIDE_API OxideStatus oxide_material_set_base_color(OxideMaterialHandle material, OxideColor value);
+OXIDE_API OxideStatus oxide_material_get_metallic(OxideMaterialHandle material, float* result);
+OXIDE_API OxideStatus oxide_material_set_metallic(OxideMaterialHandle material, float value);
+OXIDE_API OxideStatus oxide_material_get_roughness(OxideMaterialHandle material, float* result);
+OXIDE_API OxideStatus oxide_material_set_roughness(OxideMaterialHandle material, float value);
+OXIDE_API OxideStatus oxide_material_get_emissive_color(OxideMaterialHandle material, OxideColor* result);
+OXIDE_API OxideStatus oxide_material_set_emissive_color(OxideMaterialHandle material, OxideColor value);
+OXIDE_API OxideStatus oxide_material_get_emissive_strength(OxideMaterialHandle material, float* result);
+OXIDE_API OxideStatus oxide_material_set_emissive_strength(OxideMaterialHandle material, float value);
+
 OXIDE_API OxideStatus
 oxide_material_destroy(
     OxideMaterialHandle material

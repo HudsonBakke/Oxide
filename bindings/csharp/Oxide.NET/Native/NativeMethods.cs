@@ -563,5 +563,65 @@ internal static class NativeMethods
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
     internal static extern OxideStatus oxide_app_set_cursor_grabbed(byte grabbed);
 
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_get_base_color(
+        NativeMaterialHandle material,
+        out Color result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_set_base_color(
+        NativeMaterialHandle material,
+        Color value
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_get_metallic(
+        NativeMaterialHandle material,
+        out float result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_set_metallic(
+        NativeMaterialHandle material,
+        float value
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_get_roughness(
+        NativeMaterialHandle material,
+        out float result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_set_roughness(
+        NativeMaterialHandle material,
+        float value
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_get_emissive_color(
+        NativeMaterialHandle material,
+        out Color result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_set_emissive_color(
+        NativeMaterialHandle material,
+        Color value
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_get_emissive_strength(
+        NativeMaterialHandle material,
+        out float result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_set_emissive_strength(
+        NativeMaterialHandle material,
+        float value
+    );
+
 }
 

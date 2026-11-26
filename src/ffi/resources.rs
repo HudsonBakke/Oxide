@@ -185,6 +185,95 @@ pub extern "C" fn oxide_material_base_texture(
     })
 }
 
+
+macro_rules! material_color_property {
+    ($get:ident, $set:ident, $getter:ident, $setter:ident) => {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn $get(material: OxideMaterialHandle, result: *mut Color) -> OxideStatus {
+            ffi_boundary(|| {
+                if result.is_null() {
+                    set_last_error("result pointer cannot be null");
+                    return OxideStatus::InvalidArgument;
+                }
+                let Some(value) = with_material(material, |m| m.$getter()) else {
+                    set_last_error("material handle is invalid");
+                    return OxideStatus::InvalidArgument;
+                };
+                unsafe { *result = value; }
+                OxideStatus::Ok
+            })
+        }
+
+        #[unsafe(no_mangle)]
+        pub extern "C" fn $set(material: OxideMaterialHandle, value: Color) -> OxideStatus {
+            ffi_boundary(|| {
+                let Some(()) = with_material_mut(material, |m| m.$setter(value)) else {
+                    set_last_error("material handle is invalid");
+                    return OxideStatus::InvalidArgument;
+                };
+                OxideStatus::Ok
+            })
+        }
+    };
+}
+
+material_color_property!(
+    oxide_material_get_base_color,
+    oxide_material_set_base_color,
+    base_color,
+    set_base_color
+);
+material_color_property!(
+    oxide_material_get_emissive_color,
+    oxide_material_set_emissive_color,
+    emissive_color,
+    set_emissive_color
+);
+
+macro_rules! material_float_property {
+    ($get:ident, $set:ident, $getter:ident, $setter:ident) => {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn $get(material: OxideMaterialHandle, result: *mut f32) -> OxideStatus {
+            ffi_boundary(|| {
+                if result.is_null() {
+                    set_last_error("result pointer cannot be null");
+                    return OxideStatus::InvalidArgument;
+                }
+                let Some(value) = with_material(material, |m| m.$getter()) else {
+                    set_last_error("material handle is invalid");
+                    return OxideStatus::InvalidArgument;
+                };
+                unsafe { *result = value; }
+                OxideStatus::Ok
+            })
+        }
+
+        #[unsafe(no_mangle)]
+        pub extern "C" fn $set(material: OxideMaterialHandle, value: f32) -> OxideStatus {
+            ffi_boundary(|| {
+                let Some(result) = with_material_mut(material, |m| m.$setter(value)) else {
+                    set_last_error("material handle is invalid");
+                    return OxideStatus::InvalidArgument;
+                };
+                if let Err(error) = result {
+                    set_last_error(error.to_string());
+                    return OxideStatus::InvalidArgument;
+                }
+                OxideStatus::Ok
+            })
+        }
+    };
+}
+
+material_float_property!(oxide_material_get_metallic, oxide_material_set_metallic, metallic, set_metallic);
+material_float_property!(oxide_material_get_roughness, oxide_material_set_roughness, roughness, set_roughness);
+material_float_property!(
+    oxide_material_get_emissive_strength,
+    oxide_material_set_emissive_strength,
+    emissive_strength,
+    set_emissive_strength
+);
+
 #[unsafe(no_mangle)]
 pub extern "C" fn oxide_texture_destroy(texture: OxideTextureHandle) -> OxideStatus {
     ffi_boundary(|| {
@@ -252,8 +341,15 @@ pub(crate) fn with_material<R>(
     operation: impl FnOnce(&Material) -> R,
 ) -> Option<R> {
     let registry = lock_materials();
-
     registry.get(handle.0).map(operation)
+}
+
+fn with_material_mut<R>(
+    handle: OxideMaterialHandle,
+    operation: impl FnOnce(&mut Material) -> R,
+) -> Option<R> {
+    let mut registry = lock_materials();
+    registry.get_mut(handle.0).map(operation)
 }
 
 pub(crate) fn with_mesh_mut<R>(

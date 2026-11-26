@@ -236,7 +236,32 @@ pub(crate) fn import_material(path: &Path, subobject: &str) -> ContentResult<Mat
         Texture::solid(Color::rgba(factor[0], factor[1], factor[2], factor[3]))
     };
 
-    Ok(Material::new(texture))
+    let mut result = Material::new(texture);
+
+    // The base-color factor has already been baked into the imported
+    // texture above, preserving the existing importer behavior.
+    result
+        .set_metallic(pbr.metallic_factor())
+        .expect("glTF metallic factor is defined in the unit interval");
+
+    result
+        .set_roughness(pbr.roughness_factor())
+        .expect("glTF roughness factor is defined in the unit interval");
+
+    let emissive = material.emissive_factor();
+    result.set_emissive_color(Color::rgb(
+        emissive[0],
+        emissive[1],
+        emissive[2],
+    ));
+
+    if emissive != [0.0, 0.0, 0.0] {
+        result
+            .set_emissive_strength(1.0)
+            .expect("constant emissive strength is valid");
+    }
+
+    Ok(result)
 }
 
 fn apply_base_color_factor(pixels: &mut [u8], factor: [f32; 4]) {

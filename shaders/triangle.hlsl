@@ -2,12 +2,16 @@ cbuffer ObjectConstants : register(b0)
 {
     float4x4 model;
     float4x4 normal_matrix;
+    float4 base_color_factor;
+    float4 material_factors; // x=metallic, y=roughness, z=emissive strength
+    float4 emissive_color;
 };
 
 cbuffer ViewConstants : register(b1)
 {
     float4x4 view;
     float4x4 projection;
+    float4 camera_position;
 };
 
 Texture2D base_texture : register(t0);
@@ -98,156 +102,123 @@ VertexOutput vs_main(VertexInput input)
     return output;
 }
 
+float3 evaluate_brdf(
+    float3 normal,
+    float3 view_direction,
+    float3 light_direction,
+    float3 radiance,
+    float3 albedo,
+    float metallic,
+    float roughness)
+{
+    float n_dot_l = max(dot(normal, light_direction), 0.0);
+    float n_dot_v = max(dot(normal, view_direction), 0.0);
+
+    if (n_dot_l <= 0.0 || n_dot_v <= 0.0)
+        return float3(0.0, 0.0, 0.0);
+
+    float3 half_vector = normalize(view_direction + light_direction);
+    float n_dot_h = max(dot(normal, half_vector), 0.0);
+    float v_dot_h = max(dot(view_direction, half_vector), 0.0);
+
+    float alpha = max(roughness * roughness, 0.0025);
+    float alpha2 = alpha * alpha;
+    float denom = n_dot_h * n_dot_h * (alpha2 - 1.0) + 1.0;
+    float distribution = alpha2 / max(3.14159265 * denom * denom, 0.0001);
+
+    float k = ((roughness + 1.0) * (roughness + 1.0)) / 8.0;
+    float g_v = n_dot_v / (n_dot_v * (1.0 - k) + k);
+    float g_l = n_dot_l / (n_dot_l * (1.0 - k) + k);
+
+    float3 f0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
+    float3 fresnel = f0 + (1.0 - f0) * pow(1.0 - v_dot_h, 5.0);
+
+    float3 specular =
+        distribution * g_v * g_l * fresnel
+        / max(4.0 * n_dot_v * n_dot_l, 0.0001);
+
+    float3 diffuse =
+        (1.0 - fresnel)
+        * (1.0 - metallic)
+        * albedo
+        / 3.14159265;
+
+    return (diffuse + specular) * radiance * n_dot_l;
+}
+
 float4 ps_main(VertexOutput input) : SV_TARGET
 {
-    float3 normal =
-        normalize(input.normal);
+    float3 normal = normalize(input.normal);
+    float3 view_direction =
+        normalize(camera_position.xyz - input.world_position);
 
-    float3 base_color =
-        base_texture.Sample(
-            base_sampler,
-            input.tex_coord
-        ).rgb;
+    float4 sampled =
+        base_texture.Sample(base_sampler, input.tex_coord);
 
-    float3 lighting =
-        float3(0.0, 0.0, 0.0);
+    float3 albedo =
+        sampled.rgb * base_color_factor.rgb;
 
-    for (
-        uint i = 0;
-        i < point_light_count;
-        ++i
-    )
+    float metallic = saturate(material_factors.x);
+    float roughness = saturate(material_factors.y);
+
+    float3 lighting = float3(0.0, 0.0, 0.0);
+
+    for (uint i = 0; i < point_light_count; ++i)
     {
         float3 to_light =
-            point_lights[i].position.xyz
-            - input.world_position;
-
-        float distance_squared =
-            max(
-                dot(to_light, to_light),
-                0.0001
-            );
-
-        float3 light_direction =
-            normalize(to_light);
-
-        float diffuse =
-            max(
-                dot(
-                    normal,
-                    light_direction
-                ),
-                0.0
-            );
-
-        float intensity =
-            point_lights[i].position.w
+            point_lights[i].position.xyz - input.world_position;
+        float distance_squared = max(dot(to_light, to_light), 0.0001);
+        float3 light_direction = normalize(to_light);
+        float3 radiance =
+            point_lights[i].color.rgb
+            * point_lights[i].position.w
             / distance_squared;
 
-        lighting +=
-            point_lights[i].color.rgb
-            * intensity
-            * diffuse;
+        lighting += evaluate_brdf(
+            normal, view_direction, light_direction,
+            radiance, albedo, metallic, roughness);
     }
 
-    for (
-        uint i = 0;
-        i < directional_light_count;
-        ++i
-    )
+    for (uint i = 0; i < directional_light_count; ++i)
     {
-        // The stored direction describes the direction
-        // the light rays travel, so the direction from
-        // the surface toward the light is its opposite.
         float3 light_direction =
-            -normalize(
-                directional_lights[i]
-                    .direction.xyz
-            );
-
-        float diffuse =
-            max(
-                dot(
-                    normal,
-                    light_direction
-                ),
-                0.0
-            );
-
-        float intensity =
-            directional_lights[i].color.a;
-
-        lighting +=
+            -normalize(directional_lights[i].direction.xyz);
+        float3 radiance =
             directional_lights[i].color.rgb
-            * intensity
-            * diffuse;
+            * directional_lights[i].color.a;
+
+        lighting += evaluate_brdf(
+            normal, view_direction, light_direction,
+            radiance, albedo, metallic, roughness);
     }
 
-    for (
-        uint i = 0;
-        i < spot_light_count;
-        ++i
-    )
+    for (uint i = 0; i < spot_light_count; ++i)
     {
         float3 from_light =
-            input.world_position
-            - spot_lights[i].position.xyz;
-
-        float distance_squared =
-            max(
-                dot(
-                    from_light,
-                    from_light
-                ),
-                0.0001
-            );
-
-        float3 light_to_fragment =
-            normalize(from_light);
-
-        float3 spot_direction =
-            normalize(
-                spot_lights[i].direction.xyz
-            );
-
+            input.world_position - spot_lights[i].position.xyz;
+        float distance_squared = max(dot(from_light, from_light), 0.0001);
+        float3 light_to_fragment = normalize(from_light);
         float cone_alignment =
-            dot(
-                spot_direction,
-                light_to_fragment
-            );
+            dot(normalize(spot_lights[i].direction.xyz), light_to_fragment);
 
-        float cone_cutoff =
-            spot_lights[i].direction.w;
-
-        if (cone_alignment >= cone_cutoff)
+        if (cone_alignment >= spot_lights[i].direction.w)
         {
-            // Diffuse lighting needs the direction
-            // FROM the surface TOWARD the light.
-            float3 fragment_to_light =
-                -light_to_fragment;
-
-            float diffuse =
-                max(
-                    dot(
-                        normal,
-                        fragment_to_light
-                    ),
-                    0.0
-                );
-
-            float intensity =
-                spot_lights[i].position.w
+            float3 radiance =
+                spot_lights[i].color.rgb
+                * spot_lights[i].position.w
                 / distance_squared;
 
-            lighting +=
-                spot_lights[i].color.rgb
-                * intensity
-                * diffuse;
+            lighting += evaluate_brdf(
+                normal, view_direction, -light_to_fragment,
+                radiance, albedo, metallic, roughness);
         }
     }
 
+    float3 emissive =
+        emissive_color.rgb * material_factors.z;
+
     return float4(
-        base_color * lighting,
-        1.0
+        lighting + emissive,
+        sampled.a * base_color_factor.a
     );
 }
