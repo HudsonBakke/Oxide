@@ -667,5 +667,18 @@ internal static class NativeMethods
         NativeGraphicsHandle graphics
     );
 
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_set_environment_explicit(
+        NativeGraphicsHandle graphics,
+        Color ambientColor,
+        float ambientIntensity,
+        NativeTextureHandle environmentTexture,
+        [MarshalAs(UnmanagedType.I1)] bool hasEnvironmentTexture,
+        float environmentIntensity,
+        NativeTextureHandle backgroundTexture,
+        [MarshalAs(UnmanagedType.I1)] bool hasBackgroundTexture,
+        Color backgroundColor
+    );
+
 }
 

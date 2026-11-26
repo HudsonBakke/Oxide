@@ -375,6 +375,8 @@ OXIDE_API OxideStatus oxide_graphics_set_environment_explicit(
     OxideTextureHandle environment_texture,
     bool has_environment_texture,
     float environment_intensity,
+    OxideTextureHandle background_texture,
+    bool has_background_texture,
     OxideColor background_color
 );
 

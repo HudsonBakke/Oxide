@@ -48,6 +48,7 @@ impl MaterialTest {
             0.08,
             Some(environment_texture()),
             0.65,
+            Some(environment_texture()),
             Color::rgb(0.10, 0.15, 0.25),
         )
         .unwrap();

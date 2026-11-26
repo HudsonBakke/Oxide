@@ -112,6 +112,7 @@ class MaterialTest(Game):
             0.08,
             environment_texture(),
             0.65,
+            environment_texture(),
             Color.rgb(0.10,0.15,0.25),
         )
 

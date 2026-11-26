@@ -45,6 +45,10 @@ const TRIANGLE_VERTEX_SHADER: &[u8] =
 
 const TRIANGLE_PIXEL_SHADER: &[u8] =
     include_bytes!("../../../../shaders/compiled/triangle_ps.dxil");
+const BACKGROUND_VERTEX_SHADER: &[u8] =
+    include_bytes!("../../../../shaders/compiled/background_vs.dxil");
+const BACKGROUND_PIXEL_SHADER: &[u8] =
+    include_bytes!("../../../../shaders/compiled/background_ps.dxil");
 
 #[derive(Debug, Clone, Copy)]
 enum ActiveLight {
@@ -145,6 +149,16 @@ struct ObjectConstants {
     emissive: [f32; 4],
 }
 
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct BackgroundConstants {
+    camera_right: [f32; 4],
+    camera_up: [f32; 4],
+    camera_forward: [f32; 4],
+    projection_params: [f32; 4],
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct ViewConstants {
@@ -197,6 +211,7 @@ pub(crate) struct D3D12Renderer {
     command_list: ID3D12GraphicsCommandList,
 
     pipeline: D3D12Pipeline,
+    background_pipeline: D3D12Pipeline,
 
     mesh_cache: HashMap<MeshId, CachedMesh>,
 
@@ -208,13 +223,17 @@ pub(crate) struct D3D12Renderer {
 
     active_lights: Vec<ActiveLight>,
     environment: Option<Environment>,
-    environment_descriptor_cache: HashMap<Option<TextureId>, u32>,
+    environment_descriptor_cache: HashMap<(Option<TextureId>, Option<TextureId>), u32>,
     fallback_environment_texture: crate::graphics::Texture,
     texture_cache: HashMap<TextureId, D3D12Texture>,
     material_descriptor_cache: HashMap<(TextureId, TextureId), u32>,
     texture_heap: ID3D12DescriptorHeap,
     texture_descriptor_size: u32,
     next_texture_descriptor: u32,
+    pending_background: Option<BackgroundConstants>,
+    background_drawn: bool,
+    pending_background: Option<BackgroundConstants>,
+    background_drawn: bool,
 }
 
 impl D3D12Renderer {
@@ -255,6 +274,11 @@ impl D3D12Renderer {
         let pixel_shader = D3D12Shader::from_bytes(TRIANGLE_PIXEL_SHADER);
 
         let pipeline = D3D12Pipeline::new(device, &vertex_shader, &pixel_shader)?;
+        let background_pipeline = D3D12Pipeline::new_background(
+            device,
+            &D3D12Shader::from_bytes(BACKGROUND_VERTEX_SHADER),
+            &D3D12Shader::from_bytes(BACKGROUND_PIXEL_SHADER),
+        )?;
 
         let constant_buffer = D3D12ConstantBuffer::new(device)?;
 
@@ -279,6 +303,7 @@ impl D3D12Renderer {
             command_list,
 
             pipeline,
+            background_pipeline,
 
             mesh_cache: HashMap::new(),
 
@@ -297,6 +322,10 @@ impl D3D12Renderer {
             texture_heap,
             texture_descriptor_size,
             next_texture_descriptor: 0,
+            pending_background: None,
+            background_drawn: false,
+            pending_background: None,
+            background_drawn: false,
         })
     }
 
@@ -310,6 +339,8 @@ impl D3D12Renderer {
 
         self.constant_buffer.reset();
         self.active_lights.clear();
+        self.background_drawn = false;
+        self.background_drawn = false;
 
         unsafe {
             command_allocator.Reset()?;
@@ -373,6 +404,11 @@ impl D3D12Renderer {
         material: &Material,
         transform: &Transform,
     ) -> Result<()> {
+        if !self.background_drawn {
+            self.draw_background(device)?;
+            self.background_drawn = true;
+        }
+
         let model_matrix = transform.matrix_around(mesh.pivot());
 
         let normal_matrix = transform.normal_matrix();
@@ -526,7 +562,7 @@ impl D3D12Renderer {
             light_constants.environment_params = [
                 environment.environment_intensity,
                 environment.environment_texture.is_some() as u8 as f32,
-                0.0,
+                environment.background_texture.is_some() as u8 as f32,
                 0.0,
             ];
         }
@@ -714,6 +750,21 @@ impl D3D12Renderer {
         let projection = camera.projection_matrix(destination.aspect_ratio());
 
         let position = camera.position();
+        let rotation = camera.rotation();
+        let right = rotation.rotate_vector(crate::math::Vec3::new(1.0, 0.0, 0.0));
+        let up = rotation.rotate_vector(crate::math::Vec3::new(0.0, 1.0, 0.0));
+        let forward = rotation.rotate_vector(crate::math::Vec3::new(0.0, 0.0, -1.0));
+        self.pending_background = Some(BackgroundConstants {
+            camera_right: [right.x, right.y, right.z, 0.0],
+            camera_up: [up.x, up.y, up.z, 0.0],
+            camera_forward: [forward.x, forward.y, forward.z, 0.0],
+            projection_params: [
+                (camera.field_of_view().as_radians() * 0.5).tan(),
+                destination.aspect_ratio(),
+                0.0,
+                0.0,
+            ],
+        });
 
         let view_constants = ViewConstants {
             view: view.transposed().as_array(),
@@ -778,6 +829,78 @@ impl D3D12Renderer {
 
 
 
+
+    fn draw_background(&mut self, device: &D3D12Device) -> Result<()> {
+        let Some(constants) = self.pending_background else {
+            return Ok(());
+        };
+        let Some(texture) = self
+            .environment
+            .as_ref()
+            .and_then(|environment| environment.background_texture.as_ref())
+        else {
+            return Ok(());
+        };
+
+        let texture_id = texture.id();
+        if !self.texture_cache.contains_key(&texture_id) {
+            let descriptor_index = self.next_texture_descriptor;
+            assert!(descriptor_index < MAX_TEXTURES);
+            self.next_texture_descriptor += 1;
+            let gpu = D3D12Texture::new(device, &self.command_list, texture, descriptor_index)?;
+            self.create_texture_srv(device, &gpu);
+            self.texture_cache.insert(texture_id, gpu);
+        }
+        let descriptor_index = self.texture_cache[&texture_id].descriptor_index();
+        let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+        handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
+        let address = self.constant_buffer.write(&constants);
+
+        unsafe {
+            self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
+            self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
+            self.command_list.SetGraphicsRootConstantBufferView(0, address);
+            self.command_list.SetGraphicsRootDescriptorTable(1, handle);
+            self.command_list.DrawInstanced(3, 1, 0, 0);
+
+            self.command_list.SetGraphicsRootSignature(self.pipeline.root_signature());
+            self.command_list.SetPipelineState(self.pipeline.pipeline_state());
+        }
+        Ok(())
+    }
+
+
+    fn draw_background(&mut self, device: &D3D12Device) -> Result<()> {
+        let Some(constants) = self.pending_background else { return Ok(()); };
+        let Some(texture) = self.environment.as_ref()
+            .and_then(|environment| environment.background_texture.as_ref())
+        else { return Ok(()); };
+
+        let texture_id = texture.id();
+        if !self.texture_cache.contains_key(&texture_id) {
+            let descriptor_index = self.next_texture_descriptor;
+            assert!(descriptor_index < MAX_TEXTURES);
+            self.next_texture_descriptor += 1;
+            let gpu = D3D12Texture::new(device, &self.command_list, texture, descriptor_index)?;
+            self.create_texture_srv(device, &gpu);
+            self.texture_cache.insert(texture_id, gpu);
+        }
+        let descriptor_index = self.texture_cache[&texture_id].descriptor_index();
+        let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+        handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
+        let address = self.constant_buffer.write(&constants);
+        unsafe {
+            self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
+            self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
+            self.command_list.SetGraphicsRootConstantBufferView(0, address);
+            self.command_list.SetGraphicsRootDescriptorTable(1, handle);
+            self.command_list.DrawInstanced(3, 1, 0, 0);
+            self.command_list.SetGraphicsRootSignature(self.pipeline.root_signature());
+            self.command_list.SetPipelineState(self.pipeline.pipeline_state());
+        }
+        Ok(())
+    }
+
     fn prepare_environment_descriptors(
         &mut self,
         device: &D3D12Device,
@@ -786,10 +909,12 @@ impl D3D12Renderer {
             .environment
             .as_ref()
             .and_then(|environment| environment.environment_texture.as_ref());
-        // A black 1x1 fallback is represented by the renderer's default
-        // texture pair when either optional environment input is absent.
+        let background_texture = self
+            .environment
+            .as_ref()
+            .and_then(|environment| environment.background_texture.as_ref());
         let first = environment_texture.unwrap_or(&self.fallback_environment_texture);
-        let second = &self.fallback_environment_texture;
+        let second = background_texture.unwrap_or(&self.fallback_environment_texture);
 
         let first_id = first.id();
         let second_id = second.id();
@@ -799,18 +924,33 @@ impl D3D12Renderer {
                 let descriptor_index = self.next_texture_descriptor;
                 assert!(descriptor_index < MAX_TEXTURES);
                 self.next_texture_descriptor += 1;
-                let gpu = D3D12Texture::new(
-                    device,
-                    &self.command_list,
-                    texture,
-                    descriptor_index,
-                )?;
+                let gpu = if environment_texture
+                    .map(|candidate| candidate.id() == texture.id())
+                    .unwrap_or(false)
+                {
+                    D3D12Texture::new_environment(
+                        device,
+                        &self.command_list,
+                        texture,
+                        descriptor_index,
+                    )?
+                } else {
+                    D3D12Texture::new(
+                        device,
+                        &self.command_list,
+                        texture,
+                        descriptor_index,
+                    )?
+                };
                 self.create_texture_srv(device, &gpu);
                 self.texture_cache.insert(texture.id(), gpu);
             }
         }
 
-        let key = environment_texture.map(|texture| texture.id());
+        let key = (
+            environment_texture.map(|texture| texture.id()),
+            background_texture.map(|texture| texture.id()),
+        );
 
         let descriptor_index = if let Some(&index) =
             self.environment_descriptor_cache.get(&key)
@@ -874,7 +1014,7 @@ impl D3D12Renderer {
             Anonymous: windows::Win32::Graphics::Direct3D12::D3D12_SHADER_RESOURCE_VIEW_DESC_0 {
                 Texture2D: D3D12_TEX2D_SRV {
                     MostDetailedMip: 0,
-                    MipLevels: 1,
+                    MipLevels: u32::MAX,
                     PlaneSlice: 0,
                     ResourceMinLODClamp: 0.0,
                 },

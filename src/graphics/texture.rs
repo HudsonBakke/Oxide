@@ -105,6 +105,55 @@ impl Texture {
         Ok(Self::from_rgba(width, height, pixels))
     }
 
+
+    /// Builds a five-level prefiltered environment mip chain. Each level uses
+    /// a progressively wider circular filter in equirectangular space.
+    pub(crate) fn environment_mips(&self) -> Vec<(u32, u32, Vec<u8>)> {
+        let mut levels = Vec::with_capacity(5);
+        levels.push((self.width, self.height, self.pixels.clone()));
+
+        for level in 1..5_u32 {
+            let width = (self.width >> level).max(1);
+            let height = (self.height >> level).max(1);
+            let radius = 1_i32 << level;
+            let mut pixels = vec![0_u8; width as usize * height as usize * 4];
+
+            for y in 0..height {
+                for x in 0..width {
+                    let source_x = ((x as f32 + 0.5) * self.width as f32 / width as f32) as i32;
+                    let source_y = ((y as f32 + 0.5) * self.height as f32 / height as f32) as i32;
+                    let mut sum = [0_u32; 3];
+                    let mut weight = 0_u32;
+
+                    for oy in -radius..=radius {
+                        for ox in -radius..=radius {
+                            if ox * ox + oy * oy > radius * radius {
+                                continue;
+                            }
+                            let sx = (source_x + ox).rem_euclid(self.width as i32) as u32;
+                            let sy = (source_y + oy).clamp(0, self.height as i32 - 1) as u32;
+                            let index = ((sy * self.width + sx) * 4) as usize;
+                            sum[0] += self.pixels[index] as u32;
+                            sum[1] += self.pixels[index + 1] as u32;
+                            sum[2] += self.pixels[index + 2] as u32;
+                            weight += 1;
+                        }
+                    }
+
+                    let index = ((y * width + x) * 4) as usize;
+                    pixels[index] = (sum[0] / weight) as u8;
+                    pixels[index + 1] = (sum[1] / weight) as u8;
+                    pixels[index + 2] = (sum[2] / weight) as u8;
+                    pixels[index + 3] = 255;
+                }
+            }
+
+            levels.push((width, height, pixels));
+        }
+
+        levels
+    }
+
     pub(crate) fn from_rgba(width: u32, height: u32, pixels: Vec<u8>) -> Self {
         Self {
             id: next_texture_id(),

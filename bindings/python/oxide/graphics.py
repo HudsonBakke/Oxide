@@ -642,6 +642,12 @@ class Graphics:
                 ),
                 environment.environment_texture is not None,
                 environment.environment_intensity,
+                (
+                    environment.background_texture._handle
+                    if environment.background_texture is not None
+                    else _native.NativeTextureHandle()
+                ),
+                environment.background_texture is not None,
                 environment.background_color,
             )
         )

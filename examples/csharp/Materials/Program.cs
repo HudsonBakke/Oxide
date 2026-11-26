@@ -25,6 +25,7 @@ internal sealed class MaterialTest : Game
             0.08f,
             EnvironmentTexture(),
             0.65f,
+            EnvironmentTexture(),
             new Color(0.10f,0.15f,0.25f,1)
         );
         _normalMapped.Roughness = 0.55f;

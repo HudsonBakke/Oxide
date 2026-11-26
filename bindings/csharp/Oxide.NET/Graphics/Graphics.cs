@@ -97,6 +97,8 @@ public sealed class Graphics
                 environment.EnvironmentTexture?.Handle ?? default,
                 environment.EnvironmentTexture is not null,
                 environment.EnvironmentIntensity,
+                environment.BackgroundTexture?.Handle ?? default,
+                environment.BackgroundTexture is not null,
                 environment.BackgroundColor
             )
         );

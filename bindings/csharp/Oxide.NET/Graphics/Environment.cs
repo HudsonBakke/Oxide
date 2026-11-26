@@ -6,6 +6,7 @@ public sealed class Environment
     public float AmbientIntensity { get; }
     public Texture? EnvironmentTexture { get; }
     public float EnvironmentIntensity { get; }
+    public Texture? BackgroundTexture { get; }
     public Color BackgroundColor { get; }
 
     public Environment(
@@ -13,6 +14,7 @@ public sealed class Environment
         float ambientIntensity,
         Texture? environmentTexture,
         float environmentIntensity,
+        Texture? backgroundTexture,
         Color backgroundColor
     )
     {
@@ -25,6 +27,7 @@ public sealed class Environment
         AmbientIntensity = ambientIntensity;
         EnvironmentTexture = environmentTexture;
         EnvironmentIntensity = environmentIntensity;
+        BackgroundTexture = backgroundTexture;
         BackgroundColor = backgroundColor;
     }
 }

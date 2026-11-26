@@ -96,6 +96,8 @@ pub extern "C" fn oxide_graphics_set_environment_explicit(
     environment_texture: OxideTextureHandle,
     has_environment_texture: bool,
     environment_intensity: f32,
+    background_texture: OxideTextureHandle,
+    has_background_texture: bool,
     background_color: crate::graphics::Color,
 ) -> OxideStatus {
     ffi_boundary(|| {
@@ -114,11 +116,22 @@ pub extern "C" fn oxide_graphics_set_environment_explicit(
             None
         };
 
+        let background = if has_background_texture {
+            let Some(texture) = with_texture(background_texture, |texture| texture.clone()) else {
+                set_last_error("background texture handle is invalid");
+                return OxideStatus::InvalidArgument;
+            };
+            Some(texture)
+        } else {
+            None
+        };
+
         let environment = match Environment::new(
             ambient_color,
             ambient_intensity,
             texture,
             environment_intensity,
+            background,
             background_color,
         ) {
             Ok(environment) => environment,
