@@ -492,6 +492,27 @@ lib.oxide_texture_create_rgba.argtypes = [
 ]
 lib.oxide_texture_create_rgba.restype = ctypes.c_int
 
+lib.oxide_material_normal_texture.argtypes = [
+    NativeMaterialHandle,
+    ctypes.POINTER(NativeTextureHandle),
+]
+lib.oxide_material_normal_texture.restype = ctypes.c_int
+lib.oxide_material_set_normal_texture.argtypes = [
+    NativeMaterialHandle,
+    NativeTextureHandle,
+]
+lib.oxide_material_set_normal_texture.restype = ctypes.c_int
+lib.oxide_material_get_normal_strength.argtypes = [
+    NativeMaterialHandle,
+    ctypes.POINTER(ctypes.c_float),
+]
+lib.oxide_material_get_normal_strength.restype = ctypes.c_int
+lib.oxide_material_set_normal_strength.argtypes = [
+    NativeMaterialHandle,
+    ctypes.c_float,
+]
+lib.oxide_material_set_normal_strength.restype = ctypes.c_int
+
 
 def last_error_message() -> str:
     message = (

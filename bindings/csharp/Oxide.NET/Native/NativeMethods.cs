@@ -632,5 +632,29 @@ internal static class NativeMethods
         out NativeTextureHandle result
     );
 
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_normal_texture(
+        NativeMaterialHandle material,
+        out NativeTextureHandle result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_set_normal_texture(
+        NativeMaterialHandle material,
+        NativeTextureHandle texture
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_get_normal_strength(
+        NativeMaterialHandle material,
+        out float result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_material_set_normal_strength(
+        NativeMaterialHandle material,
+        float value
+    );
+
 }
 
