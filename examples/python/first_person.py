@@ -1,7 +1,7 @@
 from oxide.app import AppConfig, Game, GameTime
 from oxide.content import Material, Mesh, Vertex
 from oxide.graphics import Camera, Color, DirectionalLight, Graphics
-from oxide.input import Keyboard, Keys, Mouse
+from oxide.input import Keyboard, Keys, Mouse, MouseButtons
 from oxide.math import Angle, Quaternion, Transform, Vec2, Vec3
 
 
@@ -13,7 +13,7 @@ def make_quad() -> Mesh:
             Vertex(Vec3( 0.5, 0,  0.5), Vec3(0, 1, 0), Vec2(1, 1)),
             Vertex(Vec3(-0.5, 0,  0.5), Vec3(0, 1, 0), Vec2(0, 1)),
         ],
-        [0, 2, 1, 0, 3, 2],
+        [0, 1, 2, 0, 2, 3],
     )
 
 
@@ -62,19 +62,28 @@ class FirstPersonGame(Game):
         )
         self.yaw = 0.0
         self.pitch = 0.0
+        self.captured = False
 
     def initialize(self) -> None:
         self.camera.position = Vec3(0.0, 1.7, 7.0)
         self.set_window_name("Oxide First Person Camera")
-        self.set_cursor_visible(False)
-        self.set_cursor_grabbed(True)
 
     def update(self, time: GameTime) -> None:
         keyboard = Keyboard.get_state()
         mouse = Mouse.get_state()
 
+        if mouse.is_button_pressed(MouseButtons.LEFT) and not self.captured:
+            self.captured = True
+            self.set_cursor_visible(False)
+            self.set_cursor_grabbed(True)
+
         if keyboard.is_key_pressed(Keys.ESCAPE):
-            self.exit()
+            if self.captured:
+                self.captured = False
+                self.set_cursor_grabbed(False)
+                self.set_cursor_visible(True)
+            else:
+                self.exit()
             return
 
         if keyboard.is_key_pressed(Keys.F11):
@@ -83,8 +92,9 @@ class FirstPersonGame(Game):
         if keyboard.is_key_pressed(Keys.F2):
             self.set_preferred_backbuffer_size(1920, 1080)
 
-        self.yaw -= mouse.delta.x * 0.0025
-        self.pitch = max(-1.5, min(1.5, self.pitch - mouse.delta.y * 0.0025))
+        if self.captured:
+            self.yaw -= mouse.delta.x * 0.0025
+            self.pitch = max(-1.5, min(1.5, self.pitch - mouse.delta.y * 0.0025))
 
         self.camera.set_euler(
             Angle.from_radians(self.pitch),

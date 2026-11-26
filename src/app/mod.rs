@@ -8,7 +8,7 @@ use winit::platform::windows::WindowAttributesExtWindows;
 
 use winit::{
     application::ApplicationHandler,
-    event::WindowEvent,
+    event::{DeviceEvent, DeviceId, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     window::{CursorGrabMode, Fullscreen, Icon, WindowAttributes, WindowId},
 };
@@ -18,7 +18,7 @@ use std::time::Instant;
 use crate::graphics::{Graphics, Texture};
 use crate::input::{
     advance_keyboard_frame, advance_mouse_frame, handle_cursor_moved, handle_keyboard_input,
-    handle_mouse_input, handle_mouse_wheel,
+    handle_mouse_input, handle_mouse_motion, handle_mouse_wheel,
 };
 use crate::platform::window::PlatformWindow;
 
@@ -302,6 +302,17 @@ impl<G: Game> ApplicationHandler for App<G> {
 
         if let Some(window) = &self.window {
             window.inner().request_redraw();
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        if let DeviceEvent::MouseMotion { delta } = event {
+            handle_mouse_motion(delta);
         }
     }
 

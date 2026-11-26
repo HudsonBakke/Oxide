@@ -22,13 +22,12 @@ internal sealed class FirstPersonGame : Game
 
     private float _yaw;
     private float _pitch;
+    private bool _captured;
 
     protected override void Initialize()
     {
         _camera.Position = new Vec3(0.0f, 1.7f, 7.0f);
         SetWindowName("Oxide First Person Camera");
-        SetCursorVisible(false);
-        SetCursorGrabbed(true);
     }
 
     protected override void Update(GameTime time)
@@ -36,9 +35,26 @@ internal sealed class FirstPersonGame : Game
         KeyboardState keyboard = Keyboard.GetState();
         MouseState mouse = Mouse.GetState();
 
+        if (mouse.IsButtonPressed(MouseButtons.Left) && !_captured)
+        {
+            _captured = true;
+            SetCursorVisible(false);
+            SetCursorGrabbed(true);
+        }
+
         if (keyboard.IsKeyPressed(Keys.Escape))
         {
-            Exit();
+            if (_captured)
+            {
+                _captured = false;
+                SetCursorGrabbed(false);
+                SetCursorVisible(true);
+            }
+            else
+            {
+                Exit();
+            }
+
             return;
         }
 
@@ -53,12 +69,15 @@ internal sealed class FirstPersonGame : Game
             SetPreferredBackbufferSize(1920, 1080);
         }
 
-        _yaw -= mouse.Delta.X * 0.0025f;
-        _pitch = Math.Clamp(
-            _pitch - mouse.Delta.Y * 0.0025f,
-            -1.5f,
-            1.5f
-        );
+        if (_captured)
+        {
+            _yaw -= mouse.Delta.X * 0.0025f;
+            _pitch = Math.Clamp(
+                _pitch - mouse.Delta.Y * 0.0025f,
+                -1.5f,
+                1.5f
+            );
+        }
 
         _camera.SetEuler(
             Angle.Radians(_pitch),
@@ -134,7 +153,7 @@ internal sealed class FirstPersonGame : Game
                 new Vertex(new Vec3( 0.5f,0, 0.5f), new Vec3(0,1,0), new Vec2(1,1)),
                 new Vertex(new Vec3(-0.5f,0, 0.5f), new Vec3(0,1,0), new Vec2(0,1)),
             },
-            new uint[] { 0,2,1, 0,3,2 }
+            new uint[] { 0,1,2, 0,2,3 }
         );
     }
 

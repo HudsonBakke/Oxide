@@ -18,6 +18,7 @@ struct Demo {
     brown: Material,
     red: Material,
     sun: DirectionalLight,
+    captured: bool,
 }
 
 impl Demo {
@@ -32,6 +33,7 @@ impl Demo {
             dark: Material::solid(Color::rgb(0.12, 0.18, 0.12)),
             brown: Material::solid(Color::rgb(0.45, 0.25, 0.10)),
             red: Material::solid(Color::rgb(0.65, 0.16, 0.10)),
+            captured: false,
             sun: DirectionalLight::new(
                 Vec3::new(-0.5, -1.0, -0.35),
                 Color::WHITE,
@@ -58,16 +60,29 @@ impl Game for Demo {
     fn initialize(&mut self) {
         self.camera.set_position(Vec3::new(0.0, 1.7, 7.0));
         app::set_window_name("Oxide First Person Camera");
-        app::set_cursor_visible(false);
-        app::set_cursor_grabbed(true);
+
     }
 
     fn update(&mut self, time: &GameTime) {
         let keyboard = Keyboard::get_state();
         let mouse = Mouse::get_state();
 
+        if Mouse::get_state().is_button_pressed(oxide::input::MouseButton::Left)
+            && !self.captured
+        {
+            self.captured = true;
+            app::set_cursor_visible(false);
+            app::set_cursor_grabbed(true);
+        }
+
         if keyboard.is_key_pressed(Keys::Escape) {
-            app::exit();
+            if self.captured {
+                self.captured = false;
+                app::set_cursor_grabbed(false);
+                app::set_cursor_visible(true);
+            } else {
+                app::exit();
+            }
             return;
         }
 
@@ -79,8 +94,10 @@ impl Game for Demo {
             app::set_preferred_backbuffer_size(1920, 1080);
         }
 
-        self.yaw -= mouse.delta().x * 0.0025;
-        self.pitch = (self.pitch - mouse.delta().y * 0.0025).clamp(-1.5, 1.5);
+        if self.captured {
+            self.yaw -= mouse.delta().x * 0.0025;
+            self.pitch = (self.pitch - mouse.delta().y * 0.0025).clamp(-1.5, 1.5);
+        }
 
         self.camera.set_euler(
             Angle::radians(self.pitch),
@@ -147,7 +164,7 @@ fn quad() -> Mesh {
             Vertex::new(Vec3::new( 0.5, 0.0,  0.5), Vec3::new(0.0, 1.0, 0.0), Vec2::new(1.0, 1.0)),
             Vertex::new(Vec3::new(-0.5, 0.0,  0.5), Vec3::new(0.0, 1.0, 0.0), Vec2::new(0.0, 1.0)),
         ],
-        vec![0, 2, 1, 0, 3, 2],
+        vec![0, 1, 2, 0, 2, 3],
     )
 }
 
