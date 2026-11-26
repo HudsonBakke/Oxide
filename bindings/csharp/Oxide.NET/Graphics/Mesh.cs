@@ -6,6 +6,7 @@ using Oxide.Native;
 
 namespace Oxide.Graphics;
 
+/// <summary>Indexed triangle mesh containing geometry and orientation metadata.</summary>
 public sealed class Mesh : IContentAsset
 {
     private readonly MeshSafeHandle
@@ -170,7 +171,8 @@ public sealed class Mesh : IContentAsset
         }
     }
 
-    public void SetOrientation(
+        /// <summary>Sets the mesh orientation basis from direction and reference vectors.</summary>
+public void SetOrientation(
         Vec3 direction,
         Vec3 reference
     )
@@ -185,7 +187,8 @@ public sealed class Mesh : IContentAsset
         );
     }
 
-    public void RecalculatePivot()
+        /// <summary>Recomputes the mesh pivot from its current vertices.</summary>
+public void RecalculatePivot()
     {
         NativeMethods.Check(
             NativeMethods
@@ -195,7 +198,8 @@ public sealed class Mesh : IContentAsset
         );
     }
 
-    public unsafe Vertex[] GetVertices()
+        /// <summary>Returns a copy of the mesh vertices.</summary>
+public unsafe Vertex[] GetVertices()
     {
         int count =
             VertexCount;
@@ -224,7 +228,8 @@ public sealed class Mesh : IContentAsset
         return vertices;
     }
 
-    public unsafe uint[] GetIndices()
+        /// <summary>Returns a copy of the mesh indices.</summary>
+public unsafe uint[] GetIndices()
     {
         int count =
             IndexCount;

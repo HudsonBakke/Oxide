@@ -3,6 +3,7 @@ use crate::math::{Vec2, Vec3, Vec4};
 /// A vertex in a 3D mesh.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Vertex data consumed by Oxide's mesh renderer.
 pub struct Vertex {
     pub position: Vec3,
     pub normal: Vec3,

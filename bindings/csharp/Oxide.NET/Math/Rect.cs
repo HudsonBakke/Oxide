@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Rectangle expressed by position and size.</summary>
 public readonly struct Rect
     : IEquatable<Rect>
 {

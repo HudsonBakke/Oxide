@@ -17,6 +17,7 @@ pub enum MouseButton {
 }
 
 #[derive(Debug, Clone)]
+/// Snapshot of mouse buttons, cursor motion, and scroll motion for the current frame.
 pub struct MouseState {
     current: HashSet<MouseButton>,
     previous: HashSet<MouseButton>,
@@ -46,9 +47,15 @@ impl MouseState {
         !self.is_button_down(button)
     }
 
+    /// Returns whether the button transitioned from up to down this frame.
+
+
     pub fn is_button_pressed(&self, button: MouseButton) -> bool {
         self.current.contains(&button) && !self.previous.contains(&button)
     }
+
+    /// Returns whether the button transitioned from down to up this frame.
+
 
     pub fn is_button_released(&self, button: MouseButton) -> bool {
         !self.current.contains(&button) && self.previous.contains(&button)
@@ -71,6 +78,7 @@ impl MouseState {
     }
 }
 
+/// Entry point for retrieving the current mouse snapshot.
 pub struct Mouse;
 
 impl Mouse {

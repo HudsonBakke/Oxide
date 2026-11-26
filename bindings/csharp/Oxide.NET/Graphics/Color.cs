@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Linear RGBA color with floating-point channels.</summary>
 public readonly struct Color
     : IEquatable<Color>
 {

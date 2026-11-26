@@ -1,6 +1,7 @@
 /// A linear RGBA color.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Linear RGBA color with floating-point channels.
 pub struct Color {
     pub r: f32,
     pub g: f32,

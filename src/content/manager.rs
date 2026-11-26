@@ -11,6 +11,7 @@ use super::{
 };
 
 #[derive(Debug)]
+/// Loads source assets and maintains Oxide's compiled-content cache.
 pub struct ContentManager {
     cache_directory: PathBuf,
 }

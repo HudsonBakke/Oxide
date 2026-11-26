@@ -6,6 +6,7 @@ use super::{Color, Texture};
 /// visible background textures are independent and both use equirectangular
 /// projection.
 #[derive(Debug, Clone)]
+/// Explicit ambient, image-based-lighting, and background settings for a scene.
 pub struct Environment {
     pub ambient_color: Color,
     pub ambient_intensity: f32,

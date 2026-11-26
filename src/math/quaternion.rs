@@ -5,6 +5,7 @@ use super::{Angle, Mat4, Vec3};
 /// A quaternion representing a 3D rotation.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Quaternion rotation used for three-dimensional orientation and vector rotation.
 pub struct Quaternion {
     pub x: f32,
     pub y: f32,

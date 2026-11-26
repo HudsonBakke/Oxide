@@ -2,6 +2,7 @@ using Oxide.Native;
 
 namespace Oxide.Input;
 
+/// <summary>Provides snapshots of keyboard input.</summary>
 public static class Keyboard
 {
     public static KeyboardState GetState()
@@ -16,6 +17,7 @@ public static class Keyboard
     }
 }
 
+/// <summary>Keyboard snapshot containing current and previous key states.</summary>
 public readonly struct KeyboardState
 {
     private readonly ulong _current0;
@@ -39,11 +41,13 @@ public readonly struct KeyboardState
     public bool IsKeyUp(Keys key) =>
         !IsKeyDown(key);
 
-    public bool IsKeyPressed(Keys key) =>
+        /// <summary>Returns true only on the frame the key transitions from up to down.</summary>
+public bool IsKeyPressed(Keys key) =>
         IsSet(_current0, _current1, (int)key)
         && !IsSet(_previous0, _previous1, (int)key);
 
-    public bool IsKeyReleased(Keys key) =>
+        /// <summary>Returns true only on the frame the key transitions from down to up.</summary>
+public bool IsKeyReleased(Keys key) =>
         !IsSet(_current0, _current1, (int)key)
         && IsSet(_previous0, _previous1, (int)key);
 

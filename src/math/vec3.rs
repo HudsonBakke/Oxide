@@ -3,6 +3,7 @@ use std::ops::{Add, Div, Mul, Sub};
 /// A 3-dimensional vector
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
+/// Three-component floating-point vector used for positions, directions, and scales.
 pub struct Vec3 {
     /// The X component of the vector
     pub x: f32,

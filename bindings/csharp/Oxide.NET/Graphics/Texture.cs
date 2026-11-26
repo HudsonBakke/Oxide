@@ -3,6 +3,7 @@ using Oxide.Native;
 
 namespace Oxide.Graphics;
 
+/// <summary>Immutable 2D texture resource loaded through ContentManager or created procedurally.</summary>
 public sealed class Texture
     : IContentAsset
 {
@@ -92,7 +93,8 @@ public sealed class Texture
         }
     }
 
-    public static Texture Solid(
+        /// <summary>Creates a one-pixel texture containing a solid color.</summary>
+public static Texture Solid(
         Color color
     )
     {

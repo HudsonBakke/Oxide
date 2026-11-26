@@ -16,6 +16,7 @@ from .content import Material, Mesh
 
 
 class Color(ctypes.Structure):
+    """Linear RGBA color with floating-point channels."""
     _fields_ = [
         ("r", ctypes.c_float),
         ("g", ctypes.c_float),
@@ -132,8 +133,8 @@ Color.YELLOW = Color.rgb(
 )
 
 
-
 class Environment:
+    """Explicit ambient, IBL, and visible-background settings for a scene."""
     def __init__(
         self,
         ambient_color: Color,
@@ -157,6 +158,7 @@ class Environment:
 
 
 class PointLight(ctypes.Structure):
+    """Omnidirectional light emitted from a world-space point."""
     _fields_ = [
         ("position", Vec3),
         ("color", Color),
@@ -188,6 +190,7 @@ class PointLight(ctypes.Structure):
 
 
 class SpotLight(ctypes.Structure):
+    """Cone-shaped positional light."""
     _fields_ = [
         ("position", Vec3),
         ("direction", Vec3),
@@ -248,6 +251,7 @@ class SpotLight(ctypes.Structure):
 
 
 class DirectionalLight(ctypes.Structure):
+    """Infinitely distant light with parallel rays."""
     _fields_ = [
         ("direction", Vec3),
         ("color", Color),
@@ -290,6 +294,7 @@ class DirectionalLight(ctypes.Structure):
 
 
 class Camera:
+    """Perspective camera defining the viewpoint used to render a scene."""
     def __init__(self) -> None:
         handle = (
             _native.NativeCameraHandle()
@@ -511,6 +516,7 @@ class Camera:
 
 
 class Graphics:
+    """Per-frame rendering interface valid only during the current draw callback."""
     def __init__(
         self,
         handle: _native.NativeGraphicsHandle,
@@ -591,6 +597,7 @@ class Graphics:
         camera: Camera,
         destination: Rect,
     ) -> None:
+        """Bind a camera to a destination rectangle for subsequent draws."""
         self._require_valid()
 
         _native.check(
@@ -608,6 +615,7 @@ class Graphics:
         material: Material,
         transform: Transform,
     ) -> None:
+        """Draw a mesh with the supplied material and transform."""
         self._require_valid()
 
         if not isinstance(mesh, Mesh):
@@ -629,6 +637,7 @@ class Graphics:
         self,
         environment: Environment,
     ) -> None:
+        """Set ambient lighting, IBL, and background rendering for the scene."""
         self._require_valid()
         if not isinstance(environment, Environment):
             raise TypeError("environment must be an Environment")

@@ -10,6 +10,7 @@ from .math import Vec2, Vec3, Vec4
 
 
 class Vertex(ctypes.Structure):
+    """Vertex containing position, normal, texture coordinates, and tangent."""
     _fields_ = [
         ("position", Vec3),
         ("normal", Vec3),
@@ -79,6 +80,7 @@ class _OwnedResource:
 
 
 class Mesh(_OwnedResource):
+    """Indexed triangle mesh with mutable geometry and orientation metadata."""
     _destroy_function = (
         _native.lib.oxide_mesh_destroy
     )
@@ -316,6 +318,7 @@ class Mesh(_OwnedResource):
 
 
 class Texture(_OwnedResource):
+    """Immutable 2D texture resource loaded from content or created procedurally."""
     _destroy_function = (
         _native.lib.oxide_texture_destroy
     )
@@ -392,6 +395,7 @@ class Texture(_OwnedResource):
 
 
 class Material(_OwnedResource):
+    """Physically based surface material."""
     _destroy_function = (
         _native.lib.oxide_material_destroy
     )
@@ -545,6 +549,7 @@ ContentType = TypeVar(
 
 
 class ContentManager(_OwnedResource):
+    """Loads source assets and manages Oxide's compiled-content cache."""
     _destroy_function = (
         _native.lib
         .oxide_content_manager_destroy
@@ -618,6 +623,7 @@ class ContentManager(_OwnedResource):
         path: str | PathLike[str],
         subobject: str | None = None,
     ) -> ContentType:
+        """Load a Mesh, Material, or Texture from the content pipeline."""
         encoded_path = str(path).encode(
             "utf-8"
         )

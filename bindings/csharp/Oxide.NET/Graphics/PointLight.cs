@@ -6,6 +6,7 @@ using Oxide.Math;
 namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Omnidirectional light emitted from a point in world space.</summary>
 public struct PointLight
 {
     private Vec3 _position;

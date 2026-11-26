@@ -3,6 +3,7 @@ using Oxide.Native;
 
 namespace Oxide.Input;
 
+/// <summary>Named mouse buttons recognized by Oxide.</summary>
 public enum MouseButtons
 {
     Left = 0,
@@ -12,6 +13,7 @@ public enum MouseButtons
     Forward = 4,
 }
 
+/// <summary>Provides snapshots of mouse input.</summary>
 public static class Mouse
 {
     public static MouseState GetState()
@@ -26,6 +28,7 @@ public static class Mouse
     }
 }
 
+/// <summary>Mouse snapshot containing button states, position, motion, and scroll deltas.</summary>
 public readonly struct MouseState
 {
     private readonly ulong _current;
@@ -50,11 +53,13 @@ public readonly struct MouseState
     public bool IsButtonUp(MouseButtons button) =>
         !IsButtonDown(button);
 
-    public bool IsButtonPressed(MouseButtons button) =>
+        /// <summary>Returns true only on the frame the button transitions from up to down.</summary>
+public bool IsButtonPressed(MouseButtons button) =>
         IsSet(_current, (int)button)
         && !IsSet(_previous, (int)button);
 
-    public bool IsButtonReleased(MouseButtons button) =>
+        /// <summary>Returns true only on the frame the button transitions from down to up.</summary>
+public bool IsButtonReleased(MouseButtons button) =>
         !IsSet(_current, (int)button)
         && IsSet(_previous, (int)button);
 

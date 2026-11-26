@@ -3,6 +3,7 @@ using Oxide.Native;
 
 namespace Oxide.Graphics;
 
+/// <summary>Physically based surface material controlling color, metallicity, roughness, emission, and normal mapping.</summary>
 public sealed class Material
     : IContentAsset
 {

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Quaternion rotation for three-dimensional orientation.</summary>
 public readonly struct Quaternion
     : IEquatable<Quaternion>
 {

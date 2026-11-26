@@ -5,6 +5,7 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
+/// <summary>Per-frame rendering interface valid only during the current Draw callback.</summary>
 public sealed class Graphics
 {
     private NativeGraphicsHandle
@@ -85,7 +86,8 @@ public sealed class Graphics
         }
     }
 
-    public void SetEnvironment(
+        /// <summary>Sets ambient lighting, IBL, and background rendering for the current scene.</summary>
+public void SetEnvironment(
         Environment environment
     )
     {
@@ -104,7 +106,8 @@ public sealed class Graphics
         );
     }
 
-    public void ClearEnvironment()
+        /// <summary>Removes the current scene environment.</summary>
+public void ClearEnvironment()
     {
         NativeMethods.Check(
             NativeMethods.oxide_graphics_clear_environment(
@@ -113,7 +116,8 @@ public sealed class Graphics
         );
     }
 
-    public void ClearLights()
+        /// <summary>Removes lights accumulated for the current frame.</summary>
+public void ClearLights()
     {
         EnsureValid();
 
@@ -141,7 +145,8 @@ public sealed class Graphics
         }
     }
 
-    public void BindCamera(
+        /// <summary>Binds a camera to the specified destination rectangle for subsequent draws.</summary>
+public void BindCamera(
         Camera camera,
         Rect destination
     )
@@ -207,7 +212,8 @@ public sealed class Graphics
         );
     }
 
-    public void DrawMesh(
+        /// <summary>Draws a mesh with the supplied material and transform.</summary>
+public void DrawMesh(
         Mesh mesh,
         Material material,
         Transform transform

@@ -26,6 +26,7 @@ fn next_mesh_id() -> MeshId {
 /// A mesh contains geometry only. It does not define where that geometry
 /// appears in the world, how it is animated, or how it is rendered.
 #[derive(Debug)]
+/// Indexed triangle mesh containing mutable vertices, indices, pivot, and orientation metadata.
 pub struct Mesh {
     id: MeshId,
 

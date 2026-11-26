@@ -3,6 +3,7 @@ use std::ops::{Add, Div, Mul, Sub};
 /// A 2-dimensional vector
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
+/// Two-component floating-point vector.
 pub struct Vec2 {
     /// The X component of the vector
     pub x: f32,

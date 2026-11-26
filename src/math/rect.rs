@@ -1,6 +1,7 @@
 /// A rectangular region defined by its position and dimensions.
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
+/// Rectangle expressed by position and size, commonly used for camera viewports.
 pub struct Rect {
     pub x: f32,
     pub y: f32,

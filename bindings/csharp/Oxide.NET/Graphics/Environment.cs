@@ -1,5 +1,6 @@
 namespace Oxide.Graphics;
 
+/// <summary>Explicit ambient, image-based-lighting, and background settings for a scene.</summary>
 public sealed class Environment
 {
     public Color AmbientColor { get; }

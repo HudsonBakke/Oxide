@@ -7,6 +7,7 @@ using Oxide.Graphics;
 
 namespace Oxide.App;
 
+/// <summary>Base class for an Oxide application. Override lifecycle methods to initialize, update, and draw the game.</summary>
 public abstract class Game
     : IDisposable
 {
@@ -16,7 +17,11 @@ public abstract class Game
     private bool
         _disposed;
 
-    protected virtual void Initialize()
+    private bool
+        _hasRun;
+
+        /// <summary>Called once after Oxide has initialized the application.</summary>
+protected virtual void Initialize()
     {
     }
 
@@ -26,7 +31,8 @@ public abstract class Game
     {
     }
 
-    protected virtual void Draw(
+        /// <summary>Called each frame to submit rendering commands.</summary>
+protected virtual void Draw(
         Graphics.Graphics graphics
     )
     {
@@ -54,14 +60,16 @@ public abstract class Game
             );
     }
 
-    public void Exit()
+        /// <summary>Requests that the running application exit.</summary>
+public void Exit()
     {
         NativeMethods.Check(
             NativeMethods.oxide_app_exit()
         );
     }
 
-    public void SetWindowName(
+        /// <summary>Changes the native window title.</summary>
+public void SetWindowName(
         string name
     )
     {
@@ -84,7 +92,8 @@ public abstract class Game
         }
     }
 
-    public void SetWindowLogo(
+        /// <summary>Changes the native window icon using the supplied texture.</summary>
+public void SetWindowLogo(
         Texture texture
     )
     {
@@ -97,7 +106,8 @@ public abstract class Game
         );
     }
 
-    public void SetPreferredBackbufferSize(
+        /// <summary>Requests a new backbuffer width and height.</summary>
+public void SetPreferredBackbufferSize(
         uint width,
         uint height
     )
@@ -140,7 +150,8 @@ public abstract class Game
         );
     }
 
-    public void SetCursorVisible(
+        /// <summary>Shows or hides the system cursor while the application is running.</summary>
+public void SetCursorVisible(
         bool visible
     )
     {
@@ -151,7 +162,8 @@ public abstract class Game
         );
     }
 
-    public void SetCursorGrabbed(
+        /// <summary>Controls whether the cursor is confined to the Oxide window.</summary>
+public void SetCursorGrabbed(
         bool grabbed
     )
     {
@@ -162,7 +174,8 @@ public abstract class Game
         );
     }
 
-    public void Run()
+        /// <summary>Starts the Oxide application loop. A Game instance can be run only once.</summary>
+public void Run()
     {
         Run(
             new AppConfig()
@@ -288,9 +301,6 @@ public abstract class Game
     )
     {
     }
-
-    private bool
-        _hasRun;
 
     private void OnInitialize(
         IntPtr userData

@@ -4,6 +4,7 @@ using Oxide.Native;
 
 namespace Oxide.Collision;
 
+/// <summary>Static collision queries between transformed meshes.</summary>
 public static class Collision
 {
     public static bool Collides(

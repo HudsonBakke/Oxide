@@ -3,6 +3,7 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
+/// <summary>Perspective camera defining the viewpoint used to render a scene.</summary>
 public sealed class Camera
 {
     private readonly CameraSafeHandle
@@ -39,7 +40,8 @@ public sealed class Camera
         }
     }
 
-    public Vec3 Position
+        /// <summary>Gets or sets the camera position in world space.</summary>
+public Vec3 Position
     {
         get
         {
@@ -66,7 +68,8 @@ public sealed class Camera
         }
     }
 
-    public Quaternion Rotation
+        /// <summary>Gets or sets the camera orientation.</summary>
+public Quaternion Rotation
     {
         get
         {
@@ -93,7 +96,8 @@ public sealed class Camera
         }
     }
 
-    public Angle FieldOfView
+        /// <summary>Gets or sets the camera's vertical perspective field of view.</summary>
+public Angle FieldOfView
     {
         get
         {
@@ -150,7 +154,8 @@ public sealed class Camera
         );
     }
 
-    public void SetClipPlanes(
+        /// <summary>Sets the near and far clipping distances.</summary>
+public void SetClipPlanes(
         float nearPlane,
         float farPlane
     )
@@ -165,7 +170,8 @@ public sealed class Camera
         );
     }
 
-    public float NearPlane
+        /// <summary>Gets the near clipping distance.</summary>
+public float NearPlane
     {
         get
         {
@@ -181,7 +187,8 @@ public sealed class Camera
         }
     }
 
-    public float FarPlane
+        /// <summary>Gets the far clipping distance.</summary>
+public float FarPlane
     {
         get
         {

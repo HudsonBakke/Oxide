@@ -10,6 +10,7 @@ const LIGHT_EPSILON: f32 = 1.0e-6;
 /// A light emitted outward in all directions from one point.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Omnidirectional light emitted from a point in world space.
 pub struct PointLight {
     position: Vec3,
     color: Color,
@@ -69,6 +70,7 @@ impl PointLight {
 /// A light emitted from one point within a directional cone.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Cone-shaped light with position, direction, angle, color, and intensity.
 pub struct SpotLight {
     position: Vec3,
     direction: Vec3,
@@ -193,6 +195,7 @@ impl SpotLight {
 /// Directional lights have no position or distance attenuation.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Infinitely distant light whose rays share one world-space direction.
 pub struct DirectionalLight {
     direction: Vec3,
     color: Color,

@@ -8,6 +8,7 @@ from .graphics import Graphics
 
 @dataclass
 class AppConfig:
+    """Window configuration used when starting an Oxide game."""
     title: str = "Oxide"
     width: int = 1280
     height: int = 720
@@ -15,11 +16,13 @@ class AppConfig:
 
 @dataclass(frozen=True)
 class GameTime:
+    """Elapsed and total timing information for an update callback."""
     delta_seconds: float
     total_seconds: float
 
 
 class Game:
+    """Base class for an Oxide application; override lifecycle methods to implement a game."""
     def __init__(self) -> None:
         self._has_run = False
 

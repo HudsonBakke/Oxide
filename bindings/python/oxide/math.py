@@ -5,6 +5,7 @@ import math as _math
 
 
 class Angle(ctypes.Structure):
+    """Angle stored in radians with degree conversion helpers."""
     _fields_ = [
         ("radians", ctypes.c_float),
     ]
@@ -66,6 +67,7 @@ class Angle(ctypes.Structure):
 
 
 class Vec2(ctypes.Structure):
+    """Two-component floating-point vector."""
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -175,6 +177,7 @@ class Vec2(ctypes.Structure):
 
 
 class Vec3(ctypes.Structure):
+    """Three-component floating-point vector."""
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -315,6 +318,7 @@ class Vec3(ctypes.Structure):
 
 
 class Vec4(ctypes.Structure):
+    """Four-component floating-point vector."""
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -433,6 +437,7 @@ class Vec4(ctypes.Structure):
 
 
 class Quaternion(ctypes.Structure):
+    """Quaternion rotation for three-dimensional orientation."""
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -711,6 +716,7 @@ class Quaternion(ctypes.Structure):
 
 
 class Rect(ctypes.Structure):
+    """Rectangle expressed by position and size."""
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -768,6 +774,7 @@ class Rect(ctypes.Structure):
 
 
 class Transform(ctypes.Structure):
+    """Position, rotation, and scale describing an object's placement."""
     _fields_ = [
         ("position", Vec3),
         ("rotation", Quaternion),

@@ -5,6 +5,7 @@ using Oxide.Native;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Position, rotation, and scale describing an object's placement.</summary>
 public struct Transform
     : IEquatable<Transform>
 {

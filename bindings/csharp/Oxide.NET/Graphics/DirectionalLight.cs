@@ -6,6 +6,7 @@ using Oxide.Math;
 namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Infinitely distant light whose rays share one direction.</summary>
 public struct DirectionalLight
 {
     private Vec3 _direction;

@@ -2,6 +2,7 @@ use crate::math::{Angle, Mat4, Quaternion, Transform, Vec3};
 
 /// Defines a viewpoint from which a 3D scene can be rendered.
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// A perspective camera defining the viewpoint used to render a scene.
 pub struct Camera {
     transform: Transform,
 

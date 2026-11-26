@@ -3,6 +3,7 @@ use std::ops::{Add, Div, Mul, Sub};
 
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
+/// Four-component floating-point vector.
 pub struct Vec4 {
     pub x: f32,
     pub y: f32,

@@ -209,6 +209,7 @@ typedef struct OxideGameCallbacks
 } OxideGameCallbacks;
 
 OXIDE_API OxideStatus
+/** Runs the application loop using the supplied configuration and callbacks. */
 oxide_run(
     OxideAppConfig config,
     OxideGameCallbacks callbacks
@@ -220,11 +221,13 @@ oxide_run(
  * Application / window control
  * ============================================================ */
 
+/** Requests that the running application exit. */
 OXIDE_API OxideStatus oxide_app_exit(void);
 OXIDE_API OxideStatus oxide_app_set_window_name(const char* name);
 OXIDE_API OxideStatus oxide_app_set_window_logo(OxideTextureHandle texture);
 
 OXIDE_API OxideStatus
+/** Requests a new backbuffer size. */
 oxide_app_set_preferred_backbuffer_size(
     uint32_t width,
     uint32_t height
@@ -354,6 +357,7 @@ oxide_graphics_full_rect(
 );
 
 OXIDE_API OxideStatus
+/** Binds a camera and viewport for subsequent draw calls. */
 oxide_graphics_bind_camera(
     OxideGraphicsHandle graphics,
     OxideCameraHandle camera,
@@ -361,6 +365,7 @@ oxide_graphics_bind_camera(
 );
 
 OXIDE_API OxideStatus
+/** Draws a mesh with a material and transform. */
 oxide_graphics_draw_mesh(
     OxideGraphicsHandle graphics,
     OxideMeshHandle mesh,
@@ -368,6 +373,7 @@ oxide_graphics_draw_mesh(
     OxideTransform transform
 );
 
+/** Sets explicit ambient lighting, IBL, and visible-background inputs. */
 OXIDE_API OxideStatus oxide_graphics_set_environment_explicit(
     OxideGraphicsHandle graphics,
     OxideColor ambient_color,
@@ -380,6 +386,7 @@ OXIDE_API OxideStatus oxide_graphics_set_environment_explicit(
     OxideColor background_color
 );
 
+/** Removes the current environment. */
 OXIDE_API OxideStatus oxide_graphics_clear_environment(
     OxideGraphicsHandle graphics
 );
@@ -413,6 +420,7 @@ oxide_graphics_add_directional_light(
  * ============================================================ */
 
 OXIDE_API OxideStatus
+/** Creates a content manager using the default compiled-content cache. */
 oxide_content_manager_create(
     OxideContentManagerHandle* result
 );
@@ -447,6 +455,7 @@ oxide_content_manager_copy_cache_directory(
  * ============================================================ */
 
 OXIDE_API OxideStatus
+/** Loads a mesh through the content pipeline. */
 oxide_content_load_mesh(
     OxideContentManagerHandle manager,
     const char* path,
@@ -462,6 +471,7 @@ oxide_content_load_mesh_sub(
 );
 
 OXIDE_API OxideStatus
+/** Loads a material through the content pipeline. */
 oxide_content_load_material(
     OxideContentManagerHandle manager,
     const char* path,
@@ -477,6 +487,7 @@ oxide_content_load_material_sub(
 );
 
 OXIDE_API OxideStatus
+/** Loads a texture through the content pipeline. */
 oxide_content_load_texture(
     OxideContentManagerHandle manager,
     const char* path,
@@ -713,6 +724,7 @@ oxide_transform_from_attachment(
  * ============================================================ */
 
 OXIDE_API OxideStatus
+/** Tests whether two transformed meshes intersect. */
 oxide_collision_collides(
     OxideMeshHandle mesh_a,
     OxideTransform transform_a,
@@ -779,6 +791,7 @@ typedef struct OxideMouseState
 } OxideMouseState;
 
 OXIDE_API OxideStatus
+/** Copies the current and previous keyboard state for level and edge queries. */
 oxide_keyboard_get_state(
     OxideKeyboardState* result
 );

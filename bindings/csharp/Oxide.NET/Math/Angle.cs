@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Angle value stored in radians with degree conversion helpers.</summary>
 public readonly struct Angle
     : IEquatable<Angle>
 {

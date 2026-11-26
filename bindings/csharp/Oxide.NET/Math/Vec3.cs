@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Three-component floating-point vector.</summary>
 public struct Vec3
     : IEquatable<Vec3>
 {

@@ -6,6 +6,7 @@ using Oxide.Math;
 namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Cone-shaped light with position, direction, angle, color, and intensity.</summary>
 public struct SpotLight
 {
     private Vec3 _position;

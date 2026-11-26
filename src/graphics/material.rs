@@ -12,6 +12,7 @@ use super::{Color, Texture};
 
 /// Describes the surface appearance used to render a mesh.
 #[derive(Debug)]
+/// Physically based surface material controlling color, metallicity, roughness, emission, and normal mapping.
 pub struct Material {
     base_texture: Texture,
     base_color: Color,

@@ -88,6 +88,7 @@ class MouseButtons(IntEnum):
 
 
 class KeyboardState:
+    """Keyboard snapshot supporting held-state and one-frame edge queries."""
     def __init__(
         self,
         native: _native.NativeKeyboardState,
@@ -111,6 +112,7 @@ class KeyboardState:
         return not self.is_key_down(key)
 
     def is_key_pressed(self, key: Keys) -> bool:
+        """Return True only when the key transitions from up to down this frame."""
         index = int(key)
         return (
             self._is_set(self._current, index)
@@ -118,6 +120,7 @@ class KeyboardState:
         )
 
     def is_key_released(self, key: Keys) -> bool:
+        """Return True only when the key transitions from down to up this frame."""
         index = int(key)
         return (
             not self._is_set(self._current, index)
@@ -139,6 +142,7 @@ class KeyboardState:
 
 
 class Keyboard:
+    """Entry point for retrieving the current keyboard snapshot."""
     @staticmethod
     def get_state() -> KeyboardState:
         native = _native.NativeKeyboardState()
@@ -153,6 +157,7 @@ class Keyboard:
 
 
 class MouseState:
+    """Mouse snapshot containing button states, position, motion, and scrolling."""
     def __init__(
         self,
         native: _native.NativeMouseState,
@@ -191,6 +196,7 @@ class MouseState:
         self,
         button: MouseButtons,
     ) -> bool:
+        """Return True only when the button transitions from up to down this frame."""
         index = int(button)
         return (
             self._is_set(self._current, index)
@@ -201,6 +207,7 @@ class MouseState:
         self,
         button: MouseButtons,
     ) -> bool:
+        """Return True only when the button transitions from down to up this frame."""
         index = int(button)
         return (
             not self._is_set(self._current, index)
@@ -251,6 +258,7 @@ class MouseState:
 
 
 class Mouse:
+    """Entry point for retrieving the current mouse snapshot."""
     @staticmethod
     def get_state() -> MouseState:
         native = _native.NativeMouseState()

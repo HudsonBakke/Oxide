@@ -1,6 +1,7 @@
 /// An angle stored internally in radians.
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
+/// Angle value stored in radians with helpers for degree conversion.
 pub struct Angle {
     radians: f32,
 }
