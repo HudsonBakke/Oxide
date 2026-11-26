@@ -1,3 +1,11 @@
+from .input import (
+    Keyboard,
+    KeyboardState,
+    Keys,
+    Mouse,
+    MouseButtons,
+    MouseState,
+)
 from .errors import (
     ContentError,
     GraphicsError,
@@ -42,6 +50,13 @@ from .graphics import (
 )
 
 __all__ = [
+    "Keyboard",
+    "KeyboardState",
+    "Keys",
+    "Mouse",
+    "MouseButtons",
+    "MouseState",
+
     "ContentError",
     "GraphicsError",
     "InternalError",

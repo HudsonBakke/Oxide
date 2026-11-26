@@ -654,6 +654,71 @@ oxide_collision_collides(
 );
 
 
+
+/* ============================================================
+ * Input
+ * ============================================================ */
+
+typedef enum OxideKey
+{
+    OXIDE_KEY_A = 0, OXIDE_KEY_B, OXIDE_KEY_C, OXIDE_KEY_D,
+    OXIDE_KEY_E, OXIDE_KEY_F, OXIDE_KEY_G, OXIDE_KEY_H,
+    OXIDE_KEY_I, OXIDE_KEY_J, OXIDE_KEY_K, OXIDE_KEY_L,
+    OXIDE_KEY_M, OXIDE_KEY_N, OXIDE_KEY_O, OXIDE_KEY_P,
+    OXIDE_KEY_Q, OXIDE_KEY_R, OXIDE_KEY_S, OXIDE_KEY_T,
+    OXIDE_KEY_U, OXIDE_KEY_V, OXIDE_KEY_W, OXIDE_KEY_X,
+    OXIDE_KEY_Y, OXIDE_KEY_Z,
+    OXIDE_KEY_0, OXIDE_KEY_1, OXIDE_KEY_2, OXIDE_KEY_3,
+    OXIDE_KEY_4, OXIDE_KEY_5, OXIDE_KEY_6, OXIDE_KEY_7,
+    OXIDE_KEY_8, OXIDE_KEY_9,
+    OXIDE_KEY_ESCAPE, OXIDE_KEY_SPACE, OXIDE_KEY_ENTER,
+    OXIDE_KEY_TAB, OXIDE_KEY_BACKSPACE,
+    OXIDE_KEY_LEFT_SHIFT, OXIDE_KEY_RIGHT_SHIFT,
+    OXIDE_KEY_LEFT_CONTROL, OXIDE_KEY_RIGHT_CONTROL,
+    OXIDE_KEY_LEFT_ALT, OXIDE_KEY_RIGHT_ALT,
+    OXIDE_KEY_UP, OXIDE_KEY_DOWN, OXIDE_KEY_LEFT, OXIDE_KEY_RIGHT,
+    OXIDE_KEY_INSERT, OXIDE_KEY_DELETE, OXIDE_KEY_HOME, OXIDE_KEY_END,
+    OXIDE_KEY_PAGE_UP, OXIDE_KEY_PAGE_DOWN,
+    OXIDE_KEY_F1, OXIDE_KEY_F2, OXIDE_KEY_F3, OXIDE_KEY_F4,
+    OXIDE_KEY_F5, OXIDE_KEY_F6, OXIDE_KEY_F7, OXIDE_KEY_F8,
+    OXIDE_KEY_F9, OXIDE_KEY_F10, OXIDE_KEY_F11, OXIDE_KEY_F12
+} OxideKey;
+
+typedef enum OxideMouseButton
+{
+    OXIDE_MOUSE_BUTTON_LEFT = 0,
+    OXIDE_MOUSE_BUTTON_RIGHT = 1,
+    OXIDE_MOUSE_BUTTON_MIDDLE = 2,
+    OXIDE_MOUSE_BUTTON_BACK = 3,
+    OXIDE_MOUSE_BUTTON_FORWARD = 4
+} OxideMouseButton;
+
+typedef struct OxideKeyboardState
+{
+    uint64_t current[2];
+    uint64_t previous[2];
+} OxideKeyboardState;
+
+typedef struct OxideMouseState
+{
+    uint64_t current_buttons;
+    uint64_t previous_buttons;
+    OxideVec2 position;
+    OxideVec2 delta;
+    OxideVec2 scroll_delta;
+} OxideMouseState;
+
+OXIDE_API OxideStatus
+oxide_keyboard_get_state(
+    OxideKeyboardState* result
+);
+
+OXIDE_API OxideStatus
+oxide_mouse_get_state(
+    OxideMouseState* result
+);
+
+
 #ifdef __cplusplus
 }
 #endif

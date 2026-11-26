@@ -54,6 +54,10 @@ impl MouseState {
         !self.current.contains(&button) && self.previous.contains(&button)
     }
 
+    pub(crate) fn was_button_down(&self, button: MouseButton) -> bool {
+        self.previous.contains(&button)
+    }
+
     pub fn position(&self) -> Vec2 {
         self.position
     }

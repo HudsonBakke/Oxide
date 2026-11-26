@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
 
+using Oxide.Math;
+
 namespace Oxide.Native;
 
 internal enum OxideStatus
@@ -101,3 +103,23 @@ internal struct NativeGameCallbacks
     public NativeDrawCallback Draw;
 }
 
+
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeKeyboardState
+{
+    public ulong Current0;
+    public ulong Current1;
+    public ulong Previous0;
+    public ulong Previous1;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeMouseState
+{
+    public ulong CurrentButtons;
+    public ulong PreviousButtons;
+    public Vec2 Position;
+    public Vec2 Delta;
+    public Vec2 ScrollDelta;
+}

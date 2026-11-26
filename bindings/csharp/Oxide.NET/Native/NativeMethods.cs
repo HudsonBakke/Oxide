@@ -515,5 +515,15 @@ internal static class NativeMethods
 
             out byte result
         );
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_keyboard_get_state(
+        out NativeKeyboardState result
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_mouse_get_state(
+        out NativeMouseState result
+    );
+
 }
 

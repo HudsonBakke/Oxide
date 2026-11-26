@@ -5,6 +5,7 @@ mod collision;
 mod content;
 mod error;
 mod graphics;
+mod input;
 mod registry;
 mod resources;
 mod types;

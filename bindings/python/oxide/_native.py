@@ -53,6 +53,25 @@ class NativeContentManagerHandle(ctypes.Structure):
     _fields_ = [("value", ctypes.c_uint64)]
 
 
+class NativeKeyboardState(ctypes.Structure):
+    _fields_ = [
+        ("current0", ctypes.c_uint64),
+        ("current1", ctypes.c_uint64),
+        ("previous0", ctypes.c_uint64),
+        ("previous1", ctypes.c_uint64),
+    ]
+
+
+class NativeMouseState(ctypes.Structure):
+    _fields_ = [
+        ("current_buttons", ctypes.c_uint64),
+        ("previous_buttons", ctypes.c_uint64),
+        ("position", Vec2),
+        ("delta", Vec2),
+        ("scroll_delta", Vec2),
+    ]
+
+
 class NativeAppConfig(ctypes.Structure):
     _fields_ = [
         ("title", ctypes.c_char_p),
@@ -405,6 +424,17 @@ lib.oxide_collision_collides.argtypes = [
     ctypes.POINTER(ctypes.c_uint8),
 ]
 lib.oxide_collision_collides.restype = ctypes.c_int
+
+
+lib.oxide_keyboard_get_state.argtypes = [
+    ctypes.POINTER(NativeKeyboardState),
+]
+lib.oxide_keyboard_get_state.restype = ctypes.c_int
+
+lib.oxide_mouse_get_state.argtypes = [
+    ctypes.POINTER(NativeMouseState),
+]
+lib.oxide_mouse_get_state.restype = ctypes.c_int
 
 
 def last_error_message() -> str:

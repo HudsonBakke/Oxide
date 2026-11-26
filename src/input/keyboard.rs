@@ -4,6 +4,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use winit::event::ElementState;
 use winit::keyboard::{KeyCode, PhysicalKey};
 
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Keys {
     A,
@@ -98,6 +99,10 @@ impl KeyboardState {
 
     pub fn is_key_released(&self, key: Keys) -> bool {
         !self.current.contains(&key) && self.previous.contains(&key)
+    }
+
+    pub(crate) fn was_key_down(&self, key: Keys) -> bool {
+        self.previous.contains(&key)
     }
 }
 
