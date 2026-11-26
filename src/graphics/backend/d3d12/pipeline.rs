@@ -304,7 +304,7 @@ impl D3D12Pipeline {
             NumRenderTargets: 1,
             RTVFormats: rtv_formats,
 
-            DSVFormat: DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT, DXGI_FORMAT_R16G16B16A16_FLOAT,
+            DSVFormat: DXGI_FORMAT_D32_FLOAT,
 
             SampleDesc: DXGI_SAMPLE_DESC {
                 Count: 1,
