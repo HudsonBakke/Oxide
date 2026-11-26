@@ -5,8 +5,10 @@
 #include <stdint.h>
 
 #ifdef _WIN32
+/** Oxide C ABI operation. */
     #define OXIDE_API __declspec(dllimport)
 #else
+/** Oxide C ABI operation. */
     #define OXIDE_API
 #endif
 
@@ -18,6 +20,7 @@ extern "C" {
  * Status / errors
  * ============================================================ */
 
+/** C ABI representation of OxideStatus. */
 typedef enum OxideStatus
 {
     OXIDE_STATUS_OK = 0,
@@ -28,6 +31,7 @@ typedef enum OxideStatus
     OXIDE_STATUS_INTERNAL_ERROR = 5
 } OxideStatus;
 
+/** Performs the last error message operation. */
 OXIDE_API const char*
 oxide_last_error_message(void);
 
@@ -36,17 +40,20 @@ oxide_last_error_message(void);
  * Math types
  * ============================================================ */
 
+/** C ABI representation of OxideAngle. */
 typedef struct OxideAngle
 {
     float radians;
 } OxideAngle;
 
+/** C ABI representation of OxideVec2. */
 typedef struct OxideVec2
 {
     float x;
     float y;
 } OxideVec2;
 
+/** C ABI representation of OxideVec3. */
 typedef struct OxideVec3
 {
     float x;
@@ -54,6 +61,7 @@ typedef struct OxideVec3
     float z;
 } OxideVec3;
 
+/** C ABI representation of OxideVec4. */
 typedef struct OxideVec4
 {
     float x;
@@ -62,6 +70,7 @@ typedef struct OxideVec4
     float w;
 } OxideVec4;
 
+/** C ABI representation of OxideQuaternion. */
 typedef struct OxideQuaternion
 {
     float x;
@@ -70,6 +79,7 @@ typedef struct OxideQuaternion
     float w;
 } OxideQuaternion;
 
+/** C ABI representation of OxideRect. */
 typedef struct OxideRect
 {
     float x;
@@ -78,6 +88,7 @@ typedef struct OxideRect
     float height;
 } OxideRect;
 
+/** C ABI representation of OxideTransform. */
 typedef struct OxideTransform
 {
     OxideVec3 position;
@@ -90,6 +101,7 @@ typedef struct OxideTransform
  * Graphics value types
  * ============================================================ */
 
+/** C ABI representation of OxideColor. */
 typedef struct OxideColor
 {
     float r;
@@ -101,6 +113,7 @@ typedef struct OxideColor
 
 
 
+/** C ABI representation of OxideVertex. */
 typedef struct OxideVertex
 {
     OxideVec3 position;
@@ -109,6 +122,7 @@ typedef struct OxideVertex
     OxideVec4 tangent;
 } OxideVertex;
 
+/** C ABI representation of OxidePointLight. */
 typedef struct OxidePointLight
 {
     OxideVec3 position;
@@ -116,6 +130,7 @@ typedef struct OxidePointLight
     float intensity;
 } OxidePointLight;
 
+/** C ABI representation of OxideSpotLight. */
 typedef struct OxideSpotLight
 {
     OxideVec3 position;
@@ -125,6 +140,7 @@ typedef struct OxideSpotLight
     float intensity;
 } OxideSpotLight;
 
+/** C ABI representation of OxideDirectionalLight. */
 typedef struct OxideDirectionalLight
 {
     OxideVec3 direction;
@@ -137,31 +153,37 @@ typedef struct OxideDirectionalLight
  * Handles
  * ============================================================ */
 
+/** C ABI representation of OxideGraphicsHandle. */
 typedef struct OxideGraphicsHandle
 {
     void* ptr;
 } OxideGraphicsHandle;
 
+/** C ABI representation of OxideCameraHandle. */
 typedef struct OxideCameraHandle
 {
     uint64_t value;
 } OxideCameraHandle;
 
+/** C ABI representation of OxideContentManagerHandle. */
 typedef struct OxideContentManagerHandle
 {
     uint64_t value;
 } OxideContentManagerHandle;
 
+/** C ABI representation of OxideMeshHandle. */
 typedef struct OxideMeshHandle
 {
     uint64_t value;
 } OxideMeshHandle;
 
+/** C ABI representation of OxideMaterialHandle. */
 typedef struct OxideMaterialHandle
 {
     uint64_t value;
 } OxideMaterialHandle;
 
+/** C ABI representation of OxideTextureHandle. */
 typedef struct OxideTextureHandle
 {
     uint64_t value;
@@ -172,12 +194,14 @@ typedef struct OxideTextureHandle
  * Application
  * ============================================================ */
 
+/** C ABI representation of OxideGameTime. */
 typedef struct OxideGameTime
 {
     double delta_seconds;
     double total_seconds;
 } OxideGameTime;
 
+/** C ABI representation of OxideAppConfig. */
 typedef struct OxideAppConfig
 {
     const char* title;
@@ -199,6 +223,7 @@ typedef void (*OxideDrawCallback)(
     OxideGraphicsHandle graphics
 );
 
+/** C ABI representation of OxideGameCallbacks. */
 typedef struct OxideGameCallbacks
 {
     void* user_data;
@@ -208,6 +233,7 @@ typedef struct OxideGameCallbacks
     OxideDrawCallback draw;
 } OxideGameCallbacks;
 
+/** Performs the run operation. */
 OXIDE_API OxideStatus
 /** Runs the application loop using the supplied configuration and callbacks. */
 oxide_run(
@@ -223,9 +249,12 @@ oxide_run(
 
 /** Requests that the running application exit. */
 OXIDE_API OxideStatus oxide_app_exit(void);
+/** Sets window name. */
 OXIDE_API OxideStatus oxide_app_set_window_name(const char* name);
+/** Sets window logo. */
 OXIDE_API OxideStatus oxide_app_set_window_logo(OxideTextureHandle texture);
 
+/** Sets preferred backbuffer size. */
 OXIDE_API OxideStatus
 /** Requests a new backbuffer size. */
 oxide_app_set_preferred_backbuffer_size(
@@ -233,14 +262,21 @@ oxide_app_set_preferred_backbuffer_size(
     uint32_t height
 );
 
+/** Performs the app window width operation. */
 OXIDE_API uint32_t oxide_app_window_width(void);
+/** Performs the app window height operation. */
 OXIDE_API uint32_t oxide_app_window_height(void);
+/** Performs the app is window focused operation. */
 OXIDE_API uint8_t oxide_app_is_window_focused(void);
 
+/** Sets fullscreen. */
 OXIDE_API OxideStatus oxide_app_set_fullscreen(uint8_t fullscreen);
+/** Performs the app is fullscreen operation. */
 OXIDE_API uint8_t oxide_app_is_fullscreen(void);
 
+/** Sets cursor visible. */
 OXIDE_API OxideStatus oxide_app_set_cursor_visible(uint8_t visible);
+/** Sets cursor grabbed. */
 OXIDE_API OxideStatus oxide_app_set_cursor_grabbed(uint8_t grabbed);
 
 
@@ -248,46 +284,54 @@ OXIDE_API OxideStatus oxide_app_set_cursor_grabbed(uint8_t grabbed);
  * Camera
  * ============================================================ */
 
+/** Creates an Oxide resource and writes its handle to the result parameter. */
 OXIDE_API OxideStatus
 oxide_camera_create(
     OxideCameraHandle* result
 );
 
+/** Destroys the associated Oxide resource handle. */
 OXIDE_API OxideStatus
 oxide_camera_destroy(
     OxideCameraHandle camera
 );
 
+/** Reads position. */
 OXIDE_API OxideStatus
 oxide_camera_get_position(
     OxideCameraHandle camera,
     OxideVec3* result
 );
 
+/** Sets position. */
 OXIDE_API OxideStatus
 oxide_camera_set_position(
     OxideCameraHandle camera,
     OxideVec3 position
 );
 
+/** Performs the camera translate by operation. */
 OXIDE_API OxideStatus
 oxide_camera_translate_by(
     OxideCameraHandle camera,
     OxideVec3 translation
 );
 
+/** Reads rotation. */
 OXIDE_API OxideStatus
 oxide_camera_get_rotation(
     OxideCameraHandle camera,
     OxideQuaternion* result
 );
 
+/** Sets rotation. */
 OXIDE_API OxideStatus
 oxide_camera_set_rotation(
     OxideCameraHandle camera,
     OxideQuaternion rotation
 );
 
+/** Sets euler. */
 OXIDE_API OxideStatus
 oxide_camera_set_euler(
     OxideCameraHandle camera,
@@ -296,48 +340,56 @@ oxide_camera_set_euler(
     OxideAngle roll
 );
 
+/** Performs the camera rotate pitch by operation. */
 OXIDE_API OxideStatus
 oxide_camera_rotate_pitch_by(
     OxideCameraHandle camera,
     OxideAngle angle
 );
 
+/** Performs the camera rotate yaw by operation. */
 OXIDE_API OxideStatus
 oxide_camera_rotate_yaw_by(
     OxideCameraHandle camera,
     OxideAngle angle
 );
 
+/** Performs the camera rotate roll by operation. */
 OXIDE_API OxideStatus
 oxide_camera_rotate_roll_by(
     OxideCameraHandle camera,
     OxideAngle angle
 );
 
+/** Reads field of view. */
 OXIDE_API OxideStatus
 oxide_camera_get_field_of_view(
     OxideCameraHandle camera,
     OxideAngle* result
 );
 
+/** Sets field of view. */
 OXIDE_API OxideStatus
 oxide_camera_set_field_of_view(
     OxideCameraHandle camera,
     OxideAngle field_of_view
 );
 
+/** Reads near plane. */
 OXIDE_API OxideStatus
 oxide_camera_get_near_plane(
     OxideCameraHandle camera,
     float* result
 );
 
+/** Reads far plane. */
 OXIDE_API OxideStatus
 oxide_camera_get_far_plane(
     OxideCameraHandle camera,
     float* result
 );
 
+/** Sets clip planes. */
 OXIDE_API OxideStatus
 oxide_camera_set_clip_planes(
     OxideCameraHandle camera,
@@ -350,12 +402,14 @@ oxide_camera_set_clip_planes(
  * Graphics
  * ============================================================ */
 
+/** Performs the graphics full rect operation. */
 OXIDE_API OxideStatus
 oxide_graphics_full_rect(
     OxideGraphicsHandle graphics,
     OxideRect* result
 );
 
+/** Performs the graphics bind camera operation. */
 OXIDE_API OxideStatus
 /** Binds a camera and viewport for subsequent draw calls. */
 oxide_graphics_bind_camera(
@@ -364,6 +418,7 @@ oxide_graphics_bind_camera(
     OxideRect destination
 );
 
+/** Performs the graphics draw mesh operation. */
 OXIDE_API OxideStatus
 /** Draws a mesh with a material and transform. */
 oxide_graphics_draw_mesh(
@@ -391,23 +446,27 @@ OXIDE_API OxideStatus oxide_graphics_clear_environment(
     OxideGraphicsHandle graphics
 );
 
+/** Performs the graphics clear lights operation. */
 OXIDE_API OxideStatus
 oxide_graphics_clear_lights(
     OxideGraphicsHandle graphics
 );
 
+/** Performs the graphics add point light operation. */
 OXIDE_API OxideStatus
 oxide_graphics_add_point_light(
     OxideGraphicsHandle graphics,
     OxidePointLight light
 );
 
+/** Performs the graphics add spot light operation. */
 OXIDE_API OxideStatus
 oxide_graphics_add_spot_light(
     OxideGraphicsHandle graphics,
     OxideSpotLight light
 );
 
+/** Performs the graphics add directional light operation. */
 OXIDE_API OxideStatus
 oxide_graphics_add_directional_light(
     OxideGraphicsHandle graphics,
@@ -419,29 +478,34 @@ oxide_graphics_add_directional_light(
  * Content manager
  * ============================================================ */
 
+/** Creates an Oxide resource and writes its handle to the result parameter. */
 OXIDE_API OxideStatus
 /** Creates a content manager using the default compiled-content cache. */
 oxide_content_manager_create(
     OxideContentManagerHandle* result
 );
 
+/** Creates an Oxide resource and writes its handle to the result parameter. */
 OXIDE_API OxideStatus
 oxide_content_manager_create_with_cache_directory(
     const char* path,
     OxideContentManagerHandle* result
 );
 
+/** Destroys the associated Oxide resource handle. */
 OXIDE_API OxideStatus
 oxide_content_manager_destroy(
     OxideContentManagerHandle manager
 );
 
+/** Performs the content manager cache directory length operation. */
 OXIDE_API OxideStatus
 oxide_content_manager_cache_directory_length(
     OxideContentManagerHandle manager,
     size_t* result
 );
 
+/** Copies cache directory into caller-provided storage. */
 OXIDE_API OxideStatus
 oxide_content_manager_copy_cache_directory(
     OxideContentManagerHandle manager,
@@ -454,6 +518,7 @@ oxide_content_manager_copy_cache_directory(
  * Content loading
  * ============================================================ */
 
+/** Performs the content load mesh operation. */
 OXIDE_API OxideStatus
 /** Loads a mesh through the content pipeline. */
 oxide_content_load_mesh(
@@ -462,6 +527,7 @@ oxide_content_load_mesh(
     OxideMeshHandle* result
 );
 
+/** Performs the content load mesh sub operation. */
 OXIDE_API OxideStatus
 oxide_content_load_mesh_sub(
     OxideContentManagerHandle manager,
@@ -470,6 +536,7 @@ oxide_content_load_mesh_sub(
     OxideMeshHandle* result
 );
 
+/** Performs the content load material operation. */
 OXIDE_API OxideStatus
 /** Loads a material through the content pipeline. */
 oxide_content_load_material(
@@ -478,6 +545,7 @@ oxide_content_load_material(
     OxideMaterialHandle* result
 );
 
+/** Performs the content load material sub operation. */
 OXIDE_API OxideStatus
 oxide_content_load_material_sub(
     OxideContentManagerHandle manager,
@@ -486,6 +554,7 @@ oxide_content_load_material_sub(
     OxideMaterialHandle* result
 );
 
+/** Performs the content load texture operation. */
 OXIDE_API OxideStatus
 /** Loads a texture through the content pipeline. */
 oxide_content_load_texture(
@@ -494,6 +563,7 @@ oxide_content_load_texture(
     OxideTextureHandle* result
 );
 
+/** Performs the content load texture sub operation. */
 OXIDE_API OxideStatus
 oxide_content_load_texture_sub(
     OxideContentManagerHandle manager,
@@ -507,6 +577,7 @@ oxide_content_load_texture_sub(
  * Mesh
  * ============================================================ */
 
+/** Creates an Oxide resource and writes its handle to the result parameter. */
 OXIDE_API OxideStatus
 oxide_mesh_create(
     const OxideVertex* vertices,
@@ -518,70 +589,82 @@ oxide_mesh_create(
     OxideMeshHandle* result
 );
 
+/** Destroys the associated Oxide resource handle. */
 OXIDE_API OxideStatus
 oxide_mesh_destroy(
     OxideMeshHandle mesh
 );
 
+/** Performs the mesh vertex count operation. */
 OXIDE_API OxideStatus
 oxide_mesh_vertex_count(
     OxideMeshHandle mesh,
     size_t* result
 );
 
+/** Performs the mesh index count operation. */
 OXIDE_API OxideStatus
 oxide_mesh_index_count(
     OxideMeshHandle mesh,
     size_t* result
 );
 
+/** Reads pivot. */
 OXIDE_API OxideStatus
 oxide_mesh_get_pivot(
     OxideMeshHandle mesh,
     OxideVec3* result
 );
 
+/** Sets pivot. */
 OXIDE_API OxideStatus
 oxide_mesh_set_pivot(
     OxideMeshHandle mesh,
     OxideVec3 pivot
 );
 
+/** Performs the mesh recalculate pivot operation. */
 OXIDE_API OxideStatus
 oxide_mesh_recalculate_pivot(
     OxideMeshHandle mesh
 );
 
+/** Reads direction. */
 OXIDE_API OxideStatus
 oxide_mesh_get_direction(
     OxideMeshHandle mesh,
     OxideVec3* result
 );
 
+/** Sets direction. */
 OXIDE_API OxideStatus
 oxide_mesh_set_direction(
     OxideMeshHandle mesh,
     OxideVec3 direction
 );
 
+/** Reads reference. */
 OXIDE_API OxideStatus
 oxide_mesh_get_reference(
     OxideMeshHandle mesh,
     OxideVec3* result
 );
 
+/** Sets reference. */
 OXIDE_API OxideStatus
 oxide_mesh_set_reference(
     OxideMeshHandle mesh,
     OxideVec3 reference
 );
 
+/** Reads side. */
 OXIDE_API OxideStatus
 oxide_mesh_get_side(
     OxideMeshHandle mesh,
     OxideVec3* result
 );
 
+/** Sets orientation. */
 OXIDE_API OxideStatus
 oxide_mesh_set_orientation(
     OxideMeshHandle mesh,
@@ -589,6 +672,7 @@ oxide_mesh_set_orientation(
     OxideVec3 reference
 );
 
+/** Copies vertices into caller-provided storage. */
 OXIDE_API OxideStatus
 oxide_mesh_copy_vertices(
     OxideMeshHandle mesh,
@@ -596,6 +680,7 @@ oxide_mesh_copy_vertices(
     size_t capacity
 );
 
+/** Copies indices into caller-provided storage. */
 OXIDE_API OxideStatus
 oxide_mesh_copy_indices(
     OxideMeshHandle mesh,
@@ -603,6 +688,7 @@ oxide_mesh_copy_indices(
     size_t capacity
 );
 
+/** Sets vertices. */
 OXIDE_API OxideStatus
 oxide_mesh_set_vertices(
     OxideMeshHandle mesh,
@@ -610,6 +696,7 @@ oxide_mesh_set_vertices(
     size_t count
 );
 
+/** Sets indices. */
 OXIDE_API OxideStatus
 oxide_mesh_set_indices(
     OxideMeshHandle mesh,
@@ -622,11 +709,13 @@ oxide_mesh_set_indices(
  * Texture
  * ============================================================ */
 
+/** Destroys the associated Oxide resource handle. */
 OXIDE_API OxideStatus
 oxide_texture_destroy(
     OxideTextureHandle texture
 );
 
+/** Creates an Oxide resource and writes its handle to the result parameter. */
 OXIDE_API OxideStatus oxide_texture_create_rgba(
     uint32_t width,
     uint32_t height,
@@ -635,18 +724,21 @@ OXIDE_API OxideStatus oxide_texture_create_rgba(
     OxideTextureHandle* result
 );
 
+/** Performs the texture solid operation. */
 OXIDE_API OxideStatus
 oxide_texture_solid(
     OxideColor color,
     OxideTextureHandle* result
 );
 
+/** Performs the texture width operation. */
 OXIDE_API OxideStatus
 oxide_texture_width(
     OxideTextureHandle texture,
     uint32_t* result
 );
 
+/** Performs the texture height operation. */
 OXIDE_API OxideStatus
 oxide_texture_height(
     OxideTextureHandle texture,
@@ -659,38 +751,56 @@ oxide_texture_height(
  * ============================================================ */
 
 
+/** Performs the material normal texture operation. */
 OXIDE_API OxideStatus oxide_material_normal_texture(OxideMaterialHandle material, OxideTextureHandle* result);
+/** Sets normal texture. */
 OXIDE_API OxideStatus oxide_material_set_normal_texture(OxideMaterialHandle material, OxideTextureHandle texture);
+/** Reads normal strength. */
 OXIDE_API OxideStatus oxide_material_get_normal_strength(OxideMaterialHandle material, float* result);
+/** Sets normal strength. */
 OXIDE_API OxideStatus oxide_material_set_normal_strength(OxideMaterialHandle material, float value);
+/** Reads base color. */
 OXIDE_API OxideStatus oxide_material_get_base_color(OxideMaterialHandle material, OxideColor* result);
+/** Sets base color. */
 OXIDE_API OxideStatus oxide_material_set_base_color(OxideMaterialHandle material, OxideColor value);
+/** Reads metallic. */
 OXIDE_API OxideStatus oxide_material_get_metallic(OxideMaterialHandle material, float* result);
+/** Sets metallic. */
 OXIDE_API OxideStatus oxide_material_set_metallic(OxideMaterialHandle material, float value);
+/** Reads roughness. */
 OXIDE_API OxideStatus oxide_material_get_roughness(OxideMaterialHandle material, float* result);
+/** Sets roughness. */
 OXIDE_API OxideStatus oxide_material_set_roughness(OxideMaterialHandle material, float value);
+/** Reads emissive color. */
 OXIDE_API OxideStatus oxide_material_get_emissive_color(OxideMaterialHandle material, OxideColor* result);
+/** Sets emissive color. */
 OXIDE_API OxideStatus oxide_material_set_emissive_color(OxideMaterialHandle material, OxideColor value);
+/** Reads emissive strength. */
 OXIDE_API OxideStatus oxide_material_get_emissive_strength(OxideMaterialHandle material, float* result);
+/** Sets emissive strength. */
 OXIDE_API OxideStatus oxide_material_set_emissive_strength(OxideMaterialHandle material, float value);
 
+/** Destroys the associated Oxide resource handle. */
 OXIDE_API OxideStatus
 oxide_material_destroy(
     OxideMaterialHandle material
 );
 
+/** Creates an Oxide resource and writes its handle to the result parameter. */
 OXIDE_API OxideStatus
 oxide_material_create(
     OxideTextureHandle texture,
     OxideMaterialHandle* result
 );
 
+/** Performs the material solid operation. */
 OXIDE_API OxideStatus
 oxide_material_solid(
     OxideColor color,
     OxideMaterialHandle* result
 );
 
+/** Performs the material base texture operation. */
 OXIDE_API OxideStatus
 oxide_material_base_texture(
     OxideMaterialHandle material,
@@ -702,6 +812,7 @@ oxide_material_base_texture(
  * Attachment
  * ============================================================ */
 
+/** Performs the transform from attachment operation. */
 OXIDE_API OxideStatus
 oxide_transform_from_attachment(
     OxideMeshHandle parent,
@@ -723,6 +834,7 @@ oxide_transform_from_attachment(
  * Collision
  * ============================================================ */
 
+/** Performs the collision collides operation. */
 OXIDE_API OxideStatus
 /** Tests whether two transformed meshes intersect. */
 oxide_collision_collides(
@@ -741,6 +853,7 @@ oxide_collision_collides(
  * Input
  * ============================================================ */
 
+/** C ABI representation of OxideKey. */
 typedef enum OxideKey
 {
     OXIDE_KEY_A = 0, OXIDE_KEY_B, OXIDE_KEY_C, OXIDE_KEY_D,
@@ -766,6 +879,7 @@ typedef enum OxideKey
     OXIDE_KEY_F9, OXIDE_KEY_F10, OXIDE_KEY_F11, OXIDE_KEY_F12
 } OxideKey;
 
+/** C ABI representation of OxideMouseButton. */
 typedef enum OxideMouseButton
 {
     OXIDE_MOUSE_BUTTON_LEFT = 0,
@@ -775,12 +889,14 @@ typedef enum OxideMouseButton
     OXIDE_MOUSE_BUTTON_FORWARD = 4
 } OxideMouseButton;
 
+/** C ABI representation of OxideKeyboardState. */
 typedef struct OxideKeyboardState
 {
     uint64_t current[2];
     uint64_t previous[2];
 } OxideKeyboardState;
 
+/** C ABI representation of OxideMouseState. */
 typedef struct OxideMouseState
 {
     uint64_t current_buttons;
@@ -790,12 +906,14 @@ typedef struct OxideMouseState
     OxideVec2 scroll_delta;
 } OxideMouseState;
 
+/** Reads state. */
 OXIDE_API OxideStatus
 /** Copies the current and previous keyboard state for level and edge queries. */
 oxide_keyboard_get_state(
     OxideKeyboardState* result
 );
 
+/** Reads state. */
 OXIDE_API OxideStatus
 oxide_mouse_get_state(
     OxideMouseState* result
