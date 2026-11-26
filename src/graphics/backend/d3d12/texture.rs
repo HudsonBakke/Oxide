@@ -252,14 +252,14 @@ impl D3D12Texture {
             Type: D3D12_HEAP_TYPE_DEFAULT,
             ..Default::default()
         };
-        let mut resource = None;
+        let mut resource: Option<ID3D12Resource> = None;
         unsafe {
             device.device().CreateCommittedResource(
                 &default_heap, Default::default(), &texture_desc,
                 D3D12_RESOURCE_STATE_COPY_DEST, None, &mut resource,
             )?;
         }
-        let resource = resource.unwrap();
+        let resource: ID3D12Resource = resource.unwrap();
 
         let mut footprints = vec![D3D12_PLACED_SUBRESOURCE_FOOTPRINT::default(); mips.len()];
         let mut rows = vec![0_u32; mips.len()];
