@@ -1,7 +1,5 @@
 use std::sync::{
-    Mutex,
-    MutexGuard,
-    OnceLock,
+    Mutex, MutexGuard, OnceLock,
     atomic::{AtomicBool, AtomicU32, Ordering},
 };
 
@@ -12,13 +10,7 @@ use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
     event_loop::{ActiveEventLoop, EventLoop},
-    window::{
-        CursorGrabMode,
-        Fullscreen,
-        Icon,
-        WindowAttributes,
-        WindowId,
-    },
+    window::{CursorGrabMode, Fullscreen, Icon, WindowAttributes, WindowId},
 };
 
 use std::time::Instant;
@@ -219,9 +211,9 @@ impl<G: Game> App<G> {
 
                 AppCommand::SetBackbufferSize(width, height) => {
                     if let Some(window) = &self.window {
-                        let _ = window.inner().request_inner_size(
-                            winit::dpi::PhysicalSize::new(width, height)
-                        );
+                        let _ = window
+                            .inner()
+                            .request_inner_size(winit::dpi::PhysicalSize::new(width, height));
                     }
 
                     self.resize(width, height);
@@ -253,14 +245,10 @@ impl<G: Game> App<G> {
                                 .inner()
                                 .set_cursor_grab(CursorGrabMode::Locked)
                                 .or_else(|_| {
-                                    window
-                                        .inner()
-                                        .set_cursor_grab(CursorGrabMode::Confined)
+                                    window.inner().set_cursor_grab(CursorGrabMode::Confined)
                                 })
                         } else {
-                            window
-                                .inner()
-                                .set_cursor_grab(CursorGrabMode::None)
+                            window.inner().set_cursor_grab(CursorGrabMode::None)
                         };
 
                         let _ = result;

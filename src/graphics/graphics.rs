@@ -83,18 +83,12 @@ impl Graphics {
 
     /// Requests a new backbuffer/window width.
     pub fn set_preferred_backbuffer_width(&mut self, width: u32) {
-        crate::app::set_preferred_backbuffer_size(
-            width,
-            crate::app::window_height(),
-        );
+        crate::app::set_preferred_backbuffer_size(width, crate::app::window_height());
     }
 
     /// Requests a new backbuffer/window height.
     pub fn set_preferred_backbuffer_height(&mut self, height: u32) {
-        crate::app::set_preferred_backbuffer_size(
-            crate::app::window_width(),
-            height,
-        );
+        crate::app::set_preferred_backbuffer_size(crate::app::window_width(), height);
     }
 
     /// Binds a camera and destination rectangle for subsequent draw calls.

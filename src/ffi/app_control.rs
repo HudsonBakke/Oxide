@@ -3,12 +3,8 @@ use std::ffi::CStr;
 use crate::app;
 
 use super::{
-    OxideStatus,
-    OxideTextureHandle,
-    error::{
-        ffi_boundary,
-        set_last_error,
-    },
+    OxideStatus, OxideTextureHandle,
+    error::{ffi_boundary, set_last_error},
     resources::with_texture,
 };
 
@@ -21,9 +17,7 @@ pub extern "C" fn oxide_app_exit() -> OxideStatus {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn oxide_app_set_window_name(
-    name: *const std::ffi::c_char,
-) -> OxideStatus {
+pub unsafe extern "C" fn oxide_app_set_window_name(name: *const std::ffi::c_char) -> OxideStatus {
     ffi_boundary(|| {
         if name.is_null() {
             set_last_error("window name cannot be null");
@@ -43,9 +37,7 @@ pub unsafe extern "C" fn oxide_app_set_window_name(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_app_set_window_logo(
-    texture: OxideTextureHandle,
-) -> OxideStatus {
+pub extern "C" fn oxide_app_set_window_logo(texture: OxideTextureHandle) -> OxideStatus {
     ffi_boundary(|| {
         let Some(()) = with_texture(texture, |texture| {
             app::set_window_logo(texture);
@@ -59,10 +51,7 @@ pub extern "C" fn oxide_app_set_window_logo(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_app_set_preferred_backbuffer_size(
-    width: u32,
-    height: u32,
-) -> OxideStatus {
+pub extern "C" fn oxide_app_set_preferred_backbuffer_size(width: u32, height: u32) -> OxideStatus {
     ffi_boundary(|| {
         if width == 0 || height == 0 {
             set_last_error("backbuffer dimensions must be greater than zero");
@@ -90,9 +79,7 @@ pub extern "C" fn oxide_app_is_window_focused() -> u8 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_app_set_fullscreen(
-    fullscreen: u8,
-) -> OxideStatus {
+pub extern "C" fn oxide_app_set_fullscreen(fullscreen: u8) -> OxideStatus {
     ffi_boundary(|| {
         app::set_fullscreen(fullscreen != 0);
         OxideStatus::Ok
@@ -105,9 +92,7 @@ pub extern "C" fn oxide_app_is_fullscreen() -> u8 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_app_set_cursor_visible(
-    visible: u8,
-) -> OxideStatus {
+pub extern "C" fn oxide_app_set_cursor_visible(visible: u8) -> OxideStatus {
     ffi_boundary(|| {
         app::set_cursor_visible(visible != 0);
         OxideStatus::Ok
@@ -115,9 +100,7 @@ pub extern "C" fn oxide_app_set_cursor_visible(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_app_set_cursor_grabbed(
-    grabbed: u8,
-) -> OxideStatus {
+pub extern "C" fn oxide_app_set_cursor_grabbed(grabbed: u8) -> OxideStatus {
     ffi_boundary(|| {
         app::set_cursor_grabbed(grabbed != 0);
         OxideStatus::Ok
