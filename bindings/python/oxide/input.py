@@ -103,12 +103,14 @@ class KeyboardState:
         )
 
     def is_key_down(self, key: Keys) -> bool:
+        """Return whether the key is held."""
         return self._is_set(
             self._current,
             int(key),
         )
 
     def is_key_up(self, key: Keys) -> bool:
+        """Return whether the key is not held."""
         return not self.is_key_down(key)
 
     def is_key_pressed(self, key: Keys) -> bool:
@@ -145,6 +147,7 @@ class Keyboard:
     """Entry point for retrieving the current keyboard snapshot."""
     @staticmethod
     def get_state() -> KeyboardState:
+        """Return the current input snapshot."""
         native = _native.NativeKeyboardState()
 
         _native.check(
@@ -181,6 +184,7 @@ class MouseState:
         self,
         button: MouseButtons,
     ) -> bool:
+        """Return whether the button is held."""
         return self._is_set(
             self._current,
             int(button),
@@ -190,6 +194,7 @@ class MouseState:
         self,
         button: MouseButtons,
     ) -> bool:
+        """Return whether the button is not held."""
         return not self.is_button_down(button)
 
     def is_button_pressed(
@@ -218,6 +223,7 @@ class MouseState:
         self,
         button: int,
     ) -> bool:
+        """Public Oxide is other button down operation."""
         return self._is_set(
             self._current,
             5 + button,
@@ -227,12 +233,14 @@ class MouseState:
         self,
         button: int,
     ) -> bool:
+        """Public Oxide is other button up operation."""
         return not self.is_other_button_down(button)
 
     def is_other_button_pressed(
         self,
         button: int,
     ) -> bool:
+        """Public Oxide is other button pressed operation."""
         index = 5 + button
         return (
             self._is_set(self._current, index)
@@ -243,6 +251,7 @@ class MouseState:
         self,
         button: int,
     ) -> bool:
+        """Public Oxide is other button released operation."""
         index = 5 + button
         return (
             not self._is_set(self._current, index)
@@ -261,6 +270,7 @@ class Mouse:
     """Entry point for retrieving the current mouse snapshot."""
     @staticmethod
     def get_state() -> MouseState:
+        """Return the current input snapshot."""
         native = _native.NativeMouseState()
 
         _native.check(

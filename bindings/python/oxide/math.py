@@ -20,6 +20,7 @@ class Angle(ctypes.Structure):
 
     @classmethod
     def zero(cls) -> Angle:
+        """Public Oxide zero operation."""
         return cls(0.0)
 
     @classmethod
@@ -27,6 +28,7 @@ class Angle(ctypes.Structure):
         cls,
         radians: float,
     ) -> Angle:
+        """Public Oxide from radians operation."""
         return cls(radians)
 
     @classmethod
@@ -34,16 +36,19 @@ class Angle(ctypes.Structure):
         cls,
         degrees: float,
     ) -> Angle:
+        """Public Oxide degrees operation."""
         return cls(
             _math.radians(degrees)
         )
 
     @property
     def as_radians(self) -> float:
+        """Public Oxide as radians operation."""
         return float(self.radians)
 
     @property
     def as_degrees(self) -> float:
+        """Public Oxide as degrees operation."""
         return _math.degrees(
             self.radians
         )
@@ -85,12 +90,14 @@ class Vec2(ctypes.Structure):
 
     @property
     def length(self) -> float:
+        """Public Oxide length operation."""
         return _math.sqrt(
             self.x * self.x
             + self.y * self.y
         )
 
     def normalized(self) -> Vec2:
+        """Return a normalized copy."""
         length = self.length
 
         if length == 0.0:
@@ -102,6 +109,7 @@ class Vec2(ctypes.Structure):
         )
 
     def normalize(self) -> None:
+        """Normalize this value in place."""
         length = self.length
 
         if length == 0.0:
@@ -114,6 +122,7 @@ class Vec2(ctypes.Structure):
         self,
         other: Vec2,
     ) -> float:
+        """Return the dot product."""
         return (
             self.x * other.x
             + self.y * other.y
@@ -198,6 +207,7 @@ class Vec3(ctypes.Structure):
 
     @property
     def length(self) -> float:
+        """Public Oxide length operation."""
         return _math.sqrt(
             self.x * self.x
             + self.y * self.y
@@ -205,6 +215,7 @@ class Vec3(ctypes.Structure):
         )
 
     def normalized(self) -> Vec3:
+        """Return a normalized copy."""
         length = self.length
 
         if length == 0.0:
@@ -217,6 +228,7 @@ class Vec3(ctypes.Structure):
         )
 
     def normalize(self) -> None:
+        """Normalize this value in place."""
         length = self.length
 
         if length == 0.0:
@@ -230,6 +242,7 @@ class Vec3(ctypes.Structure):
         self,
         other: Vec3,
     ) -> float:
+        """Return the dot product."""
         return (
             self.x * other.x
             + self.y * other.y
@@ -240,6 +253,7 @@ class Vec3(ctypes.Structure):
         self,
         other: Vec3,
     ) -> Vec3:
+        """Return the three-dimensional cross product."""
         return Vec3(
             self.y * other.z
             - self.z * other.y,
@@ -345,6 +359,7 @@ class Vec4(ctypes.Structure):
         cls,
         value: Vec3,
     ) -> Vec4:
+        """Public Oxide from position operation."""
         return cls(
             value.x,
             value.y,
@@ -357,6 +372,7 @@ class Vec4(ctypes.Structure):
         cls,
         value: Vec3,
     ) -> Vec4:
+        """Public Oxide from direction operation."""
         return cls(
             value.x,
             value.y,
@@ -461,6 +477,7 @@ class Quaternion(ctypes.Structure):
 
     @classmethod
     def identity(cls) -> Quaternion:
+        """Public Oxide identity operation."""
         return cls(
             0.0,
             0.0,
@@ -474,6 +491,7 @@ class Quaternion(ctypes.Structure):
         axis: Vec3,
         angle: Angle,
     ) -> Quaternion:
+        """Public Oxide from axis angle operation."""
         axis = axis.normalized()
 
         half_angle = (
@@ -501,6 +519,7 @@ class Quaternion(ctypes.Structure):
         yaw: Angle,
         roll: Angle,
     ) -> Quaternion:
+        """Public Oxide from euler operation."""
         pitch_rotation = (
             cls.from_axis_angle(
                 Vec3(
@@ -546,6 +565,7 @@ class Quaternion(ctypes.Structure):
         from_vector: Vec3,
         to_vector: Vec3,
     ) -> Quaternion:
+        """Public Oxide from to operation."""
         from_vector = (
             from_vector.normalized()
         )
@@ -615,6 +635,7 @@ class Quaternion(ctypes.Structure):
 
     @property
     def length(self) -> float:
+        """Public Oxide length operation."""
         return _math.sqrt(
             self.x * self.x
             + self.y * self.y
@@ -623,6 +644,7 @@ class Quaternion(ctypes.Structure):
         )
 
     def normalized(self) -> Quaternion:
+        """Return a normalized copy."""
         length = self.length
 
         if length == 0.0:
@@ -636,6 +658,7 @@ class Quaternion(ctypes.Structure):
         )
 
     def conjugate(self) -> Quaternion:
+        """Public Oxide conjugate operation."""
         return Quaternion(
             -self.x,
             -self.y,
@@ -647,6 +670,7 @@ class Quaternion(ctypes.Structure):
         self,
         vector: Vec3,
     ) -> Vec3:
+        """Public Oxide rotate vector operation."""
         q = Vec3(
             self.x,
             self.y,
@@ -740,6 +764,7 @@ class Rect(ctypes.Structure):
 
     @property
     def aspect_ratio(self) -> float:
+        """Public Oxide aspect ratio operation."""
         return (
             self.width
             / self.height
@@ -823,6 +848,7 @@ class Transform(ctypes.Structure):
         self,
         translation: Vec3,
     ) -> None:
+        """Add a world-space translation."""
         self.position = (
             self.position
             + translation
@@ -832,6 +858,7 @@ class Transform(ctypes.Structure):
         self,
         rotation: Quaternion,
     ) -> None:
+        """Public Oxide set rotation operation."""
         self.rotation = (
             rotation.normalized()
         )
@@ -842,6 +869,7 @@ class Transform(ctypes.Structure):
         yaw: Angle,
         roll: Angle,
     ) -> None:
+        """Set orientation from pitch, yaw, and roll."""
         self.rotation = (
             Quaternion.from_euler(
                 pitch,
@@ -854,6 +882,7 @@ class Transform(ctypes.Structure):
         self,
         angle: Angle,
     ) -> None:
+        """Public Oxide rotate pitch by operation."""
         rotation = (
             Quaternion.from_axis_angle(
                 Vec3(
@@ -874,6 +903,7 @@ class Transform(ctypes.Structure):
         self,
         angle: Angle,
     ) -> None:
+        """Public Oxide rotate yaw by operation."""
         rotation = (
             Quaternion.from_axis_angle(
                 Vec3(
@@ -894,6 +924,7 @@ class Transform(ctypes.Structure):
         self,
         angle: Angle,
     ) -> None:
+        """Public Oxide rotate roll by operation."""
         rotation = (
             Quaternion.from_axis_angle(
                 Vec3(
@@ -914,6 +945,7 @@ class Transform(ctypes.Structure):
         self,
         scale: Vec3,
     ) -> None:
+        """Public Oxide scale by operation."""
         self.scale = Vec3(
             self.scale.x * scale.x,
             self.scale.y * scale.y,
@@ -932,6 +964,7 @@ class Transform(ctypes.Structure):
         rotation: Angle,
         scale: Vec3,
     ) -> Transform:
+        """Compute a child transform aligning two mesh attachment points."""
         # Import lazily so the ABI math types remain independent
         # of the resource layer during module initialization.
         import ctypes

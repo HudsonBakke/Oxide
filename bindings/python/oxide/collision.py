@@ -13,6 +13,7 @@ def collides(
     mesh_b: Mesh,
     transform_b: Transform,
 ) -> bool:
+    """Return whether the two transformed meshes intersect."""
     if not isinstance(mesh_a, Mesh):
         raise TypeError("mesh_a must be a Mesh")
 

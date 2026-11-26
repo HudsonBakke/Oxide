@@ -27,38 +27,46 @@ class Game:
         self._has_run = False
 
     def initialize(self) -> None:
+        """Called once after Oxide initializes the application."""
         pass
 
     def update(
         self,
         time: GameTime,
     ) -> None:
+        """Called once per update with timing information."""
         pass
 
     def draw(
         self,
         graphics: Graphics,
     ) -> None:
+        """Called each frame to submit rendering commands."""
         pass
 
     @property
     def window_width(self) -> int:
+        """Public Oxide window width operation."""
         return _native.lib.oxide_app_window_width()
 
     @property
     def window_height(self) -> int:
+        """Public Oxide window height operation."""
         return _native.lib.oxide_app_window_height()
 
     @property
     def is_window_focused(self) -> bool:
+        """Public Oxide is window focused operation."""
         return _native.lib.oxide_app_is_window_focused() != 0
 
     @property
     def is_fullscreen(self) -> bool:
+        """Public Oxide is fullscreen operation."""
         return _native.lib.oxide_app_is_fullscreen() != 0
 
     @is_fullscreen.setter
     def is_fullscreen(self, value: bool) -> None:
+        """Public Oxide is fullscreen operation."""
         _native.check(
             _native.lib.oxide_app_set_fullscreen(
                 1 if value else 0
@@ -66,6 +74,7 @@ class Game:
         )
 
     def exit(self) -> None:
+        """Request that the running application exit."""
         _native.check(
             _native.lib.oxide_app_exit()
         )
@@ -74,6 +83,7 @@ class Game:
         self,
         name: str,
     ) -> None:
+        """Change the native window title."""
         if not isinstance(name, str):
             raise TypeError("name must be a string")
 
@@ -87,6 +97,7 @@ class Game:
         self,
         texture,
     ) -> None:
+        """Change the native window icon using a texture."""
         from .content import Texture
 
         if not isinstance(texture, Texture):
@@ -103,6 +114,7 @@ class Game:
         width: int,
         height: int,
     ) -> None:
+        """Request a new backbuffer size."""
         if width <= 0 or height <= 0:
             raise ValueError(
                 "backbuffer dimensions must be greater than zero"
@@ -119,6 +131,7 @@ class Game:
         self,
         width: int,
     ) -> None:
+        """Public Oxide set preferred backbuffer width operation."""
         self.set_preferred_backbuffer_size(
             width,
             self.window_height,
@@ -128,6 +141,7 @@ class Game:
         self,
         height: int,
     ) -> None:
+        """Public Oxide set preferred backbuffer height operation."""
         self.set_preferred_backbuffer_size(
             self.window_width,
             height,
@@ -137,6 +151,7 @@ class Game:
         self,
         visible: bool,
     ) -> None:
+        """Show or hide the system cursor."""
         _native.check(
             _native.lib.oxide_app_set_cursor_visible(
                 1 if visible else 0
@@ -147,6 +162,7 @@ class Game:
         self,
         grabbed: bool,
     ) -> None:
+        """Confine or release the cursor from the window."""
         _native.check(
             _native.lib.oxide_app_set_cursor_grabbed(
                 1 if grabbed else 0
@@ -157,6 +173,7 @@ class Game:
         self,
         config: AppConfig | None = None,
     ) -> None:
+        """Start the Oxide application loop; a Game instance can run only once."""
         if self._has_run:
             raise RuntimeError(
                 "An Oxide Game instance can only be run once."
@@ -193,6 +210,7 @@ class Game:
         def capture_exception(
             exception: BaseException,
         ) -> None:
+            """Public Oxide capture exception operation."""
             nonlocal callback_exception
 
             if callback_exception is None:
@@ -202,6 +220,7 @@ class Game:
         def on_initialize(
             user_data,
         ) -> None:
+            """Public Oxide on initialize operation."""
             if callback_exception is not None:
                 return
 
@@ -217,6 +236,7 @@ class Game:
             user_data,
             native_time,
         ) -> None:
+            """Public Oxide on update operation."""
             if callback_exception is not None:
                 return
 
@@ -243,6 +263,7 @@ class Game:
             user_data,
             graphics_handle,
         ) -> None:
+            """Public Oxide on draw operation."""
             if callback_exception is not None:
                 return
 
