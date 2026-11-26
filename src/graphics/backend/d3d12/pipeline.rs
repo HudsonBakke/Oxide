@@ -20,7 +20,7 @@ use windows::{
         },
         Dxgi::Common::{
             DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32_FLOAT,
-            DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC,
+            DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC,
         },
     },
     core::Result,
@@ -223,6 +223,7 @@ impl D3D12Pipeline {
         let position_semantic = b"POSITION\0";
         let normal_semantic = b"NORMAL\0";
         let tex_coord_semantic = b"TEXCOORD\0";
+        let tangent_semantic = b"TANGENT\0";
 
         let input_elements = [
             D3D12_INPUT_ELEMENT_DESC {
@@ -249,6 +250,15 @@ impl D3D12Pipeline {
                 Format: DXGI_FORMAT_R32G32_FLOAT,
                 InputSlot: 0,
                 AlignedByteOffset: 24,
+                InputSlotClass: D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InstanceDataStepRate: 0,
+            },
+            D3D12_INPUT_ELEMENT_DESC {
+                SemanticName: windows::core::PCSTR(tangent_semantic.as_ptr()),
+                SemanticIndex: 0,
+                Format: DXGI_FORMAT_R32G32B32A32_FLOAT,
+                InputSlot: 0,
+                AlignedByteOffset: 32,
                 InputSlotClass: D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                 InstanceDataStepRate: 0,
             },
