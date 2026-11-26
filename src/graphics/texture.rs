@@ -81,6 +81,30 @@ impl Texture {
         &self.pixels
     }
 
+    /// Creates a texture directly from RGBA8 pixel data.
+    pub fn rgba(
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+    ) -> crate::OxideResult<Self> {
+        let expected = (width as usize)
+            .checked_mul(height as usize)
+            .and_then(|value| value.checked_mul(4))
+            .ok_or(crate::OxideError::InvalidArgument {
+                argument: "pixels",
+                message: "texture dimensions overflow",
+            })?;
+
+        if pixels.len() != expected {
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "pixels",
+                message: "RGBA pixel count does not match texture dimensions",
+            });
+        }
+
+        Ok(Self::from_rgba(width, height, pixels))
+    }
+
     pub(crate) fn from_rgba(width: u32, height: u32, pixels: Vec<u8>) -> Self {
         Self {
             id: next_texture_id(),

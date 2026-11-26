@@ -36,6 +36,48 @@ pub(crate) fn with_texture<R>(
     registry.get(handle.0).map(operation)
 }
 
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_texture_create_rgba(
+    width: u32,
+    height: u32,
+    pixels: *const u8,
+    pixel_count: usize,
+    result: *mut OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() {
+            set_last_error("result pointer cannot be null");
+            return OxideStatus::InvalidArgument;
+        }
+
+        if pixel_count > 0 && pixels.is_null() {
+            set_last_error("pixel source pointer cannot be null");
+            return OxideStatus::InvalidArgument;
+        }
+
+        let pixels = if pixel_count == 0 {
+            Vec::new()
+        } else {
+            unsafe { std::slice::from_raw_parts(pixels, pixel_count) }.to_vec()
+        };
+
+        let texture = match Texture::rgba(width, height, pixels) {
+            Ok(texture) => texture,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return OxideStatus::InvalidArgument;
+            }
+        };
+
+        unsafe {
+            *result = insert_texture(texture);
+        }
+
+        OxideStatus::Ok
+    })
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn oxide_texture_solid(
     color: Color,
