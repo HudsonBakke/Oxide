@@ -24,3 +24,8 @@ harness = false
 [[example]]
 name = "first_person"
 path = "examples/rust/first_person.rs"
+
+
+[[example]]
+name = "materials"
+path = "examples/rust/materials.rs"
