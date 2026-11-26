@@ -135,36 +135,38 @@ Color.YELLOW = Color.rgb(
 
 class Environment(ctypes.Structure):
     _fields_ = [
+        ("ambient_color", Color),
+        ("ambient_intensity", ctypes.c_float),
         ("sky_color", Color),
         ("horizon_color", Color),
         ("ground_color", Color),
-        ("intensity", ctypes.c_float),
+        ("environment_intensity", ctypes.c_float),
+        ("background_color", Color),
     ]
 
     def __init__(
         self,
+        ambient_color: Color,
+        ambient_intensity: float,
         sky_color: Color,
         horizon_color: Color,
         ground_color: Color,
-        intensity: float = 1.0,
+        environment_intensity: float,
+        background_color: Color,
     ) -> None:
-        if not math.isfinite(intensity) or intensity < 0.0:
+        if not math.isfinite(ambient_intensity) or ambient_intensity < 0.0:
+            raise ValueError("ambient intensity must be finite and non-negative")
+        if not math.isfinite(environment_intensity) or environment_intensity < 0.0:
             raise ValueError("environment intensity must be finite and non-negative")
 
         super().__init__(
+            ambient_color,
+            float(ambient_intensity),
             sky_color,
             horizon_color,
             ground_color,
-            float(intensity),
-        )
-
-    @classmethod
-    def daylight(cls):
-        return cls(
-            Color.rgb(0.28, 0.48, 0.90),
-            Color.rgb(0.72, 0.78, 0.88),
-            Color.rgb(0.16, 0.13, 0.10),
-            0.65,
+            float(environment_intensity),
+            background_color,
         )
 
 

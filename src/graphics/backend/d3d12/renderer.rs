@@ -131,6 +131,7 @@ struct LightConstants {
 
     _padding: u32,
 
+    environment_ambient: [f32; 4],
     environment_sky: [f32; 4],
     environment_horizon: [f32; 4],
     environment_ground: [f32; 4],
@@ -330,7 +331,16 @@ impl D3D12Renderer {
             D3D12_RESOURCE_STATE_RENDER_TARGET,
         );
 
-        let clear_color = [0.10, 0.15, 0.25, 1.0];
+        let clear_color = if let Some(environment) = self.environment {
+            [
+                environment.background_color.r,
+                environment.background_color.g,
+                environment.background_color.b,
+                environment.background_color.a,
+            ]
+        } else {
+            [0.10, 0.15, 0.25, 1.0]
+        };
 
         let rtv = swap_chain.current_rtv();
         let dsv = swap_chain.current_dsv();
@@ -499,6 +509,7 @@ impl D3D12Renderer {
             directional_light_count: 0,
 
             _padding: 0,
+            environment_ambient: [0.0; 4],
             environment_sky: [0.0; 4],
             environment_horizon: [0.0; 4],
             environment_ground: [0.0; 4],
@@ -506,6 +517,12 @@ impl D3D12Renderer {
         };
 
         if let Some(environment) = self.environment {
+            light_constants.environment_ambient = [
+                environment.ambient_color.r,
+                environment.ambient_color.g,
+                environment.ambient_color.b,
+                environment.ambient_intensity,
+            ];
             light_constants.environment_sky = [
                 environment.sky_color.r,
                 environment.sky_color.g,
@@ -525,7 +542,7 @@ impl D3D12Renderer {
                 environment.ground_color.a,
             ];
             light_constants.environment_params = [
-                environment.intensity,
+                environment.environment_intensity,
                 1.0,
                 0.0,
                 0.0,

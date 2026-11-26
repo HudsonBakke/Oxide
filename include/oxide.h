@@ -100,10 +100,13 @@ typedef struct OxideColor
 
 typedef struct OxideEnvironment
 {
+    OxideColor ambient_color;
+    float ambient_intensity;
     OxideColor sky_color;
     OxideColor horizon_color;
     OxideColor ground_color;
-    float intensity;
+    float environment_intensity;
+    OxideColor background_color;
 } OxideEnvironment;
 
 

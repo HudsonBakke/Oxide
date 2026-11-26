@@ -5,32 +5,38 @@ namespace Oxide.Graphics;
 [StructLayout(LayoutKind.Sequential)]
 public struct Environment
 {
+    public Color AmbientColor;
+    public float AmbientIntensity;
+
     public Color SkyColor;
     public Color HorizonColor;
     public Color GroundColor;
-    public float Intensity;
+    public float EnvironmentIntensity;
+
+    public Color BackgroundColor;
 
     public Environment(
+        Color ambientColor,
+        float ambientIntensity,
         Color skyColor,
         Color horizonColor,
         Color groundColor,
-        float intensity = 1.0f
+        float environmentIntensity,
+        Color backgroundColor
     )
     {
-        if (float.IsNaN(intensity) || float.IsInfinity(intensity) || intensity < 0.0f)
-            throw new ArgumentOutOfRangeException(nameof(intensity));
+        if (!float.IsFinite(ambientIntensity) || ambientIntensity < 0.0f)
+            throw new ArgumentOutOfRangeException(nameof(ambientIntensity));
 
+        if (!float.IsFinite(environmentIntensity) || environmentIntensity < 0.0f)
+            throw new ArgumentOutOfRangeException(nameof(environmentIntensity));
+
+        AmbientColor = ambientColor;
+        AmbientIntensity = ambientIntensity;
         SkyColor = skyColor;
         HorizonColor = horizonColor;
         GroundColor = groundColor;
-        Intensity = intensity;
+        EnvironmentIntensity = environmentIntensity;
+        BackgroundColor = backgroundColor;
     }
-
-    public static Environment Daylight =>
-        new(
-            new Color(0.28f, 0.48f, 0.90f, 1.0f),
-            new Color(0.72f, 0.78f, 0.88f, 1.0f),
-            new Color(0.16f, 0.13f, 0.10f, 1.0f),
-            0.65f
-        );
 }

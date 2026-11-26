@@ -98,8 +98,12 @@ pub extern "C" fn oxide_graphics_set_environment(
             return OxideStatus::InvalidArgument;
         };
 
-        if !environment.intensity.is_finite() || environment.intensity < 0.0 {
-            set_last_error("environment intensity must be finite and non-negative");
+        if !environment.ambient_intensity.is_finite()
+            || environment.ambient_intensity < 0.0
+            || !environment.environment_intensity.is_finite()
+            || environment.environment_intensity < 0.0
+        {
+            set_last_error("environment intensities must be finite and non-negative");
             return OxideStatus::InvalidArgument;
         }
 

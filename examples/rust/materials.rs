@@ -71,7 +71,18 @@ impl Game for MaterialTest {
 
     fn draw(&mut self, graphics: &mut Graphics) {
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
-        graphics.set_environment(Environment::daylight());
+        graphics.set_environment(
+            Environment::new(
+                Color::WHITE,
+                0.08,
+                Color::rgb(0.28, 0.48, 0.90),
+                Color::rgb(0.72, 0.78, 0.88),
+                Color::rgb(0.16, 0.13, 0.10),
+                0.65,
+                Color::rgb(0.10, 0.15, 0.25),
+            )
+            .unwrap(),
+        );
         graphics.add_light(&self.light);
         graphics.add_light(&self.fill);
 

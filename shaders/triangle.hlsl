@@ -48,6 +48,7 @@ cbuffer LightConstants : register(b2)
     uint directional_light_count;
     uint light_padding;
 
+    float4 environment_ambient; // rgb=color, a=intensity
     float4 environment_sky;
     float4 environment_horizon;
     float4 environment_ground;
@@ -212,8 +213,11 @@ float3 evaluate_environment(
     float3 fresnel =
         f0 + (1.0 - f0) * pow(1.0 - n_dot_v, 5.0);
 
+    float3 ambient_irradiance =
+        environment_ambient.rgb * environment_ambient.a;
+
     float3 diffuse =
-        diffuse_irradiance
+        (diffuse_irradiance * intensity + ambient_irradiance)
         * albedo
         * (1.0 - metallic)
         * (1.0 - fresnel);
@@ -239,10 +243,11 @@ float3 evaluate_environment(
     // Rough surfaces spread the reflected energy over a larger lobe.
     float specular_energy = 1.0 - 0.45 * roughness;
 
-    return intensity * (
-        diffuse
-        + specular_environment * fresnel * specular_energy
-    );
+    return diffuse
+        + intensity
+            * specular_environment
+            * fresnel
+            * specular_energy;
 }
 
 float4 ps_main(VertexOutput input) : SV_TARGET

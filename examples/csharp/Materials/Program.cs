@@ -43,7 +43,17 @@ internal sealed class MaterialTest : Game
     protected override void Draw(Graphics graphics)
     {
         graphics.BindCamera(_camera, graphics.FullRect);
-        graphics.SetEnvironment(Oxide.Graphics.Environment.Daylight);
+        graphics.SetEnvironment(
+            new Oxide.Graphics.Environment(
+                Color.White,
+                0.08f,
+                new Color(0.28f,0.48f,0.90f,1),
+                new Color(0.72f,0.78f,0.88f,1),
+                new Color(0.16f,0.13f,0.10f,1),
+                0.65f,
+                new Color(0.10f,0.15f,0.25f,1)
+            )
+        );
         graphics.AddLight(_light);
         graphics.AddLight(_fill);
 

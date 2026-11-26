@@ -96,7 +96,17 @@ class MaterialTest(Game):
 
     def draw(self, graphics: Graphics) -> None:
         graphics.bind_camera(self.camera, graphics.full_rect)
-        graphics.set_environment(Environment.daylight())
+        graphics.set_environment(
+            Environment(
+                Color.WHITE,
+                0.08,
+                Color.rgb(0.28,0.48,0.90),
+                Color.rgb(0.72,0.78,0.88),
+                Color.rgb(0.16,0.13,0.10),
+                0.65,
+                Color.rgb(0.10,0.15,0.25),
+            )
+        )
         graphics.add_light(self.light)
         graphics.add_light(self.fill)
 
