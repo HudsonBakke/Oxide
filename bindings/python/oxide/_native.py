@@ -393,6 +393,29 @@ for _name, _handle in (
     _sub.restype = ctypes.c_int
 
 
+lib.oxide_transform_from_attachment.argtypes = [
+    NativeMeshHandle,
+    Transform,
+    Vec3,
+    NativeMeshHandle,
+    Vec3,
+    Vec3,
+    Angle,
+    Vec3,
+    ctypes.POINTER(Transform),
+]
+lib.oxide_transform_from_attachment.restype = ctypes.c_int
+
+lib.oxide_collision_collides.argtypes = [
+    NativeMeshHandle,
+    Transform,
+    NativeMeshHandle,
+    Transform,
+    ctypes.POINTER(ctypes.c_uint8),
+]
+lib.oxide_collision_collides.restype = ctypes.c_int
+
+
 def last_error_message() -> str:
     message = (
         lib.oxide_last_error_message()

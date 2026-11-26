@@ -800,6 +800,18 @@ class Transform(ctypes.Structure):
             ),
         )
 
+    def __setattr__(self, name, value):
+        if name == "rotation":
+            if not isinstance(value, Quaternion):
+                raise TypeError("rotation must be a Quaternion")
+            value = value.normalized()
+        elif name == "position" and not isinstance(value, Vec3):
+            raise TypeError("position must be a Vec3")
+        elif name == "scale" and not isinstance(value, Vec3):
+            raise TypeError("scale must be a Vec3")
+
+        super().__setattr__(name, value)
+
     def translate_by(
         self,
         translation: Vec3,
@@ -900,6 +912,48 @@ class Transform(ctypes.Structure):
             self.scale.y * scale.y,
             self.scale.z * scale.z,
         )
+
+    @classmethod
+    def from_attachment(
+        cls,
+        parent,
+        parent_transform: Transform,
+        parent_attach_point: Vec3,
+        child,
+        child_attach_point: Vec3,
+        direction: Vec3,
+        rotation: Angle,
+        scale: Vec3,
+    ) -> Transform:
+        # Import lazily so the ABI math types remain independent
+        # of the resource layer during module initialization.
+        import ctypes
+        from . import _native
+        from .content import Mesh
+
+        if not isinstance(parent, Mesh):
+            raise TypeError("parent must be a Mesh")
+
+        if not isinstance(child, Mesh):
+            raise TypeError("child must be a Mesh")
+
+        result = cls()
+
+        _native.check(
+            _native.lib.oxide_transform_from_attachment(
+                parent._handle,
+                parent_transform,
+                parent_attach_point,
+                child._handle,
+                child_attach_point,
+                direction,
+                rotation,
+                scale,
+                ctypes.byref(result),
+            )
+        )
+
+        return result
 
     def __eq__(
         self,

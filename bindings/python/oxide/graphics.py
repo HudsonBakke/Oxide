@@ -156,6 +156,12 @@ class PointLight(ctypes.Structure):
             float(intensity),
         )
 
+    def __setattr__(self, name, value):
+        if name == "intensity" and float(value) < 0.0:
+            raise ValueError("Light intensity cannot be negative.")
+
+        super().__setattr__(name, value)
+
 
 class SpotLight(ctypes.Structure):
     _fields_ = [
@@ -201,6 +207,21 @@ class SpotLight(ctypes.Structure):
             float(intensity),
         )
 
+    def __setattr__(self, name, value):
+        if name == "direction":
+            if value.length <= 1.0e-6:
+                raise ValueError("Spot light direction cannot be zero.")
+            value = value.normalized()
+        elif name == "angle":
+            if value.as_radians <= 0.0 or value.as_radians >= math.pi:
+                raise ValueError(
+                    "Spot light angle must be between 0 and pi radians."
+                )
+        elif name == "intensity" and float(value) < 0.0:
+            raise ValueError("Light intensity cannot be negative.")
+
+        super().__setattr__(name, value)
+
 
 class DirectionalLight(ctypes.Structure):
     _fields_ = [
@@ -230,6 +251,18 @@ class DirectionalLight(ctypes.Structure):
             color,
             float(intensity),
         )
+
+    def __setattr__(self, name, value):
+        if name == "direction":
+            if value.length <= 1.0e-6:
+                raise ValueError(
+                    "Directional light direction cannot be zero."
+                )
+            value = value.normalized()
+        elif name == "intensity" and float(value) < 0.0:
+            raise ValueError("Light intensity cannot be negative.")
+
+        super().__setattr__(name, value)
 
 
 class Camera:

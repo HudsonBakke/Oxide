@@ -1,3 +1,4 @@
+from .collision import collides
 from .app import (
     AppConfig,
     Game,
@@ -32,6 +33,7 @@ from .graphics import (
 )
 
 __all__ = [
+    "collides",
     "Angle",
     "AppConfig",
     "Game",
