@@ -1,5 +1,0 @@
-Metadata-Version: 2.4
-Name: oxide-engine
-Version: 0.1.0
-Summary: Python bindings for the Oxide game engine
-Requires-Python: >=3.11

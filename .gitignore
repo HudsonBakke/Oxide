@@ -7,3 +7,16 @@
 
 **/target/oxide-content/
 **/test-csharp-cache/
+
+# Python build / cache artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/

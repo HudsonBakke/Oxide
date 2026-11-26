@@ -1,8 +1,0 @@
-pyproject.toml
-oxide/__init__.py
-oxide/_native.py
-oxide/app.py
-oxide_engine.egg-info/PKG-INFO
-oxide_engine.egg-info/SOURCES.txt
-oxide_engine.egg-info/dependency_links.txt
-oxide_engine.egg-info/top_level.txt
