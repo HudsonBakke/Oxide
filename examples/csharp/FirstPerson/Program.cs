@@ -28,7 +28,7 @@ internal sealed class FirstPersonGame : Game
         2.5f
     );
 
-    private readonly SpotLight _flashlight = new(
+    private SpotLight _flashlight = new(
         new Vec3(-4, 1.2f, -3),
         new Vec3(0.8f, -0.15f, -1),
         Angle.Degrees(32),
