@@ -147,9 +147,13 @@ impl Texture {
             .min(u64::from(self.width))).max(1) as u32;
         let filtered_height = ((u64::from(self.height) * 512 / largest_dimension)
             .min(u64::from(self.height))).max(1) as u32;
+        // D3D12 cannot create more mips than the dimensions support.
+        let level_count = SPECULAR_LEVELS.min(
+            u32::BITS - filtered_width.max(filtered_height).leading_zeros(),
+        );
 
-        for level in 0..SPECULAR_LEVELS {
-            let roughness = level as f32 / (SPECULAR_LEVELS - 1) as f32;
+        for level in 0..level_count {
+            let roughness = level as f32 / (level_count - 1).max(1) as f32;
             let width = (filtered_width >> level).max(1);
             let height = (filtered_height >> level).max(1);
             let mut pixels = vec![0.0_f32; width as usize * height as usize * 4];
@@ -638,5 +642,8 @@ mod tests {
                 assert!((pixel[1] - 2.0).abs() < 0.0001);
             }
         }
+        let tiny = Texture::solid(Color::WHITE).environment_prefilter();
+        assert_eq!(tiny.specular.len(), 1);
+        assert_eq!((tiny.specular[0].0, tiny.specular[0].1), (1, 1));
     }
 }
