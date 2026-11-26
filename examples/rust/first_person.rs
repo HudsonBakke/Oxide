@@ -46,7 +46,7 @@ impl Demo {
                 DirectionalLight::new(Vec3::new(-1.0, 0.0, 0.0), Color::rgb(1.0, 0.35, 0.30), 0.22).unwrap(),
                 DirectionalLight::new(Vec3::new(1.0, 0.0, 0.0), Color::rgb(0.30, 1.0, 0.45), 0.22).unwrap(),
             ],
-            sun: PointLight::new(Vec3::new(4.0, 4.0, -5.0), Color::rgb(1.0, 0.72, 0.15), 2.5).unwrap(),
+            sun: PointLight::new(Vec3::new(4.0, 4.0, -5.0), Color::rgb(1.0, 0.72, 0.15), 25.0).unwrap(),
             flashlight: SpotLight::new(
                 Vec3::new(-4.0, 1.2, -3.0),
                 Vec3::new(0.8, -0.15, -1.0),
