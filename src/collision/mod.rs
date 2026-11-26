@@ -1,3 +1,5 @@
+//! Transformed triangle-mesh collision and containment queries.
+
 mod aabb;
 mod bvh;
 mod cache;

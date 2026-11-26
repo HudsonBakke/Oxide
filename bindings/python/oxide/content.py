@@ -1,3 +1,5 @@
+"""Native mesh, material, and texture resources and source-asset loading."""
+
 from __future__ import annotations
 
 import ctypes
@@ -10,7 +12,13 @@ from .math import Vec2, Vec3, Vec4
 
 
 class Vertex(ctypes.Structure):
-    """Vertex containing position, normal, texture coordinates, and tangent."""
+    """Model-space vertex with position, normal, UV coordinates, and tangent XYZ plus handedness W.
+
+    Attributes:
+        position: Vertex position in model space.
+        normal: Model-space surface normal used for lighting.
+        tex_coord: Texture UV coordinates; (0, 0) addresses the top-left corner.
+        tangent: Model-space tangent XYZ and bitangent handedness W (normally +1 or -1)."""
     _fields_ = [
         ("position", Vec3),
         ("normal", Vec3),
@@ -25,6 +33,7 @@ class Vertex(ctypes.Structure):
         tex_coord: Vec2,
         tangent: Vec4 | None = None,
     ) -> None:
+        """Creates a vertex; an omitted tangent is generated when the mesh is constructed."""
         super().__init__(
             position,
             normal,
@@ -36,6 +45,7 @@ class Vertex(ctypes.Structure):
         self,
         other: object,
     ) -> bool:
+        """Tests exact component equality; returns NotImplemented for an unrelated type."""
         if not isinstance(other, Vertex):
             return NotImplemented
 
@@ -80,7 +90,9 @@ class _OwnedResource:
 
 
 class Mesh(_OwnedResource):
-    """Indexed triangle mesh with mutable geometry and orientation metadata."""
+    """Indexed triangle geometry with model-space pivot and attachment orientation; owns a native resource in language bindings.
+
+    Native resources are released automatically when their Python owner is collected."""
     _destroy_function = (
         _native.lib.oxide_mesh_destroy
     )
@@ -90,6 +102,7 @@ class Mesh(_OwnedResource):
         vertices: list[Vertex],
         indices: list[int],
     ) -> None:
+        """Copies vertices and triangle indices into a new mesh and computes its pivot and tangent frame."""
         vertex_array_type = (
             Vertex * len(vertices)
         )
@@ -122,7 +135,7 @@ class Mesh(_OwnedResource):
 
     @property
     def vertex_count(self) -> int:
-        """Public Oxide vertex count operation."""
+        """Number of vertices in the mesh."""
         result = ctypes.c_size_t()
 
         _native.check(
@@ -136,7 +149,7 @@ class Mesh(_OwnedResource):
 
     @property
     def index_count(self) -> int:
-        """Public Oxide index count operation."""
+        """Number of vertex indices; each group of three describes a triangle."""
         result = ctypes.c_size_t()
 
         _native.check(
@@ -150,7 +163,7 @@ class Mesh(_OwnedResource):
 
     @property
     def pivot(self) -> Vec3:
-        """Public Oxide pivot operation."""
+        """Model-space point placed at the transform's position when drawing or attaching this mesh."""
         result = Vec3()
 
         _native.check(
@@ -164,7 +177,7 @@ class Mesh(_OwnedResource):
 
     @pivot.setter
     def pivot(self, value: Vec3) -> None:
-        """Public Oxide pivot operation."""
+        """Model-space point placed at the transform's position when drawing or attaching this mesh."""
         _native.check(
             _native.lib.oxide_mesh_set_pivot(
                 self._handle,
@@ -173,7 +186,7 @@ class Mesh(_OwnedResource):
         )
 
     def recalculate_pivot(self) -> None:
-        """Public Oxide recalculate pivot operation."""
+        """Sets the pivot to the arithmetic mean of all model-space vertex positions."""
         _native.check(
             _native.lib.oxide_mesh_recalculate_pivot(
                 self._handle
@@ -182,7 +195,7 @@ class Mesh(_OwnedResource):
 
     @property
     def direction(self) -> Vec3:
-        """Public Oxide direction operation."""
+        """Normalized forward direction of the mesh's model-space attachment frame."""
         result = Vec3()
 
         _native.check(
@@ -196,7 +209,7 @@ class Mesh(_OwnedResource):
 
     @direction.setter
     def direction(self, value: Vec3) -> None:
-        """Public Oxide direction operation."""
+        """Normalized forward direction of the mesh's model-space attachment frame."""
         _native.check(
             _native.lib.oxide_mesh_set_direction(
                 self._handle,
@@ -206,7 +219,7 @@ class Mesh(_OwnedResource):
 
     @property
     def reference(self) -> Vec3:
-        """Public Oxide reference operation."""
+        """Normalized model-space reference axis perpendicular to the attachment direction."""
         result = Vec3()
 
         _native.check(
@@ -220,7 +233,7 @@ class Mesh(_OwnedResource):
 
     @reference.setter
     def reference(self, value: Vec3) -> None:
-        """Public Oxide reference operation."""
+        """Normalized model-space reference axis perpendicular to the attachment direction."""
         _native.check(
             _native.lib.oxide_mesh_set_reference(
                 self._handle,
@@ -230,7 +243,7 @@ class Mesh(_OwnedResource):
 
     @property
     def side(self) -> Vec3:
-        """Public Oxide side operation."""
+        """Normalized side axis computed from direction cross reference."""
         result = Vec3()
 
         _native.check(
@@ -247,7 +260,7 @@ class Mesh(_OwnedResource):
         direction: Vec3,
         reference: Vec3,
     ) -> None:
-        """Public Oxide set orientation operation."""
+        """Builds an orthonormal model-space attachment frame from nonzero direction and reference vectors."""
         _native.check(
             _native.lib.oxide_mesh_set_orientation(
                 self._handle,
@@ -257,7 +270,7 @@ class Mesh(_OwnedResource):
         )
 
     def get_vertices(self) -> list[Vertex]:
-        """Public Oxide get vertices operation."""
+        """Returns a copy of the mesh's vertices; submit edits with set_vertices."""
         count = self.vertex_count
 
         if count == 0:
@@ -280,7 +293,7 @@ class Mesh(_OwnedResource):
         self,
         vertices: list[Vertex],
     ) -> None:
-        """Public Oxide set vertices operation."""
+        """Copies replacement vertex data into the mesh; the vertex count must remain unchanged."""
         array_type = Vertex * len(vertices)
         values = array_type(*vertices)
 
@@ -293,7 +306,7 @@ class Mesh(_OwnedResource):
         )
 
     def get_indices(self) -> list[int]:
-        """Public Oxide get indices operation."""
+        """Returns a copy of the mesh's triangle indices; submit edits with set_indices."""
         count = self.index_count
 
         if count == 0:
@@ -316,7 +329,7 @@ class Mesh(_OwnedResource):
         self,
         indices: list[int],
     ) -> None:
-        """Public Oxide set indices operation."""
+        """Copies replacement triangle indices into the mesh; the index count must remain unchanged."""
         array_type = (
             ctypes.c_uint32 * len(indices)
         )
@@ -333,7 +346,9 @@ class Mesh(_OwnedResource):
 
 
 class Texture(_OwnedResource):
-    """Immutable 2D texture resource loaded from content or created procedurally."""
+    """Immutable image resource; load through ContentManager or construct RGBA8/solid-color pixels.
+
+    Native resources are released automatically when their Python owner is collected."""
     _destroy_function = (
         _native.lib.oxide_texture_destroy
     )
@@ -345,7 +360,7 @@ class Texture(_OwnedResource):
         height: int,
         pixels: bytes | bytearray,
     ) -> Texture:
-        """Public Oxide from rgba operation."""
+        """Creates a texture from row-major RGBA8 bytes; requires exactly width * height * 4 bytes."""
         data = bytes(pixels)
         array_type = ctypes.c_uint8 * len(data)
         array = array_type.from_buffer_copy(data)
@@ -363,7 +378,7 @@ class Texture(_OwnedResource):
 
     @classmethod
     def solid(cls, color) -> Texture:
-        """Public Oxide solid operation."""
+        """Creates an opaque or translucent 1x1 RGBA8 texture, clamping color channels to [0, 1]."""
         # Imported lazily to avoid graphics.py -> resources.py
         # import cycles during module initialization.
         from .graphics import Color
@@ -386,7 +401,7 @@ class Texture(_OwnedResource):
 
     @property
     def width(self) -> int:
-        """Public Oxide width operation."""
+        """Texture width in pixels."""
         result = ctypes.c_uint32()
 
         _native.check(
@@ -400,7 +415,7 @@ class Texture(_OwnedResource):
 
     @property
     def height(self) -> int:
-        """Public Oxide height operation."""
+        """Texture height in pixels."""
         result = ctypes.c_uint32()
 
         _native.check(
@@ -414,7 +429,9 @@ class Texture(_OwnedResource):
 
 
 class Material(_OwnedResource):
-    """Physically based surface material."""
+    """Surface settings for base color, metallicity, roughness, emission, and tangent-space normal mapping.
+
+    Native resources are released automatically when their Python owner is collected."""
     _destroy_function = (
         _native.lib.oxide_material_destroy
     )
@@ -423,6 +440,7 @@ class Material(_OwnedResource):
         self,
         base_texture: Texture,
     ) -> None:
+        """Creates a material using a base-color texture, metallic factor zero, roughness one, and no emission."""
         if not isinstance(
             base_texture,
             Texture,
@@ -446,7 +464,7 @@ class Material(_OwnedResource):
 
     @classmethod
     def solid(cls, color) -> Material:
-        """Public Oxide solid operation."""
+        """Creates an untextured-looking material from a solid-color base texture."""
         from .graphics import Color
 
         if not isinstance(color, Color):
@@ -486,32 +504,32 @@ class Material(_OwnedResource):
 
     @property
     def metallic(self) -> float:
-        """Public Oxide metallic operation."""
+        """Metallic factor in [0, 1]: zero is dielectric and one is metallic."""
         return self._get_float("metallic")
 
     @metallic.setter
     def metallic(self, value: float) -> None:
-        """Public Oxide metallic operation."""
+        """Metallic factor in [0, 1]: zero is dielectric and one is metallic."""
         self._set_float("metallic", value)
 
     @property
     def roughness(self) -> float:
-        """Public Oxide roughness operation."""
+        """Perceptual roughness in [0, 1]: zero is smooth and one is fully rough."""
         return self._get_float("roughness")
 
     @roughness.setter
     def roughness(self, value: float) -> None:
-        """Public Oxide roughness operation."""
+        """Perceptual roughness in [0, 1]: zero is smooth and one is fully rough."""
         self._set_float("roughness", value)
 
     @property
     def emissive_strength(self) -> float:
-        """Public Oxide emissive strength operation."""
+        """Finite, non-negative multiplier applied to the emissive color."""
         return self._get_float("emissive_strength")
 
     @emissive_strength.setter
     def emissive_strength(self, value: float) -> None:
-        """Public Oxide emissive strength operation."""
+        """Finite, non-negative multiplier applied to the emissive color."""
         self._set_float("emissive_strength", value)
 
     def _get_color(self, name: str):
@@ -536,27 +554,27 @@ class Material(_OwnedResource):
 
     @property
     def base_color(self):
-        """Public Oxide base color operation."""
+        """RGBA multiplier applied to the base-color texture."""
         return self._get_color("base_color")
 
     @base_color.setter
     def base_color(self, value) -> None:
-        """Public Oxide base color operation."""
+        """RGBA multiplier applied to the base-color texture."""
         self._set_color("base_color", value)
 
     @property
     def emissive_color(self):
-        """Public Oxide emissive color operation."""
+        """RGB color emitted by the surface, multiplied by emissive strength."""
         return self._get_color("emissive_color")
 
     @emissive_color.setter
     def emissive_color(self, value) -> None:
-        """Public Oxide emissive color operation."""
+        """RGB color emitted by the surface, multiplied by emissive strength."""
         self._set_color("emissive_color", value)
 
     @property
     def base_texture(self) -> Texture:
-        """Public Oxide base texture operation."""
+        """Base-color texture sampled by the material."""
         handle = (
             _native.NativeTextureHandle()
         )
@@ -580,7 +598,12 @@ ContentType = TypeVar(
 
 
 class ContentManager(_OwnedResource):
-    """Loads source assets and manages Oxide's compiled-content cache."""
+    """Loads source assets and reuses disposable compiled caches, rebuilding them when source dependencies change.
+
+    Native resources are released automatically when their Python owner is collected.
+
+    Paths are relative to the working directory. glTF names select nodes for meshes,
+    materials for materials, and textures for textures. Cache failures fall back to source import."""
     _destroy_function = (
         _native.lib
         .oxide_content_manager_destroy
@@ -592,6 +615,7 @@ class ContentManager(_OwnedResource):
             str | PathLike[str] | None
         ) = None,
     ) -> None:
+        """Creates a loader using the default target/oxide-content cache, or a supplied cache directory."""
         handle = (
             _native.NativeContentManagerHandle()
         )
@@ -621,7 +645,7 @@ class ContentManager(_OwnedResource):
 
     @property
     def cache_directory(self) -> str:
-        """Public Oxide cache directory operation."""
+        """Directory containing disposable compiled asset caches; relative paths use the working directory."""
         length = ctypes.c_size_t()
 
         _native.check(
@@ -655,7 +679,9 @@ class ContentManager(_OwnedResource):
         path: str | PathLike[str],
         subobject: str | None = None,
     ) -> ContentType:
-        """Load a Mesh, Material, or Texture from the content pipeline."""
+        """Loads a Mesh, Material, or Texture from a source path, optionally selecting a named glTF subobject.
+
+        Raises ContentError for import/I/O failures; unsupported asset types raise TypeError."""
         encoded_path = str(path).encode(
             "utf-8"
         )

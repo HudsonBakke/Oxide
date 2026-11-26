@@ -26,7 +26,6 @@ fn next_mesh_id() -> MeshId {
 /// A mesh contains geometry only. It does not define where that geometry
 /// appears in the world, how it is animated, or how it is rendered.
 #[derive(Debug)]
-/// Indexed triangle mesh containing mutable vertices, indices, pivot, and orientation metadata.
 pub struct Mesh {
     id: MeshId,
 
@@ -140,7 +139,7 @@ fn orthogonalize_reference(direction: Vec3, reference: Vec3) -> crate::OxideResu
 }
 
 impl Mesh {
-    /// Creates a mesh from vertex and index data.
+    /// Creates a mesh from owned vertex/index arrays and calculates tangents and the average-vertex pivot.
     pub fn new(mut vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
         generate_tangents(&mut vertices, &indices);
         let pivot = calculate_vertex_average(&vertices);
@@ -179,23 +178,22 @@ impl Mesh {
         mesh
     }
 
-    /// Returns the mesh's model-space pivot point.
+    /// Model-space point placed at the transform's position when drawing or attaching this mesh.
     pub fn pivot(&self) -> Vec3 {
         self.pivot
     }
 
-    /// Sets the mesh's model-space pivot point.
+    /// Sets the model-space point used as the mesh's transformation origin.
     pub fn set_pivot(&mut self, pivot: Vec3) {
         self.pivot = pivot;
     }
 
-    /// Recalculates the pivot using the average position of all vertices.
+    /// Sets the pivot to the arithmetic mean of all model-space vertex positions.
     pub fn recalculate_pivot(&mut self) {
         self.pivot = calculate_vertex_average(&self.vertices);
     }
 
-    /// Rebuilds tangent vectors from the current positions, normals, UVs,
-    /// and triangle indices.
+    /// Regenerates tangents from positions, normals, and UVs after geometry changes.
     pub fn recalculate_tangents(&mut self) {
         for vertex in &mut self.vertices {
             vertex.tangent = Vec4::new(0.0, 0.0, 0.0, 1.0);
@@ -204,12 +202,12 @@ impl Mesh {
         self.vertex_generation = self.vertex_generation.wrapping_add(1);
     }
 
-    /// Returns the mesh's vertices.
+    /// Borrowed vertex data in model space.
     pub fn vertices(&self) -> &[Vertex] {
         &self.vertices
     }
 
-    /// Returns the mesh's indices.
+    /// Borrowed triangle indices into the vertex array.
     pub fn indices(&self) -> &[u32] {
         &self.indices
     }
@@ -232,12 +230,12 @@ impl Mesh {
         &mut self.indices
     }
 
-    /// Returns the number of vertices in the mesh.
+    /// Number of vertices in the mesh.
     pub fn vertex_count(&self) -> usize {
         self.vertices.len()
     }
 
-    /// Returns the number of indices in the mesh.
+    /// Number of vertex indices; each group of three describes a triangle.
     pub fn index_count(&self) -> usize {
         self.indices.len()
     }
@@ -254,7 +252,7 @@ impl Mesh {
         self.index_generation
     }
 
-    /// Returns the mesh's canonical model-space direction.
+    /// Normalized forward direction of the mesh's model-space attachment frame.
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
@@ -284,8 +282,7 @@ impl Mesh {
         Ok(())
     }
 
-    /// Sets the mesh's canonical direction while preserving its
-    /// current reference orientation when possible.
+    /// Normalizes the nonzero model-space direction and rebuilds the attachment frame.
     pub fn set_direction(&mut self, direction: Vec3) -> crate::OxideResult<()> {
         if direction.length() <= ORIENTATION_EPSILON {
             return Err(crate::OxideError::InvalidArgument {
@@ -347,7 +344,7 @@ impl Mesh {
         Ok(())
     }
 
-    /// Returns the third axis of the mesh's canonical orientation frame.
+    /// Normalized side axis computed from direction cross reference.
     pub fn side(&self) -> Vec3 {
         self.direction.cross(&self.reference).normalized()
     }

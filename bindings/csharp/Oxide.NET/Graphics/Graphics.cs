@@ -4,8 +4,8 @@ using Oxide.Native;
 using Oxide.Math;
 
 namespace Oxide.Graphics;
-
-/// <summary>Per-frame rendering interface valid only during the current Draw callback.</summary>
+/// <summary>Rendering interface supplied to the draw callback; bind a camera before drawing geometry.</summary>
+/// <remarks>Valid only during Game.Draw; do not retain it for later frames.</remarks>
 public sealed class Graphics
 {
     private NativeGraphicsHandle
@@ -21,8 +21,7 @@ public sealed class Graphics
         _handle = handle;
         _valid = true;
     }
-
-    /// <summary>Gets the current backbuffer width or requests a new width.</summary>
+    /// <summary>Current client width in physical pixels; assignment requests a resize.</summary>
     public uint PreferredBackbufferWidth
     {
         get => NativeMethods.oxide_app_window_width();
@@ -45,8 +44,7 @@ public sealed class Graphics
             );
         }
     }
-
-    /// <summary>Gets the current backbuffer height or requests a new height.</summary>
+    /// <summary>Current client height in physical pixels; assignment requests a resize.</summary>
     public uint PreferredBackbufferHeight
     {
         get => NativeMethods.oxide_app_window_height();
@@ -69,8 +67,7 @@ public sealed class Graphics
             );
         }
     }
-
-    /// <summary>Rectangle covering the current backbuffer.</summary>
+    /// <summary>Rectangle covering the entire render surface in physical pixels.</summary>
     public Rect FullRect
     {
         get
@@ -88,8 +85,7 @@ public sealed class Graphics
             return result;
         }
     }
-
-        /// <summary>Sets ambient lighting, IBL, and background rendering for the current scene.</summary>
+    /// <summary>Sets ambient lighting, image-based lighting, and the independent visible background.</summary>
 public void SetEnvironment(
         Environment environment
     )
@@ -108,8 +104,7 @@ public void SetEnvironment(
             )
         );
     }
-
-        /// <summary>Removes the current scene environment.</summary>
+    /// <summary>Removes environment lighting and its background settings.</summary>
 public void ClearEnvironment()
     {
         NativeMethods.Check(
@@ -118,8 +113,7 @@ public void ClearEnvironment()
             )
         );
     }
-
-        /// <summary>Removes lights accumulated for the current frame.</summary>
+    /// <summary>Removes lights added so far in the current frame.</summary>
 public void ClearLights()
     {
         EnsureValid();
@@ -147,8 +141,7 @@ public void ClearLights()
             );
         }
     }
-
-        /// <summary>Binds a camera to the specified destination rectangle for subsequent draws.</summary>
+    /// <summary>Binds a camera and a positive-size pixel viewport for subsequent draw calls.</summary>
 public void BindCamera(
         Camera camera,
         Rect destination
@@ -169,8 +162,7 @@ public void BindCamera(
                 )
         );
     }
-
-    /// <summary>Adds a light to the current frame's lighting state.</summary>
+    /// <summary>Adds a point, spot, or directional light for subsequent draws; lights reset at frame start.</summary>
     public void AddLight(
         PointLight light
     )
@@ -185,8 +177,7 @@ public void BindCamera(
                 )
         );
     }
-
-    /// <summary>Adds a light to the current frame's lighting state.</summary>
+    /// <summary>Adds a point, spot, or directional light for subsequent draws; lights reset at frame start.</summary>
     public void AddLight(
         SpotLight light
     )
@@ -201,8 +192,7 @@ public void BindCamera(
                 )
         );
     }
-
-    /// <summary>Adds a light to the current frame's lighting state.</summary>
+    /// <summary>Adds a point, spot, or directional light for subsequent draws; lights reset at frame start.</summary>
     public void AddLight(
         DirectionalLight light
     )
@@ -217,8 +207,7 @@ public void BindCamera(
                 )
         );
     }
-
-        /// <summary>Draws a mesh with the supplied material and transform.</summary>
+    /// <summary>Draws a mesh with a material and world transform in the currently bound camera viewport.</summary>
 public void DrawMesh(
         Mesh mesh,
         Material material,

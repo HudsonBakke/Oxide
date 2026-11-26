@@ -2,9 +2,8 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
-
-/// <summary>Two-component floating-point vector.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Two-component floating-point vector with X and Y coordinates.</summary>
 public struct Vec2
     : IEquatable<Vec2>
 {
@@ -12,8 +11,7 @@ public struct Vec2
     public float X;
     /// <summary>Y component.</summary>
     public float Y;
-
-    /// <summary>Creates or accesses Vec2.</summary>
+    /// <summary>Creates a vector from its X and Y components.</summary>
     public Vec2(
         float x,
         float y
@@ -22,15 +20,13 @@ public struct Vec2
         X = x;
         Y = y;
     }
-
-    /// <summary>Vector magnitude.</summary>
+    /// <summary>Euclidean magnitude of the components.</summary>
     public readonly float Length =>
         MathF.Sqrt(
             X * X
             + Y * Y
         );
-
-    /// <summary>Returns a normalized copy; zero vectors remain zero.</summary>
+    /// <summary>Returns a unit-length copy; a zero-length vector remains zero.</summary>
     public readonly Vec2 Normalized()
     {
         float length =
@@ -46,8 +42,7 @@ public struct Vec2
             Y / length
         );
     }
-
-    /// <summary>Normalizes this vector in place; zero vectors remain zero.</summary>
+    /// <summary>Normalizes the vector in place; leaves a zero-length vector unchanged.</summary>
     public void Normalize()
     {
         float length =
@@ -61,8 +56,7 @@ public struct Vec2
         X /= length;
         Y /= length;
     }
-
-    /// <summary>Returns the dot product with another vector.</summary>
+    /// <summary>Returns the scalar dot product with the other vector.</summary>
     public readonly float Dot(
         Vec2 other
     )
@@ -71,6 +65,7 @@ public struct Vec2
             + Y * other.Y;
     }
 
+    /// <summary>Adds corresponding vector components.</summary>
     public static Vec2 operator +(
         Vec2 left,
         Vec2 right
@@ -82,6 +77,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Subtracts vector components or negates a vector.</summary>
     public static Vec2 operator -(
         Vec2 left,
         Vec2 right
@@ -93,6 +89,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Multiplies each component by a scalar.</summary>
     public static Vec2 operator *(
         Vec2 vector,
         float scalar
@@ -104,6 +101,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Multiplies each component by a scalar.</summary>
     public static Vec2 operator *(
         float scalar,
         Vec2 vector
@@ -112,6 +110,7 @@ public struct Vec2
         return vector * scalar;
     }
 
+    /// <summary>Divides each component by a nonzero scalar.</summary>
     public static Vec2 operator /(
         Vec2 vector,
         float scalar
@@ -123,6 +122,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Subtracts vector components or negates a vector.</summary>
     public static Vec2 operator -(
         Vec2 vector
     )
@@ -132,8 +132,7 @@ public struct Vec2
             -vector.Y
         );
     }
-
-    /// <summary>Tests value equality.</summary>
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public readonly bool Equals(
         Vec2 other
     )
@@ -142,6 +141,7 @@ public struct Vec2
             && Y == other.Y;
     }
 
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public override readonly bool Equals(
         object? obj
     )
@@ -150,6 +150,7 @@ public struct Vec2
             && Equals(other);
     }
 
+    /// <summary>Returns a hash consistent with exact component equality.</summary>
     public override readonly int GetHashCode()
     {
         return HashCode.Combine(
@@ -158,6 +159,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Tests exact component equality.</summary>
     public static bool operator ==(
         Vec2 left,
         Vec2 right
@@ -168,6 +170,7 @@ public struct Vec2
         );
     }
 
+    /// <summary>Tests exact component inequality.</summary>
     public static bool operator !=(
         Vec2 left,
         Vec2 right

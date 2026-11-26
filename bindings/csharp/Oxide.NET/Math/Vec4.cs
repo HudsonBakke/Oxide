@@ -2,9 +2,8 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
-
-/// <summary>Four-component floating-point vector.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Four-component floating-point vector; W distinguishes homogeneous positions from directions.</summary>
 public struct Vec4
     : IEquatable<Vec4>
 {
@@ -16,8 +15,7 @@ public struct Vec4
     public float Z;
     /// <summary>W component.</summary>
     public float W;
-
-    /// <summary>Creates or accesses Vec4.</summary>
+    /// <summary>Creates a vector from its X, Y, Z, and W components.</summary>
     public Vec4(
         float x,
         float y,
@@ -30,8 +28,7 @@ public struct Vec4
         Z = z;
         W = w;
     }
-
-    /// <summary>Creates homogeneous coordinates for a position with W = 1.</summary>
+    /// <summary>Creates homogeneous coordinates from XYZ with W = 1.</summary>
     public static Vec4 FromPosition(
         Vec3 position
     )
@@ -43,8 +40,7 @@ public struct Vec4
             1.0f
         );
     }
-
-    /// <summary>Creates homogeneous coordinates for a direction with W = 0.</summary>
+    /// <summary>Creates homogeneous direction coordinates from XYZ with W = 0.</summary>
     public static Vec4 FromDirection(
         Vec3 direction
     )
@@ -56,8 +52,7 @@ public struct Vec4
             0.0f
         );
     }
-
-    /// <summary>Tests value equality.</summary>
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public readonly bool Equals(
         Vec4 other
     )
@@ -68,6 +63,7 @@ public struct Vec4
             && W == other.W;
     }
 
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public override readonly bool Equals(
         object? obj
     )
@@ -76,6 +72,7 @@ public struct Vec4
             && Equals(other);
     }
 
+    /// <summary>Returns a hash consistent with exact component equality.</summary>
     public override readonly int GetHashCode()
     {
         return HashCode.Combine(
@@ -86,6 +83,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Tests exact component equality.</summary>
     public static bool operator ==(
         Vec4 left,
         Vec4 right
@@ -96,6 +94,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Tests exact component inequality.</summary>
     public static bool operator !=(
         Vec4 left,
         Vec4 right
@@ -106,6 +105,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Adds corresponding vector components.</summary>
     public static Vec4 operator +(
         Vec4 left,
         Vec4 right
@@ -119,6 +119,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Subtracts vector components or negates a vector.</summary>
     public static Vec4 operator -(
         Vec4 left,
         Vec4 right
@@ -132,6 +133,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Multiplies each component by a scalar.</summary>
     public static Vec4 operator *(
         Vec4 vector,
         float scalar
@@ -145,6 +147,7 @@ public struct Vec4
         );
     }
 
+    /// <summary>Divides each component by a nonzero scalar.</summary>
     public static Vec4 operator /(
         Vec4 vector,
         float scalar

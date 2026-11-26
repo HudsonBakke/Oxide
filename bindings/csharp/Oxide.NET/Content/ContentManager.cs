@@ -4,15 +4,14 @@ using Oxide.Graphics;
 using Oxide.Native;
 
 namespace Oxide.Content;
-
-/// <summary>Loads source assets and manages Oxide's compiled-content cache.</summary>
+/// <summary>Loads source assets and reuses disposable compiled caches, rebuilding them when source dependencies change.</summary>
+/// <remarks>Owns a native handle released by a SafeHandle finalizer. Native failures raise OxideException.</remarks>
 public sealed class ContentManager
 {
     private readonly
         ContentManagerSafeHandle
         _handle;
-
-        /// <summary>Gets the directory used for compiled-content cache files.</summary>
+    /// <summary>Directory containing disposable compiled asset caches; relative paths use the working directory.</summary>
 public unsafe string CacheDirectory
     {
         get
@@ -57,8 +56,7 @@ public unsafe string CacheDirectory
                 );
         }
     }
-
-    /// <summary>Creates a content manager.</summary>
+    /// <summary>Creates a loader using the default target/oxide-content cache, or a supplied cache directory.</summary>
     public ContentManager()
     {
         NativeMethods.Check(
@@ -73,8 +71,7 @@ public unsafe string CacheDirectory
                 handle
             );
     }
-
-    /// <summary>Creates a content manager.</summary>
+    /// <summary>Creates a loader using the default target/oxide-content cache, or a supplied cache directory.</summary>
     public ContentManager(
         string cacheDirectory
     )
@@ -126,8 +123,7 @@ public unsafe string CacheDirectory
             return _handle.NativeHandle;
         }
     }
-
-        /// <summary>Loads a Mesh, Material, or Texture from a source asset, optionally selecting a named subobject.</summary>
+    /// <summary>Loads a Mesh, Material, or Texture from a source path, optionally selecting a named glTF subobject.</summary>
 public T Load<T>(
         string path,
         string? subObject = null

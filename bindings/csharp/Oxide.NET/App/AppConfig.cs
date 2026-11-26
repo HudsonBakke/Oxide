@@ -1,17 +1,14 @@
 namespace Oxide.App;
-
-/// <summary>Configures the application window used when a game starts.</summary>
+/// <summary>Initial window title and logical-pixel client size; defaults to Oxide at 1280 by 720.</summary>
 public sealed class AppConfig
 {
-    /// <summary>Initial window title.</summary>
+    /// <summary>Initial window title; defaults to Oxide.</summary>
     public string Title { get; set; } =
         "Oxide";
-
-    /// <summary>Initial window width in pixels.</summary>
+    /// <summary>Initial client width in logical pixels; defaults to 1280.</summary>
     public uint Width { get; set; } =
         1280;
-
-    /// <summary>Initial window height in pixels.</summary>
+    /// <summary>Initial client height in logical pixels; defaults to 720.</summary>
     public uint Height { get; set; } =
         720;
 }

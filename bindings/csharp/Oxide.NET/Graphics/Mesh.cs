@@ -5,8 +5,8 @@ using Oxide.Content;
 using Oxide.Native;
 
 namespace Oxide.Graphics;
-
-/// <summary>Indexed triangle mesh containing geometry and orientation metadata.</summary>
+/// <summary>Indexed triangle geometry with model-space pivot and attachment orientation; owns a native resource in language bindings.</summary>
+/// <remarks>Owns a native handle released by a SafeHandle finalizer. Native failures raise OxideException.</remarks>
 public sealed class Mesh : IContentAsset
 {
     private readonly MeshSafeHandle
@@ -37,7 +37,6 @@ public sealed class Mesh : IContentAsset
             return _handle.NativeHandle;
         }
     }
-
     /// <summary>Number of vertices in the mesh.</summary>
     public int VertexCount
     {
@@ -56,8 +55,7 @@ public sealed class Mesh : IContentAsset
             );
         }
     }
-
-    /// <summary>Number of indices in the mesh.</summary>
+    /// <summary>Number of vertex indices; each group of three describes a triangle.</summary>
     public int IndexCount
     {
         get
@@ -75,8 +73,7 @@ public sealed class Mesh : IContentAsset
             );
         }
     }
-
-    /// <summary>Mesh pivot used as the transform origin.</summary>
+    /// <summary>Model-space point placed at the transform's position when drawing or attaching this mesh.</summary>
     public Vec3 Pivot
     {
         get
@@ -103,8 +100,7 @@ public sealed class Mesh : IContentAsset
             );
         }
     }
-
-    /// <summary>Primary orientation direction of the mesh.</summary>
+    /// <summary>Normalized forward direction of the mesh's model-space attachment frame.</summary>
     public Vec3 Direction
     {
         get
@@ -131,8 +127,7 @@ public sealed class Mesh : IContentAsset
             );
         }
     }
-
-    /// <summary>Reference direction used to define mesh orientation.</summary>
+    /// <summary>Normalized model-space reference axis perpendicular to the attachment direction.</summary>
     public Vec3 Reference
     {
         get
@@ -159,8 +154,7 @@ public sealed class Mesh : IContentAsset
             );
         }
     }
-
-    /// <summary>Derived side direction of the mesh orientation basis.</summary>
+    /// <summary>Normalized side axis computed from direction cross reference.</summary>
     public Vec3 Side
     {
         get
@@ -176,8 +170,7 @@ public sealed class Mesh : IContentAsset
             return result;
         }
     }
-
-        /// <summary>Sets the mesh orientation basis from direction and reference vectors.</summary>
+    /// <summary>Builds an orthonormal model-space attachment frame from nonzero direction and reference vectors.</summary>
 public void SetOrientation(
         Vec3 direction,
         Vec3 reference
@@ -192,8 +185,7 @@ public void SetOrientation(
                 )
         );
     }
-
-        /// <summary>Recomputes the mesh pivot from its current vertices.</summary>
+    /// <summary>Sets the pivot to the arithmetic mean of all model-space vertex positions.</summary>
 public void RecalculatePivot()
     {
         NativeMethods.Check(
@@ -203,8 +195,7 @@ public void RecalculatePivot()
                 )
         );
     }
-
-        /// <summary>Returns a copy of the mesh vertices.</summary>
+    /// <summary>Returns a copy of the mesh's vertices; submit edits with set_vertices.</summary>
 public unsafe Vertex[] GetVertices()
     {
         int count =
@@ -233,8 +224,7 @@ public unsafe Vertex[] GetVertices()
 
         return vertices;
     }
-
-        /// <summary>Returns a copy of the mesh indices.</summary>
+    /// <summary>Returns a copy of the mesh's triangle indices; submit edits with set_indices.</summary>
 public unsafe uint[] GetIndices()
     {
         int count =
@@ -263,8 +253,7 @@ public unsafe uint[] GetIndices()
 
         return indices;
     }
-
-    /// <summary>Replaces the mesh vertex data.</summary>
+    /// <summary>Copies replacement vertex data into the mesh; the vertex count must remain unchanged.</summary>
     public unsafe void SetVertices(
         Vertex[] vertices
     )
@@ -286,8 +275,7 @@ public unsafe uint[] GetIndices()
             );
         }
     }
-
-    /// <summary>Replaces the mesh index data.</summary>
+    /// <summary>Copies replacement triangle indices into the mesh; the index count must remain unchanged.</summary>
     public unsafe void SetIndices(
         uint[] indices
     )
@@ -309,8 +297,7 @@ public unsafe uint[] GetIndices()
             );
         }
     }
-
-    /// <summary>Creates or accesses Mesh.</summary>
+    /// <summary>Copies vertices and triangle indices into a new mesh and computes its pivot and tangent frame.</summary>
     public unsafe Mesh(
         Vertex[] vertices,
         uint[] indices

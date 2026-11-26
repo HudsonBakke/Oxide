@@ -4,16 +4,14 @@ using System.Runtime.InteropServices;
 using Oxide.Math;
 
 namespace Oxide.Graphics;
-
-/// <summary>Omnidirectional light emitted from a point in world space.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Omnidirectional point light with inverse-square distance attenuation.</summary>
 public struct PointLight
 {
     private Vec3 _position;
     private Color _color;
     private float _intensity;
-
-    /// <summary>Creates or accesses PointLight.</summary>
+    /// <summary>Creates a point light; intensity must not be negative.</summary>
     public PointLight(
         Vec3 position,
         Color color,
@@ -32,22 +30,19 @@ public struct PointLight
         _color = color;
         _intensity = intensity;
     }
-
-    /// <summary>Light position in world space.</summary>
+    /// <summary>Position in world space.</summary>
     public Vec3 Position
     {
         readonly get => _position;
         set => _position = value;
     }
-
-    /// <summary>Light color.</summary>
+    /// <summary>RGB light color; alpha is not used for lighting.</summary>
     public Color Color
     {
         readonly get => _color;
         set => _color = value;
     }
-
-    /// <summary>Non-negative light intensity.</summary>
+    /// <summary>Non-negative light intensity; point and spot lights attenuate with squared distance.</summary>
     public float Intensity
     {
         readonly get => _intensity;

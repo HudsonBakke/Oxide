@@ -12,7 +12,6 @@ use super::{Color, Texture};
 
 /// Describes the surface appearance used to render a mesh.
 #[derive(Debug)]
-/// Physically based surface material controlling color, metallicity, roughness, emission, and normal mapping.
 pub struct Material {
     base_texture: Texture,
     base_color: Color,
@@ -25,7 +24,7 @@ pub struct Material {
 }
 
 impl Material {
-    /// Creates a material using the given base texture.
+    /// Creates a material using a base-color texture, metallic factor zero, roughness one, and no emission.
     pub fn new(base_texture: Texture) -> Self {
         Self {
             base_texture,
@@ -39,16 +38,16 @@ impl Material {
         }
     }
 
-    /// Base-color texture.
+    /// Base-color texture sampled by the material.
     pub fn base_texture(&self) -> &Texture {
         &self.base_texture
     }
 
-    /// Tangent-space normal map.
+    /// Tangent-space normal map; RGB encodes a direction from -1 to 1.
     pub fn normal_texture(&self) -> &Texture { &self.normal_texture }
     /// Sets the tangent-space normal map.
     pub fn set_normal_texture(&mut self, texture: Texture) { self.normal_texture = texture; }
-    /// Normal-map strength.
+    /// Finite multiplier applied to the normal map's XY components; zero disables perturbation.
     pub fn normal_strength(&self) -> f32 { self.normal_strength }
     /// Sets normal-map strength.
     pub fn set_normal_strength(&mut self, strength: f32) -> OxideResult<()> {
@@ -62,7 +61,7 @@ impl Material {
         Ok(())
     }
 
-    /// Base-color multiplier.
+    /// RGBA multiplier applied to the base-color texture.
     pub fn base_color(&self) -> Color {
         self.base_color
     }
@@ -72,7 +71,7 @@ impl Material {
         self.base_color = color;
     }
 
-    /// Metallic factor from 0 to 1.
+    /// Metallic factor in [0, 1]: zero is dielectric and one is metallic.
     pub fn metallic(&self) -> f32 {
         self.metallic
     }
@@ -84,7 +83,7 @@ impl Material {
         Ok(())
     }
 
-    /// Perceptual roughness from 0 to 1.
+    /// Perceptual roughness in [0, 1]: zero is smooth and one is fully rough.
     pub fn roughness(&self) -> f32 {
         self.roughness
     }
@@ -96,7 +95,7 @@ impl Material {
         Ok(())
     }
 
-    /// Emissive color.
+    /// RGB color emitted by the surface, multiplied by emissive strength.
     pub fn emissive_color(&self) -> Color {
         self.emissive_color
     }
@@ -106,7 +105,7 @@ impl Material {
         self.emissive_color = color;
     }
 
-    /// Emissive multiplier.
+    /// Finite, non-negative multiplier applied to the emissive color.
     pub fn emissive_strength(&self) -> f32 {
         self.emissive_strength
     }
@@ -124,7 +123,7 @@ impl Material {
         Ok(())
     }
 
-    /// Creates a solid-color material.
+    /// Creates an untextured-looking material from a solid-color base texture.
     pub fn solid(color: Color) -> Self {
         let mut material = Self::new(Texture::solid(Color::WHITE));
         material.base_color = color;

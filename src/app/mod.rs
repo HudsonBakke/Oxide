@@ -1,3 +1,5 @@
+//! Application lifecycle, window commands, and elapsed frame timing.
+
 use std::sync::{
     Mutex, MutexGuard, OnceLock,
     atomic::{AtomicBool, AtomicU32, Ordering},
@@ -358,7 +360,10 @@ impl<G: Game> ApplicationHandler for App<G> {
     }
 }
 
-/// Runs an Oxide game using the given configuration.
+/// Runs the blocking window event loop on the calling thread.
+///
+/// Calls initialize once, then update followed by draw each frame. Window and
+/// graphics failures panic. Run on the platform's main event-loop thread.
 pub fn run<G: Game>(game: G, config: AppConfig) {
     let event_loop = EventLoop::new().expect("failed to create event loop");
 
@@ -377,13 +382,13 @@ pub fn run<G: Game>(game: G, config: AppConfig) {
 }
 
 #[derive(Debug, Clone)]
-/// Public Oxide AppConfig API.
+/// Initial window title and logical-pixel client size; defaults to Oxide at 1280 by 720.
 pub struct AppConfig {
-    /// Public Oxide title API.
+    /// Initial window title; defaults to Oxide.
     pub title: String,
-    /// Public Oxide width API.
+    /// Initial client width in logical pixels; must be positive.
     pub width: u32,
-    /// Public Oxide height API.
+    /// Initial client height in logical pixels; must be positive.
     pub height: u32,
 }
 
@@ -397,29 +402,31 @@ impl Default for AppConfig {
     }
 }
 
-/// Public Oxide Game API.
+/// Application lifecycle implemented by initialize, update, and draw callbacks.
 pub trait Game {
+    /// Called once after the window and graphics are ready; load persistent resources here.
     fn initialize(&mut self) {}
+    /// Called once before drawing each frame with elapsed time in seconds; update game logic and read input here.
     fn update(&mut self, _time: &GameTime) {}
+    /// Called each frame to bind cameras, set lighting, and submit draw calls.
     fn draw(&mut self, _graphics: &mut Graphics) {}
 }
 
 /// Timing information for the current frame.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-/// Public Oxide GameTime API.
 pub struct GameTime {
     delta_seconds: f64,
     total_seconds: f64,
 }
 
 impl GameTime {
-    /// Public Oxide delta seconds API.
+    /// Seconds elapsed since the previous frame's update.
     pub fn delta_seconds(&self) -> f64 {
         self.delta_seconds
     }
 
-    /// Public Oxide total seconds API.
+    /// Seconds elapsed since the application clock started.
     pub fn total_seconds(&self) -> f64 {
         self.total_seconds
     }

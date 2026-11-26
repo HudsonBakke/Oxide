@@ -2,9 +2,8 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
-
-/// <summary>Angle value stored in radians with degree conversion helpers.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Angle stored in radians; construct from radians or degrees explicitly.</summary>
 public readonly struct Angle
     : IEquatable<Angle>
 {
@@ -16,12 +15,10 @@ public readonly struct Angle
     {
         _radians = radians;
     }
-
-    /// <summary>Zero radians.</summary>
+    /// <summary>An angle of zero radians.</summary>
     public static Angle Zero =>
         new(0.0f);
-
-    /// <summary>Creates an angle from radians.</summary>
+    /// <summary>Creates an angle from a value measured in radians.</summary>
     public static Angle Radians(
         float radians
     )
@@ -30,8 +27,7 @@ public readonly struct Angle
             radians
         );
     }
-
-    /// <summary>Creates an angle from degrees.</summary>
+    /// <summary>Creates an angle from a value measured in degrees.</summary>
     public static Angle Degrees(
         float degrees
     )
@@ -42,18 +38,15 @@ public readonly struct Angle
                 / 180.0f
         );
     }
-
-    /// <summary>Angle value in radians.</summary>
+    /// <summary>The angle measured in radians.</summary>
     public float AsRadians =>
         _radians;
-
-    /// <summary>Angle value in degrees.</summary>
+    /// <summary>The angle measured in degrees.</summary>
     public float AsDegrees =>
         _radians
             * 180.0f
             / MathF.PI;
-
-    /// <summary>Tests value equality.</summary>
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public bool Equals(
         Angle other
     )
@@ -62,6 +55,7 @@ public readonly struct Angle
             == other._radians;
     }
 
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public override bool Equals(
         object? obj
     )
@@ -70,12 +64,14 @@ public readonly struct Angle
             && Equals(other);
     }
 
+    /// <summary>Returns a hash consistent with exact component equality.</summary>
     public override int GetHashCode()
     {
         return _radians
             .GetHashCode();
     }
 
+    /// <summary>Tests exact component equality.</summary>
     public static bool operator ==(
         Angle left,
         Angle right
@@ -86,6 +82,7 @@ public readonly struct Angle
         );
     }
 
+    /// <summary>Tests exact component inequality.</summary>
     public static bool operator !=(
         Angle left,
         Angle right

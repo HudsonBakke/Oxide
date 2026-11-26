@@ -4,16 +4,19 @@ use std::{error::Error, fmt};
 /// Error returned by public Oxide operations.
 pub enum OxideError {
     InvalidArgument {
+        /// Name of the invalid argument.
         argument: &'static str,
+        /// Diagnostic explanation of the failure.
         message: &'static str,
     },
 
     InvalidOperation {
+        /// Diagnostic explanation of the failure.
         message: &'static str,
     },
 }
 
-/// Public Oxide OxideResult API.
+/// Result of a core operation, containing OxideError on failure.
 pub type OxideResult<T> = Result<T, OxideError>;
 
 impl fmt::Display for OxideError {

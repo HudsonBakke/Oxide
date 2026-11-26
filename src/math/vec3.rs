@@ -1,9 +1,10 @@
+//! Three-component vector arithmetic.
+
 use std::ops::{Add, Div, Mul, Sub};
 
 /// A 3-dimensional vector
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-/// Three-component floating-point vector used for positions, directions, and scales.
 pub struct Vec3 {
     /// The X component of the vector
     pub x: f32,
@@ -11,22 +12,22 @@ pub struct Vec3 {
     /// The Y component of the vector
     pub y: f32,
 
-    /// The Y component of the vector
+    /// The Z component of the vector.
     pub z: f32,
 }
 
 impl Vec3 {
-    /// Creates a new vector with the given components
+    /// Creates a vector from its X, Y, and Z components.
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
     }
 
-    /// Returns the magnitude of this vector
+    /// Euclidean magnitude of the components.
     pub fn length(&self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
-    /// Returns a new vector which is a normalized copy of this vector
+    /// Returns a unit-length copy; a zero-length vector remains zero.
     pub fn normalized(&self) -> Self {
         let length = self.length();
 
@@ -41,7 +42,7 @@ impl Vec3 {
         }
     }
 
-    /// Normalizes this vector in-place
+    /// Normalizes the vector in place; leaves a zero-length vector unchanged.
     pub fn normalize(&mut self) {
         let length = self.length();
 
@@ -54,12 +55,12 @@ impl Vec3 {
         self.z /= length;
     }
 
-    /// Returns the dot product of 2 vectors
+    /// Returns the scalar dot product with the other vector.
     pub fn dot(&self, other: &Self) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
-    /// Returns the cross product of 2 vectors
+    /// Returns the right-handed cross product with the other vector.
     pub fn cross(&self, other: &Self) -> Self {
         Self {
             x: self.y * other.z - self.z * other.y,

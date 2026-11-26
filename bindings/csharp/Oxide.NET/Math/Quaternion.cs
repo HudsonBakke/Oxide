@@ -2,22 +2,20 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
-
-/// <summary>Quaternion rotation for three-dimensional orientation.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Rotation quaternion with XYZW components; normalize manually constructed values before rotating vectors.</summary>
 public readonly struct Quaternion
     : IEquatable<Quaternion>
 {
-    /// <summary>Creates or accesses X.</summary>
+    /// <summary>X component.</summary>
     public readonly float X;
-    /// <summary>Creates or accesses Y.</summary>
+    /// <summary>Y component.</summary>
     public readonly float Y;
-    /// <summary>Creates or accesses Z.</summary>
+    /// <summary>Z component.</summary>
     public readonly float Z;
-    /// <summary>Creates or accesses W.</summary>
+    /// <summary>W component.</summary>
     public readonly float W;
-
-    /// <summary>Creates or accesses Quaternion.</summary>
+    /// <summary>Creates a quaternion from XYZW components without normalizing it.</summary>
     public Quaternion(
         float x,
         float y,
@@ -30,8 +28,7 @@ public readonly struct Quaternion
         Z = z;
         W = w;
     }
-
-    /// <summary>Identity rotation.</summary>
+    /// <summary>Rotation quaternion (0, 0, 0, 1), which leaves vectors unchanged.</summary>
     public static Quaternion Identity =>
         new(
             0.0f,
@@ -39,8 +36,7 @@ public readonly struct Quaternion
             0.0f,
             1.0f
         );
-
-    /// <summary>Vector or quaternion magnitude.</summary>
+    /// <summary>Euclidean magnitude of the components.</summary>
     public float Length =>
         MathF.Sqrt(
             X * X
@@ -48,8 +44,7 @@ public readonly struct Quaternion
             + Z * Z
             + W * W
         );
-
-    /// <summary>Returns a normalized copy.</summary>
+    /// <summary>Returns a unit-length quaternion; a zero quaternion becomes the identity.</summary>
     public Quaternion Normalized()
     {
         float length =
@@ -67,8 +62,7 @@ public readonly struct Quaternion
             W / length
         );
     }
-
-    /// <summary>Returns the quaternion conjugate.</summary>
+    /// <summary>Returns the quaternion with negated XYZ components; the inverse for a unit quaternion.</summary>
     public Quaternion Conjugate()
     {
         return new Quaternion(
@@ -78,8 +72,7 @@ public readonly struct Quaternion
             W
         );
     }
-
-    /// <summary>Rotates a vector by this quaternion.</summary>
+    /// <summary>Rotates a vector by this quaternion; use a unit quaternion for a pure rotation.</summary>
     public Vec3 RotateVector(
         Vec3 vector
     )
@@ -99,8 +92,7 @@ public readonly struct Quaternion
             + t * W
             + q.Cross(t);
     }
-
-    /// <summary>Creates a rotation around an axis.</summary>
+    /// <summary>Creates a rotation about a nonzero axis, normalizing the axis before use.</summary>
     public static Quaternion FromAxisAngle(
         Vec3 axis,
         Angle angle
@@ -127,8 +119,7 @@ public readonly struct Quaternion
             )
         );
     }
-
-    /// <summary>Creates a rotation from pitch, yaw, and roll.</summary>
+    /// <summary>Constructs yaw * pitch * roll about Y, X, and Z; the rightmost rotation acts first on a vector.</summary>
     public static Quaternion FromEuler(
         Angle pitch,
         Angle yaw,
@@ -171,8 +162,7 @@ public readonly struct Quaternion
             * rollRotation
         ).Normalized();
     }
-
-    /// <summary>Creates the shortest rotation from one direction to another.</summary>
+    /// <summary>Returns the shortest rotation aligning two nonzero directions; vector lengths are ignored.</summary>
     public static Quaternion FromTo(
         Vec3 from,
         Vec3 to
@@ -256,6 +246,7 @@ public readonly struct Quaternion
         ).Normalized();
     }
 
+    /// <summary>Composes rotations; the right-hand quaternion acts first.</summary>
     public static Quaternion operator *(
         Quaternion left,
         Quaternion right
@@ -283,8 +274,7 @@ public readonly struct Quaternion
                 - left.Z * right.Z
         );
     }
-
-    /// <summary>Tests value equality.</summary>
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public bool Equals(
         Quaternion other
     )
@@ -295,6 +285,7 @@ public readonly struct Quaternion
             && W == other.W;
     }
 
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public override bool Equals(
         object? obj
     )
@@ -304,6 +295,7 @@ public readonly struct Quaternion
             && Equals(other);
     }
 
+    /// <summary>Returns a hash consistent with exact component equality.</summary>
     public override int GetHashCode()
     {
         return HashCode.Combine(
@@ -314,6 +306,7 @@ public readonly struct Quaternion
         );
     }
 
+    /// <summary>Tests exact component equality.</summary>
     public static bool operator ==(
         Quaternion left,
         Quaternion right
@@ -324,6 +317,7 @@ public readonly struct Quaternion
         );
     }
 
+    /// <summary>Tests exact component inequality.</summary>
     public static bool operator !=(
         Quaternion left,
         Quaternion right

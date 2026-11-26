@@ -1,11 +1,10 @@
 using Oxide.Native;
 
 namespace Oxide.Input;
-
-/// <summary>Provides snapshots of keyboard input.</summary>
+/// <summary>Access to snapshots of physical keyboard state.</summary>
 public static class Keyboard
 {
-    /// <summary>Returns an input snapshot for the current frame.</summary>
+    /// <summary>Returns an input snapshot; pressed/released queries compare with the previous frame.</summary>
     public static KeyboardState GetState()
     {
         NativeMethods.Check(
@@ -17,8 +16,7 @@ public static class Keyboard
         return new KeyboardState(state);
     }
 }
-
-/// <summary>Keyboard snapshot containing current and previous key states.</summary>
+/// <summary>Current and previous physical key state for held and per-frame transition queries.</summary>
 public readonly struct KeyboardState
 {
     private readonly ulong _current0;
@@ -35,21 +33,17 @@ public readonly struct KeyboardState
         _previous0 = state.Previous0;
         _previous1 = state.Previous1;
     }
-
-    /// <summary>Returns whether the key is held.</summary>
+    /// <summary>Whether the physical key is currently held.</summary>
     public bool IsKeyDown(Keys key) =>
         IsSet(_current0, _current1, (int)key);
-
-    /// <summary>Returns whether the key is not held.</summary>
+    /// <summary>Whether the physical key is currently released.</summary>
     public bool IsKeyUp(Keys key) =>
         !IsKeyDown(key);
-
-        /// <summary>Returns true only on the frame the key transitions from up to down.</summary>
+    /// <summary>Whether the physical key changed from released to held this frame.</summary>
 public bool IsKeyPressed(Keys key) =>
         IsSet(_current0, _current1, (int)key)
         && !IsSet(_previous0, _previous1, (int)key);
-
-        /// <summary>Returns true only on the frame the key transitions from down to up.</summary>
+    /// <summary>Whether the physical key changed from held to released this frame.</summary>
 public bool IsKeyReleased(Keys key) =>
         !IsSet(_current0, _current1, (int)key)
         && IsSet(_previous0, _previous1, (int)key);

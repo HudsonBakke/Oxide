@@ -7,13 +7,19 @@ use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDel
 use crate::math::Vec2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-/// Public Oxide MouseButton API.
+/// Physical mouse button, including OS-specific additional button indices.
 pub enum MouseButton {
+    /// Left mouse button.
     Left,
+    /// Right mouse button.
     Right,
+    /// Middle mouse button.
     Middle,
+    /// Back mouse button.
     Back,
+    /// Forward mouse button.
     Forward,
+    /// Additional OS button identified by its numeric index.
     Other(u16),
 }
 
@@ -51,15 +57,11 @@ impl MouseState {
     }
 
     /// Returns whether the button transitioned from up to down this frame.
-
-
     pub fn is_button_pressed(&self, button: MouseButton) -> bool {
         self.current.contains(&button) && !self.previous.contains(&button)
     }
 
     /// Returns whether the button transitioned from down to up this frame.
-
-
     pub fn is_button_released(&self, button: MouseButton) -> bool {
         !self.current.contains(&button) && self.previous.contains(&button)
     }

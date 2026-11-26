@@ -1,3 +1,5 @@
+"""Public Python interface to Oxide. Build the native DLL before importing this package."""
+
 from .input import (
     Keyboard,
     KeyboardState,

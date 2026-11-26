@@ -3,17 +3,15 @@ using Oxide.Graphics;
 using Oxide.Native;
 
 namespace Oxide.Math;
-
-/// <summary>Position, rotation, and scale describing an object's placement.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>World-space position, quaternion orientation, and component-wise local scale. A default constructed transform has unit scale.</summary>
 public struct Transform
     : IEquatable<Transform>
 {
     private Vec3 _position;
     private Quaternion _rotation;
     private Vec3 _scale;
-
-    /// <summary>Creates or accesses Transform.</summary>
+    /// <summary>Creates a transform at the origin with identity rotation and unit scale.</summary>
     public Transform()
     {
         _position =
@@ -33,8 +31,7 @@ public struct Transform
                 1.0f
             );
     }
-
-    /// <summary>Current cursor position in window coordinates.</summary>
+    /// <summary>Position in world space.</summary>
     public Vec3 Position
     {
         readonly get =>
@@ -43,8 +40,7 @@ public struct Transform
         set =>
             _position = value;
     }
-
-    /// <summary>Creates or accesses Rotation.</summary>
+    /// <summary>Orientation quaternion; assigned values are normalized.</summary>
     public Quaternion Rotation
     {
         readonly get =>
@@ -54,8 +50,7 @@ public struct Transform
             _rotation =
                 value.Normalized();
     }
-
-    /// <summary>Object scale.</summary>
+    /// <summary>Component-wise scale along the model's local axes.</summary>
     public Vec3 Scale
     {
         readonly get =>
@@ -64,8 +59,7 @@ public struct Transform
         set =>
             _scale = value;
     }
-
-    /// <summary>Creates or accesses TranslateBy.</summary>
+    /// <summary>Adds a world-space translation without rotating it by the current orientation.</summary>
     public void TranslateBy(
         Vec3 translation
     )
@@ -73,8 +67,7 @@ public struct Transform
         _position +=
             translation;
     }
-
-    /// <summary>Creates or accesses SetEuler.</summary>
+    /// <summary>Sets orientation to yaw * pitch * roll, about Y, X, and Z respectively.</summary>
     public void SetEuler(
         Angle pitch,
         Angle yaw,
@@ -88,8 +81,7 @@ public struct Transform
                 roll
             );
     }
-
-    /// <summary>Creates or accesses RotatePitchBy.</summary>
+    /// <summary>Applies an additional rotation about the world X axis.</summary>
     public void RotatePitchBy(
         Angle angle
     )
@@ -108,8 +100,7 @@ public struct Transform
             (rotation * _rotation)
                 .Normalized();
     }
-
-    /// <summary>Creates or accesses RotateYawBy.</summary>
+    /// <summary>Applies an additional rotation about the world Y axis.</summary>
     public void RotateYawBy(
         Angle angle
     )
@@ -128,8 +119,7 @@ public struct Transform
             (rotation * _rotation)
                 .Normalized();
     }
-
-    /// <summary>Creates or accesses RotateRollBy.</summary>
+    /// <summary>Applies an additional rotation about the world Z axis.</summary>
     public void RotateRollBy(
         Angle angle
     )
@@ -148,8 +138,7 @@ public struct Transform
             (rotation * _rotation)
                 .Normalized();
     }
-
-    /// <summary>Multiplies the current scale component-wise.</summary>
+    /// <summary>Multiplies the current scale component by component.</summary>
     public void ScaleBy(
         Vec3 scale
     )
@@ -161,8 +150,7 @@ public struct Transform
                 _scale.Z * scale.Z
             );
     }
-
-    /// <summary>Computes a child transform that aligns two mesh attachment points.</summary>
+    /// <summary>Returns a child transform aligning model-space attachment points using a world-space direction, twist angle, and child scale.</summary>
     public static Transform FromAttachment(
         Mesh parent,
         Transform parentTransform,
@@ -204,8 +192,7 @@ public struct Transform
 
         return result;
     }
-
-    /// <summary>Tests value equality.</summary>
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public readonly bool Equals(
         Transform other
     )
@@ -218,6 +205,7 @@ public struct Transform
                 == other._scale;
     }
 
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public override readonly bool Equals(
         object? obj
     )
@@ -227,6 +215,7 @@ public struct Transform
             && Equals(other);
     }
 
+    /// <summary>Returns a hash consistent with exact component equality.</summary>
     public override readonly int GetHashCode()
     {
         return HashCode.Combine(
@@ -236,12 +225,14 @@ public struct Transform
         );
     }
 
+    /// <summary>Tests exact component equality.</summary>
     public static bool operator ==(
         Transform left,
         Transform right
     ) =>
         left.Equals(right);
 
+    /// <summary>Tests exact component inequality.</summary>
     public static bool operator !=(
         Transform left,
         Transform right

@@ -1,3 +1,5 @@
+//! Source-asset import and disposable compiled caches for meshes, materials, and textures.
+
 mod asset;
 mod cache;
 mod error;

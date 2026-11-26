@@ -1,3 +1,5 @@
+//! Right-handed 3D math with +Y up, explicit angles, and quaternion orientations.
+
 pub mod angle;
 pub mod quaternion;
 pub mod rect;

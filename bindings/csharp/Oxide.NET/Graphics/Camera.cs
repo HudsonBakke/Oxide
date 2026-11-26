@@ -2,14 +2,13 @@ using Oxide.Native;
 using Oxide.Math;
 
 namespace Oxide.Graphics;
-
-/// <summary>Perspective camera defining the viewpoint used to render a scene.</summary>
+/// <summary>Perspective camera looking along local -Z with +Y up at its default orientation.</summary>
+/// <remarks>Owns a native handle released by a SafeHandle finalizer. Native failures raise OxideException.</remarks>
 public sealed class Camera
 {
     private readonly CameraSafeHandle
         _handle;
-
-    /// <summary>Initializes or accesses Camera.</summary>
+    /// <summary>Creates a camera at the origin with identity rotation, a 60-degree vertical field of view, and clipping distances 0.1 and 1000.</summary>
     public Camera()
     {
         NativeMethods.Check(
@@ -40,8 +39,7 @@ public sealed class Camera
             return _handle.NativeHandle;
         }
     }
-
-        /// <summary>Gets or sets the camera position in world space.</summary>
+    /// <summary>Position in world space.</summary>
 public Vec3 Position
     {
         get
@@ -68,8 +66,7 @@ public Vec3 Position
             );
         }
     }
-
-        /// <summary>Gets or sets the camera orientation.</summary>
+    /// <summary>Orientation quaternion; assigned values are normalized.</summary>
 public Quaternion Rotation
     {
         get
@@ -96,8 +93,7 @@ public Quaternion Rotation
             );
         }
     }
-
-        /// <summary>Gets or sets the camera's vertical perspective field of view.</summary>
+    /// <summary>Vertical perspective field of view; use an angle strictly between zero and pi radians.</summary>
 public Angle FieldOfView
     {
         get
@@ -124,8 +120,7 @@ public Angle FieldOfView
             );
         }
     }
-
-    /// <summary>Translates the camera in world space.</summary>
+    /// <summary>Adds a world-space translation without rotating it by the current orientation.</summary>
     public void TranslateBy(
         Vec3 translation
     )
@@ -138,8 +133,7 @@ public Angle FieldOfView
                 )
         );
     }
-
-    /// <summary>Sets camera orientation from pitch, yaw, and roll.</summary>
+    /// <summary>Sets orientation to yaw * pitch * roll, about Y, X, and Z respectively.</summary>
     public void SetEuler(
         Angle pitch,
         Angle yaw,
@@ -156,8 +150,7 @@ public Angle FieldOfView
                 )
         );
     }
-
-        /// <summary>Sets the near and far clipping distances.</summary>
+    /// <summary>Sets clipping distances in world units; requires 0 &lt; near &lt; far.</summary>
 public void SetClipPlanes(
         float nearPlane,
         float farPlane
@@ -172,8 +165,7 @@ public void SetClipPlanes(
                 )
         );
     }
-
-        /// <summary>Gets the near clipping distance.</summary>
+    /// <summary>Distance from the camera to the near clipping plane in world units.</summary>
 public float NearPlane
     {
         get
@@ -189,8 +181,7 @@ public float NearPlane
             return result;
         }
     }
-
-        /// <summary>Gets the far clipping distance.</summary>
+    /// <summary>Distance from the camera to the far clipping plane in world units.</summary>
 public float FarPlane
     {
         get
@@ -206,8 +197,7 @@ public float FarPlane
             return result;
         }
     }
-
-    /// <summary>Applies an incremental pitch rotation.</summary>
+    /// <summary>Applies an additional rotation about the world X axis.</summary>
     public void RotatePitchBy(
         Angle angle
     )
@@ -220,8 +210,7 @@ public float FarPlane
                 )
         );
     }
-
-    /// <summary>Applies an incremental yaw rotation.</summary>
+    /// <summary>Applies an additional rotation about the world Y axis.</summary>
     public void RotateYawBy(
         Angle angle
     )
@@ -234,8 +223,7 @@ public float FarPlane
                 )
         );
     }
-
-    /// <summary>Applies an incremental roll rotation.</summary>
+    /// <summary>Applies an additional rotation about the world Z axis.</summary>
     public void RotateRollBy(
         Angle angle
     )

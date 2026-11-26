@@ -2,9 +2,8 @@ using System;
 using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
-
-/// <summary>Three-component floating-point vector.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Three-component floating-point vector for positions, directions, and scales.</summary>
 public struct Vec3
     : IEquatable<Vec3>
 {
@@ -14,8 +13,7 @@ public struct Vec3
     public float Y;
     /// <summary>Z component.</summary>
     public float Z;
-
-    /// <summary>Creates or accesses Vec3.</summary>
+    /// <summary>Creates a vector from its X, Y, and Z components.</summary>
     public Vec3(
         float x,
         float y,
@@ -26,16 +24,14 @@ public struct Vec3
         Y = y;
         Z = z;
     }
-
-    /// <summary>Vector magnitude.</summary>
+    /// <summary>Euclidean magnitude of the components.</summary>
     public readonly float Length =>
         MathF.Sqrt(
             X * X
             + Y * Y
             + Z * Z
         );
-
-    /// <summary>Returns a normalized copy; zero vectors remain zero.</summary>
+    /// <summary>Returns a unit-length copy; a zero-length vector remains zero.</summary>
     public readonly Vec3 Normalized()
     {
         float length =
@@ -52,8 +48,7 @@ public struct Vec3
             Z / length
         );
     }
-
-    /// <summary>Normalizes this vector in place; zero vectors remain zero.</summary>
+    /// <summary>Normalizes the vector in place; leaves a zero-length vector unchanged.</summary>
     public void Normalize()
     {
         float length =
@@ -68,8 +63,7 @@ public struct Vec3
         Y /= length;
         Z /= length;
     }
-
-    /// <summary>Returns the dot product with another vector.</summary>
+    /// <summary>Returns the scalar dot product with the other vector.</summary>
     public readonly float Dot(
         Vec3 other
     )
@@ -78,8 +72,7 @@ public struct Vec3
             + Y * other.Y
             + Z * other.Z;
     }
-
-    /// <summary>Returns the three-dimensional cross product.</summary>
+    /// <summary>Returns the right-handed cross product with the other vector.</summary>
     public readonly Vec3 Cross(
         Vec3 other
     )
@@ -96,6 +89,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Adds corresponding vector components.</summary>
     public static Vec3 operator +(
         Vec3 left,
         Vec3 right
@@ -108,6 +102,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Subtracts vector components or negates a vector.</summary>
     public static Vec3 operator -(
         Vec3 left,
         Vec3 right
@@ -120,6 +115,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Multiplies each component by a scalar.</summary>
     public static Vec3 operator *(
         Vec3 vector,
         float scalar
@@ -132,6 +128,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Multiplies each component by a scalar.</summary>
     public static Vec3 operator *(
         float scalar,
         Vec3 vector
@@ -140,6 +137,7 @@ public struct Vec3
         return vector * scalar;
     }
 
+    /// <summary>Divides each component by a nonzero scalar.</summary>
     public static Vec3 operator /(
         Vec3 vector,
         float scalar
@@ -152,6 +150,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Subtracts vector components or negates a vector.</summary>
     public static Vec3 operator -(
         Vec3 vector
     )
@@ -162,8 +161,7 @@ public struct Vec3
             -vector.Z
         );
     }
-
-    /// <summary>Tests value equality.</summary>
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public readonly bool Equals(
         Vec3 other
     )
@@ -173,6 +171,7 @@ public struct Vec3
             && Z == other.Z;
     }
 
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public override readonly bool Equals(
         object? obj
     )
@@ -181,6 +180,7 @@ public struct Vec3
             && Equals(other);
     }
 
+    /// <summary>Returns a hash consistent with exact component equality.</summary>
     public override readonly int GetHashCode()
     {
         return HashCode.Combine(
@@ -190,6 +190,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Tests exact component equality.</summary>
     public static bool operator ==(
         Vec3 left,
         Vec3 right
@@ -200,6 +201,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Tests exact component inequality.</summary>
     public static bool operator !=(
         Vec3 left,
         Vec3 right

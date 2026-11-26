@@ -1,3 +1,5 @@
+"""Application configuration, frame timing, and overridable lifecycle callbacks."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,7 +10,12 @@ from .graphics import Graphics
 
 @dataclass
 class AppConfig:
-    """Window configuration used when starting an Oxide game."""
+    """Initial window title and logical-pixel client size; defaults to Oxide at 1280 by 720.
+
+    Attributes:
+        title: Initial window title; defaults to Oxide.
+        width: Initial client width in logical pixels; must be positive.
+        height: Initial client height in logical pixels; must be positive."""
     title: str = "Oxide"
     width: int = 1280
     height: int = 720
@@ -16,57 +23,62 @@ class AppConfig:
 
 @dataclass(frozen=True)
 class GameTime:
-    """Elapsed and total timing information for an update callback."""
+    """Frame timing in seconds; delta time varies with actual frame duration.
+
+    Attributes:
+        delta_seconds: Seconds elapsed since the previous frame's update.
+        total_seconds: Seconds elapsed since the application clock started."""
     delta_seconds: float
     total_seconds: float
 
 
 class Game:
-    """Base class for an Oxide application; override lifecycle methods to implement a game."""
+    """Application lifecycle implemented by initialize, update, and draw callbacks."""
     def __init__(self) -> None:
+        """Creates an application instance whose lifecycle callbacks may be overridden."""
         self._has_run = False
 
     def initialize(self) -> None:
-        """Called once after Oxide initializes the application."""
+        """Called once after the window and graphics are ready; load persistent resources here."""
         pass
 
     def update(
         self,
         time: GameTime,
     ) -> None:
-        """Called once per update with timing information."""
+        """Called once before drawing each frame with elapsed time in seconds; update game logic and read input here."""
         pass
 
     def draw(
         self,
         graphics: Graphics,
     ) -> None:
-        """Called each frame to submit rendering commands."""
+        """Called each frame to bind cameras, set lighting, and submit draw calls."""
         pass
 
     @property
     def window_width(self) -> int:
-        """Public Oxide window width operation."""
+        """Current client-area width in physical pixels."""
         return _native.lib.oxide_app_window_width()
 
     @property
     def window_height(self) -> int:
-        """Public Oxide window height operation."""
+        """Current client-area height in physical pixels."""
         return _native.lib.oxide_app_window_height()
 
     @property
     def is_window_focused(self) -> bool:
-        """Public Oxide is window focused operation."""
+        """Whether the application window currently has keyboard focus."""
         return _native.lib.oxide_app_is_window_focused() != 0
 
     @property
     def is_fullscreen(self) -> bool:
-        """Public Oxide is fullscreen operation."""
+        """Whether borderless fullscreen is enabled or has been requested."""
         return _native.lib.oxide_app_is_fullscreen() != 0
 
     @is_fullscreen.setter
     def is_fullscreen(self, value: bool) -> None:
-        """Public Oxide is fullscreen operation."""
+        """Whether borderless fullscreen is enabled or has been requested."""
         _native.check(
             _native.lib.oxide_app_set_fullscreen(
                 1 if value else 0
@@ -74,7 +86,7 @@ class Game:
         )
 
     def exit(self) -> None:
-        """Request that the running application exit."""
+        """Queues a request to leave the application event loop."""
         _native.check(
             _native.lib.oxide_app_exit()
         )
@@ -83,7 +95,7 @@ class Game:
         self,
         name: str,
     ) -> None:
-        """Change the native window title."""
+        """Queues a change to the native window title."""
         if not isinstance(name, str):
             raise TypeError("name must be a string")
 
@@ -97,7 +109,7 @@ class Game:
         self,
         texture,
     ) -> None:
-        """Change the native window icon using a texture."""
+        """Queues an icon change using an RGBA8 texture."""
         from .content import Texture
 
         if not isinstance(texture, Texture):
@@ -114,7 +126,7 @@ class Game:
         width: int,
         height: int,
     ) -> None:
-        """Request a new backbuffer size."""
+        """Requests a client/backbuffer size in physical pixels; both dimensions must be positive."""
         if width <= 0 or height <= 0:
             raise ValueError(
                 "backbuffer dimensions must be greater than zero"
@@ -131,7 +143,7 @@ class Game:
         self,
         width: int,
     ) -> None:
-        """Public Oxide set preferred backbuffer width operation."""
+        """Requests a physical-pixel width while retaining the current window height."""
         self.set_preferred_backbuffer_size(
             width,
             self.window_height,
@@ -141,7 +153,7 @@ class Game:
         self,
         height: int,
     ) -> None:
-        """Public Oxide set preferred backbuffer height operation."""
+        """Requests a physical-pixel height while retaining the current window width."""
         self.set_preferred_backbuffer_size(
             self.window_width,
             height,
@@ -151,7 +163,7 @@ class Game:
         self,
         visible: bool,
     ) -> None:
-        """Show or hide the system cursor."""
+        """Queues a change to the visibility of the OS cursor over the game window."""
         _native.check(
             _native.lib.oxide_app_set_cursor_visible(
                 1 if visible else 0
@@ -162,7 +174,7 @@ class Game:
         self,
         grabbed: bool,
     ) -> None:
-        """Confine or release the cursor from the window."""
+        """Requests cursor locking, falling back to confinement when locking is unavailable."""
         _native.check(
             _native.lib.oxide_app_set_cursor_grabbed(
                 1 if grabbed else 0
@@ -173,7 +185,7 @@ class Game:
         self,
         config: AppConfig | None = None,
     ) -> None:
-        """Start the Oxide application loop; a Game instance can run only once."""
+        """Runs the blocking application event loop on the calling thread until the window closes or exit is requested."""
         if self._has_run:
             raise RuntimeError(
                 "An Oxide Game instance can only be run once."
@@ -210,7 +222,7 @@ class Game:
         def capture_exception(
             exception: BaseException,
         ) -> None:
-            """Public Oxide capture exception operation."""
+            """Retains the first callback exception for propagation after the event loop returns."""
             nonlocal callback_exception
 
             if callback_exception is None:
@@ -220,7 +232,7 @@ class Game:
         def on_initialize(
             user_data,
         ) -> None:
-            """Public Oxide on initialize operation."""
+            """Invokes the Python initialization callback behind the native ABI boundary."""
             if callback_exception is not None:
                 return
 
@@ -236,7 +248,7 @@ class Game:
             user_data,
             native_time,
         ) -> None:
-            """Public Oxide on update operation."""
+            """Converts native timing and invokes the Python update callback."""
             if callback_exception is not None:
                 return
 
@@ -263,7 +275,7 @@ class Game:
             user_data,
             graphics_handle,
         ) -> None:
-            """Public Oxide on draw operation."""
+            """Invokes drawing with a rendering handle valid only for this callback."""
             if callback_exception is not None:
                 return
 

@@ -6,76 +6,145 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-/// Public Oxide Keys API.
+/// Physical keyboard keys, independent of text input and keyboard layout.
 pub enum Keys {
+    /// Physical A key.
     A,
+    /// Physical B key.
     B,
+    /// Physical C key.
     C,
+    /// Physical D key.
     D,
+    /// Physical E key.
     E,
+    /// Physical F key.
     F,
+    /// Physical G key.
     G,
+    /// Physical H key.
     H,
+    /// Physical I key.
     I,
+    /// Physical J key.
     J,
+    /// Physical K key.
     K,
+    /// Physical L key.
     L,
+    /// Physical M key.
     M,
+    /// Physical N key.
     N,
+    /// Physical O key.
     O,
+    /// Physical P key.
     P,
+    /// Physical Q key.
     Q,
+    /// Physical R key.
     R,
+    /// Physical S key.
     S,
+    /// Physical T key.
     T,
+    /// Physical U key.
     U,
+    /// Physical V key.
     V,
+    /// Physical W key.
     W,
+    /// Physical X key.
     X,
+    /// Physical Y key.
     Y,
+    /// Physical Z key.
     Z,
+    /// Top-row digit 0 key.
     Key0,
+    /// Top-row digit 1 key.
     Key1,
+    /// Top-row digit 2 key.
     Key2,
+    /// Top-row digit 3 key.
     Key3,
+    /// Top-row digit 4 key.
     Key4,
+    /// Top-row digit 5 key.
     Key5,
+    /// Top-row digit 6 key.
     Key6,
+    /// Top-row digit 7 key.
     Key7,
+    /// Top-row digit 8 key.
     Key8,
+    /// Top-row digit 9 key.
     Key9,
+    /// Escape key.
     Escape,
+    /// Space key.
     Space,
+    /// Enter key.
     Enter,
+    /// Tab key.
     Tab,
+    /// Backspace key.
     Backspace,
+    /// Left shift key.
     LeftShift,
+    /// Right shift key.
     RightShift,
+    /// Left control key.
     LeftControl,
+    /// Right control key.
     RightControl,
+    /// Left alt key.
     LeftAlt,
+    /// Right alt key.
     RightAlt,
+    /// Up key.
     Up,
+    /// Down key.
     Down,
+    /// Left key.
     Left,
+    /// Right key.
     Right,
+    /// Insert key.
     Insert,
+    /// Delete key.
     Delete,
+    /// Home key.
     Home,
+    /// End key.
     End,
+    /// Page up key.
     PageUp,
+    /// Page down key.
     PageDown,
+    /// F1 key.
     F1,
+    /// F2 key.
     F2,
+    /// F3 key.
     F3,
+    /// F4 key.
     F4,
+    /// F5 key.
     F5,
+    /// F6 key.
     F6,
+    /// F7 key.
     F7,
+    /// F8 key.
     F8,
+    /// F9 key.
     F9,
+    /// F10 key.
     F10,
+    /// F11 key.
     F11,
+    /// F12 key.
     F12,
 }
 
@@ -98,15 +167,11 @@ impl KeyboardState {
     }
 
     /// Returns whether the key transitioned from up to down this frame.
-
-
     pub fn is_key_pressed(&self, key: Keys) -> bool {
         self.current.contains(&key) && !self.previous.contains(&key)
     }
 
     /// Returns whether the key transitioned from down to up this frame.
-
-
     pub fn is_key_released(&self, key: Keys) -> bool {
         !self.current.contains(&key) && self.previous.contains(&key)
     }

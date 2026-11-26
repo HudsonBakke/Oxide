@@ -1,22 +1,20 @@
 using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
-
-/// <summary>Rectangle expressed by position and size.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Pixel rectangle with top-left X/Y coordinates and width/height extents.</summary>
 public readonly struct Rect
     : IEquatable<Rect>
 {
-    /// <summary>Creates or accesses X.</summary>
+    /// <summary>Left edge in physical pixels.</summary>
     public readonly float X;
-    /// <summary>Creates or accesses Y.</summary>
+    /// <summary>Top edge in physical pixels.</summary>
     public readonly float Y;
-    /// <summary>Creates or accesses Width.</summary>
+    /// <summary>Horizontal extent in physical pixels.</summary>
     public readonly float Width;
-    /// <summary>Creates or accesses Height.</summary>
+    /// <summary>Vertical extent in physical pixels.</summary>
     public readonly float Height;
-
-    /// <summary>Creates or accesses Rect.</summary>
+    /// <summary>Creates a pixel rectangle from top-left coordinates and width/height extents.</summary>
     public Rect(
         float x,
         float y,
@@ -29,12 +27,10 @@ public readonly struct Rect
         Width = width;
         Height = height;
     }
-
-    /// <summary>Width divided by height.</summary>
+    /// <summary>Width divided by height; height must be nonzero for a finite result.</summary>
     public float AspectRatio =>
         Width / Height;
-
-    /// <summary>Tests value equality.</summary>
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public bool Equals(
         Rect other
     )
@@ -45,6 +41,7 @@ public readonly struct Rect
             && Height == other.Height;
     }
 
+    /// <summary>Tests exact component equality; no floating-point tolerance is applied.</summary>
     public override bool Equals(
         object? obj
     )
@@ -53,6 +50,7 @@ public readonly struct Rect
             && Equals(other);
     }
 
+    /// <summary>Returns a hash consistent with exact component equality.</summary>
     public override int GetHashCode()
     {
         return HashCode.Combine(
@@ -63,12 +61,14 @@ public readonly struct Rect
         );
     }
 
+    /// <summary>Tests exact component equality.</summary>
     public static bool operator ==(
         Rect left,
         Rect right
     ) =>
         left.Equals(right);
 
+    /// <summary>Tests exact component inequality.</summary>
     public static bool operator !=(
         Rect left,
         Rect right

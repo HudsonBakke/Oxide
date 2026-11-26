@@ -6,8 +6,7 @@ using Oxide.Native;
 using Oxide.Graphics;
 
 namespace Oxide.App;
-
-/// <summary>Base class for an Oxide application. Override lifecycle methods to initialize, update, and draw the game.</summary>
+/// <summary>Application lifecycle implemented by initialize, update, and draw callbacks.</summary>
 public abstract class Game
     : IDisposable
 {
@@ -19,39 +18,32 @@ public abstract class Game
 
     private bool
         _hasRun;
-
-        /// <summary>Called once after Oxide has initialized the application.</summary>
+    /// <summary>Called once after the window and graphics are ready; load persistent resources here.</summary>
 protected virtual void Initialize()
     {
     }
-
-    /// <summary>Called once per update with timing information.</summary>
+    /// <summary>Called once before drawing each frame with elapsed time in seconds; update game logic and read input here.</summary>
     protected virtual void Update(
         GameTime time
     )
     {
     }
-
-        /// <summary>Called each frame to submit rendering commands.</summary>
+    /// <summary>Called each frame to bind cameras, set lighting, and submit draw calls.</summary>
 protected virtual void Draw(
         Graphics.Graphics graphics
     )
     {
     }
-
-    /// <summary>Current window width in pixels.</summary>
+    /// <summary>Current client-area width in physical pixels.</summary>
     public uint WindowWidth =>
         NativeMethods.oxide_app_window_width();
-
-    /// <summary>Current window height in pixels.</summary>
+    /// <summary>Current client-area height in physical pixels.</summary>
     public uint WindowHeight =>
         NativeMethods.oxide_app_window_height();
-
-    /// <summary>Whether the Oxide window currently has input focus.</summary>
+    /// <summary>Whether the application window currently has keyboard focus.</summary>
     public bool IsWindowFocused =>
         NativeMethods.oxide_app_is_window_focused() != 0;
-
-    /// <summary>Gets or sets fullscreen mode.</summary>
+    /// <summary>Whether borderless fullscreen is enabled or has been requested.</summary>
     public bool IsFullscreen
     {
         get =>
@@ -64,16 +56,14 @@ protected virtual void Draw(
                 )
             );
     }
-
-        /// <summary>Requests that the running application exit.</summary>
+    /// <summary>Queues a request to leave the application event loop.</summary>
 public void Exit()
     {
         NativeMethods.Check(
             NativeMethods.oxide_app_exit()
         );
     }
-
-        /// <summary>Changes the native window title.</summary>
+    /// <summary>Queues a change to the native window title.</summary>
 public void SetWindowName(
         string name
     )
@@ -96,8 +86,7 @@ public void SetWindowName(
             Marshal.FreeCoTaskMem(nativeName);
         }
     }
-
-        /// <summary>Changes the native window icon using the supplied texture.</summary>
+    /// <summary>Queues an icon change using an RGBA8 texture.</summary>
 public void SetWindowLogo(
         Texture texture
     )
@@ -110,8 +99,7 @@ public void SetWindowLogo(
             )
         );
     }
-
-        /// <summary>Requests a new backbuffer width and height.</summary>
+    /// <summary>Requests a client/backbuffer size in physical pixels; both dimensions must be positive.</summary>
 public void SetPreferredBackbufferSize(
         uint width,
         uint height
@@ -134,8 +122,7 @@ public void SetPreferredBackbufferSize(
             )
         );
     }
-
-    /// <summary>Requests a new backbuffer width while preserving height.</summary>
+    /// <summary>Requests a physical-pixel width while retaining the current window height.</summary>
     public void SetPreferredBackbufferWidth(
         uint width
     )
@@ -145,8 +132,7 @@ public void SetPreferredBackbufferSize(
             WindowHeight
         );
     }
-
-    /// <summary>Requests a new backbuffer height while preserving width.</summary>
+    /// <summary>Requests a physical-pixel height while retaining the current window width.</summary>
     public void SetPreferredBackbufferHeight(
         uint height
     )
@@ -156,8 +142,7 @@ public void SetPreferredBackbufferSize(
             height
         );
     }
-
-        /// <summary>Shows or hides the system cursor while the application is running.</summary>
+    /// <summary>Queues a change to the visibility of the OS cursor over the game window.</summary>
 public void SetCursorVisible(
         bool visible
     )
@@ -168,8 +153,7 @@ public void SetCursorVisible(
             )
         );
     }
-
-        /// <summary>Controls whether the cursor is confined to the Oxide window.</summary>
+    /// <summary>Requests cursor locking, falling back to confinement when locking is unavailable.</summary>
 public void SetCursorGrabbed(
         bool grabbed
     )
@@ -180,16 +164,14 @@ public void SetCursorGrabbed(
             )
         );
     }
-
-        /// <summary>Starts the Oxide application loop. A Game instance can be run only once.</summary>
+    /// <summary>Runs the blocking application event loop on the calling thread until the window closes or exit is requested.</summary>
 public void Run()
     {
         Run(
             new AppConfig()
         );
     }
-
-    /// <summary>Starts the application loop; a Game instance can run only once.</summary>
+    /// <summary>Runs the blocking application event loop on the calling thread until the window closes or exit is requested.</summary>
     public void Run(
         AppConfig config
     )
@@ -282,8 +264,7 @@ public void Run()
             );
         }
     }
-
-    /// <summary>Releases managed resources associated with the game instance.</summary>
+    /// <summary>Releases the callback resources owned by this game; overriding implementations should call the base method.</summary>
     public void Dispose()
     {
         if (_disposed)
@@ -301,10 +282,7 @@ public void Run()
             this
         );
     }
-
-    /// Framework-level cleanup hook.
-    ///
-    /// Game subclasses normally do not need to override this.
+    /// <summary>Releases the callback resources owned by this game; overriding implementations should call the base method.</summary>
     protected virtual void Dispose(
         bool disposing
     )

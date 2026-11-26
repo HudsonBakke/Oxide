@@ -2,8 +2,8 @@ using Oxide.Content;
 using Oxide.Native;
 
 namespace Oxide.Graphics;
-
-/// <summary>Immutable 2D texture resource loaded through ContentManager or created procedurally.</summary>
+/// <summary>Immutable image resource; load through ContentManager or construct RGBA8/solid-color pixels.</summary>
+/// <remarks>Owns a native handle released by a SafeHandle finalizer. Native failures raise OxideException.</remarks>
 public sealed class Texture
     : IContentAsset
 {
@@ -35,7 +35,6 @@ public sealed class Texture
             return _handle.NativeHandle;
         }
     }
-
     /// <summary>Texture width in pixels.</summary>
     public uint Width
     {
@@ -52,7 +51,6 @@ public sealed class Texture
             return result;
         }
     }
-
     /// <summary>Texture height in pixels.</summary>
     public uint Height
     {
@@ -69,9 +67,7 @@ public sealed class Texture
             return result;
         }
     }
-
-
-    /// <summary>Creates or accesses Texture.</summary>
+    /// <summary>Creates a texture from row-major RGBA8 bytes; requires exactly width * height * 4 bytes.</summary>
     public static unsafe Texture FromRgba(
         uint width,
         uint height,
@@ -95,8 +91,7 @@ public sealed class Texture
             return new Texture(handle);
         }
     }
-
-        /// <summary>Creates a one-pixel texture containing a solid color.</summary>
+    /// <summary>Creates an opaque or translucent 1x1 RGBA8 texture, clamping color channels to [0, 1].</summary>
 public static Texture Solid(
         Color color
     )

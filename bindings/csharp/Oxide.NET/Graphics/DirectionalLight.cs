@@ -4,16 +4,14 @@ using System.Runtime.InteropServices;
 using Oxide.Math;
 
 namespace Oxide.Graphics;
-
-/// <summary>Infinitely distant light whose rays share one direction.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Light whose rays travel in one world-space direction, with no distance attenuation.</summary>
 public struct DirectionalLight
 {
     private Vec3 _direction;
     private Color _color;
     private float _intensity;
-
-    /// <summary>Creates or accesses DirectionalLight.</summary>
+    /// <summary>Creates a directional light; requires a nonzero direction and non-negative intensity.</summary>
     public DirectionalLight(
         Vec3 direction,
         Color color,
@@ -43,8 +41,7 @@ public struct DirectionalLight
         _color = color;
         _intensity = intensity;
     }
-
-    /// <summary>Normalized direction in which the light travels.</summary>
+    /// <summary>Normalized world-space direction in which light rays travel.</summary>
     public Vec3 Direction
     {
         readonly get =>
@@ -65,15 +62,13 @@ public struct DirectionalLight
                 value.Normalized();
         }
     }
-
-    /// <summary>Light color.</summary>
+    /// <summary>RGB light color; alpha is not used for lighting.</summary>
     public Color Color
     {
         readonly get => _color;
         set => _color = value;
     }
-
-    /// <summary>Non-negative light intensity.</summary>
+    /// <summary>Non-negative light intensity; point and spot lights attenuate with squared distance.</summary>
     public float Intensity
     {
         readonly get => _intensity;

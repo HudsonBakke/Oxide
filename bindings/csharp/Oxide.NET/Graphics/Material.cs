@@ -2,15 +2,14 @@ using Oxide.Content;
 using Oxide.Native;
 
 namespace Oxide.Graphics;
-
-/// <summary>Physically based surface material controlling color, metallicity, roughness, emission, and normal mapping.</summary>
+/// <summary>Surface settings for base color, metallicity, roughness, emission, and tangent-space normal mapping.</summary>
+/// <remarks>Owns a native handle released by a SafeHandle finalizer. Native failures raise OxideException.</remarks>
 public sealed class Material
     : IContentAsset
 {
     private readonly MaterialSafeHandle
         _handle;
-
-    /// <summary>Creates or accesses Material.</summary>
+    /// <summary>Creates a material using a base-color texture, metallic factor zero, roughness one, and no emission.</summary>
     public Material(
         Texture baseTexture
     )
@@ -58,7 +57,6 @@ public sealed class Material
             return _handle.NativeHandle;
         }
     }
-
     /// <summary>Base-color texture sampled by the material.</summary>
     public Texture BaseTexture
     {
@@ -77,10 +75,7 @@ public sealed class Material
             );
         }
     }
-
-
-
-    /// <summary>Tangent-space normal map sampled by the material.</summary>
+    /// <summary>Tangent-space normal map; RGB encodes a direction from -1 to 1.</summary>
     public Texture NormalTexture
     {
         get
@@ -104,8 +99,7 @@ public sealed class Material
             );
         }
     }
-
-    /// <summary>Strength of normal-map perturbation.</summary>
+    /// <summary>Finite multiplier applied to the normal map's XY components; zero disables perturbation.</summary>
     public float NormalStrength
     {
         get
@@ -122,8 +116,7 @@ public sealed class Material
             NativeMethods.oxide_material_set_normal_strength(Handle, value)
         );
     }
-
-    /// <summary>Color multiplier applied to the base texture.</summary>
+    /// <summary>RGBA multiplier applied to the base-color texture.</summary>
     public Color BaseColor
     {
         get
@@ -133,8 +126,7 @@ public sealed class Material
         }
         set => NativeMethods.Check(NativeMethods.oxide_material_set_base_color(Handle, value));
     }
-
-    /// <summary>Metallic factor in the range 0 to 1.</summary>
+    /// <summary>Metallic factor in [0, 1]: zero is dielectric and one is metallic.</summary>
     public float Metallic
     {
         get
@@ -144,8 +136,7 @@ public sealed class Material
         }
         set => NativeMethods.Check(NativeMethods.oxide_material_set_metallic(Handle, value));
     }
-
-    /// <summary>Perceptual roughness factor in the range 0 to 1.</summary>
+    /// <summary>Perceptual roughness in [0, 1]: zero is smooth and one is fully rough.</summary>
     public float Roughness
     {
         get
@@ -155,8 +146,7 @@ public sealed class Material
         }
         set => NativeMethods.Check(NativeMethods.oxide_material_set_roughness(Handle, value));
     }
-
-    /// <summary>Color emitted by the material.</summary>
+    /// <summary>RGB color emitted by the surface, multiplied by emissive strength.</summary>
     public Color EmissiveColor
     {
         get
@@ -166,8 +156,7 @@ public sealed class Material
         }
         set => NativeMethods.Check(NativeMethods.oxide_material_set_emissive_color(Handle, value));
     }
-
-    /// <summary>Multiplier applied to emissive color.</summary>
+    /// <summary>Finite, non-negative multiplier applied to the emissive color.</summary>
     public float EmissiveStrength
     {
         get
@@ -177,8 +166,7 @@ public sealed class Material
         }
         set => NativeMethods.Check(NativeMethods.oxide_material_set_emissive_strength(Handle, value));
     }
-
-    /// <summary>Creates a material backed by a solid-color texture.</summary>
+    /// <summary>Creates an untextured-looking material from a solid-color base texture.</summary>
     public static Material Solid(
         Color color
     )

@@ -4,9 +4,8 @@ using System.Runtime.InteropServices;
 using Oxide.Math;
 
 namespace Oxide.Graphics;
-
-/// <summary>Cone-shaped light with position, direction, angle, color, and intensity.</summary>
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Point light restricted to a directional cone, with inverse-square distance attenuation.</summary>
 public struct SpotLight
 {
     private Vec3 _position;
@@ -14,8 +13,7 @@ public struct SpotLight
     private Angle _angle;
     private Color _color;
     private float _intensity;
-
-    /// <summary>Creates or accesses SpotLight.</summary>
+    /// <summary>Creates a cone light; requires a nonzero direction, non-negative intensity, and half-angle in (0, pi) radians.</summary>
     public SpotLight(
         Vec3 position,
         Vec3 direction,
@@ -59,8 +57,7 @@ public struct SpotLight
         _color = color;
         _intensity = intensity;
     }
-
-    /// <summary>Light position in world space.</summary>
+    /// <summary>Position in world space.</summary>
     public Vec3 Position
     {
         readonly get =>
@@ -69,8 +66,7 @@ public struct SpotLight
         set =>
             _position = value;
     }
-
-    /// <summary>Normalized direction in which the light travels.</summary>
+    /// <summary>Normalized world-space direction in which light rays travel.</summary>
     public Vec3 Direction
     {
         readonly get =>
@@ -91,8 +87,7 @@ public struct SpotLight
                 value.Normalized();
         }
     }
-
-    /// <summary>Full cone angle of the spotlight.</summary>
+    /// <summary>Spotlight cone half-angle measured from its direction; use an angle strictly between zero and pi radians.</summary>
     public Angle Angle
     {
         readonly get =>
@@ -112,8 +107,7 @@ public struct SpotLight
             _angle = value;
         }
     }
-
-    /// <summary>Light color.</summary>
+    /// <summary>RGB light color; alpha is not used for lighting.</summary>
     public Color Color
     {
         readonly get =>
@@ -122,8 +116,7 @@ public struct SpotLight
         set =>
             _color = value;
     }
-
-    /// <summary>Non-negative light intensity.</summary>
+    /// <summary>Non-negative light intensity; point and spot lights attenuate with squared distance.</summary>
     public float Intensity
     {
         readonly get =>

@@ -3,7 +3,9 @@ use std::{error::Error, fmt, io};
 #[derive(Debug)]
 /// Error produced by graphics initialization or rendering operations.
 pub enum GraphicsError {
+    /// A Windows or Direct3D operation failed.
     Windows(windows::core::Error),
+    /// An underlying filesystem or stream operation failed.
     Io(io::Error),
 }
 
@@ -35,5 +37,5 @@ impl From<io::Error> for GraphicsError {
     }
 }
 
-/// Public Oxide GraphicsResult API.
+/// Result of a graphics operation, containing GraphicsError on failure.
 pub type GraphicsResult<T> = Result<T, GraphicsError>;

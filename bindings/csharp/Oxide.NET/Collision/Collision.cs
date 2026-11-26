@@ -3,11 +3,10 @@ using Oxide.Math;
 using Oxide.Native;
 
 namespace Oxide.Collision;
-
-/// <summary>Static collision queries between transformed meshes.</summary>
+/// <summary>Triangle-mesh intersection and containment queries.</summary>
 public static class Collision
 {
-    /// <summary>Returns whether the two transformed meshes intersect.</summary>
+    /// <summary>Tests intersection of two transformed triangle meshes, including containment, using their model-space pivots.</summary>
     public static bool Collides(
         Mesh meshA,
         Transform transformA,
