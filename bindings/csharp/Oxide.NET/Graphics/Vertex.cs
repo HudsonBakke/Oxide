@@ -4,8 +4,8 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Vertex data containing position, normal, texture coordinates, and tangent.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public struct Vertex
     : IEquatable<Vertex>
 {
