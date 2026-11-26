@@ -7,6 +7,7 @@ pub struct Angle {
 }
 
 impl Angle {
+    /// Public Oxide ZERO API.
     pub const ZERO: Self = Self { radians: 0.0 };
 
     /// Creates an angle from radians.

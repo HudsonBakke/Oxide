@@ -7,6 +7,7 @@ use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDel
 use crate::math::Vec2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Public Oxide MouseButton API.
 pub enum MouseButton {
     Left,
     Right,
@@ -39,10 +40,12 @@ impl Default for MouseState {
 }
 
 impl MouseState {
+    /// Returns whether the button is held.
     pub fn is_button_down(&self, button: MouseButton) -> bool {
         self.current.contains(&button)
     }
 
+    /// Returns whether the button is not held.
     pub fn is_button_up(&self, button: MouseButton) -> bool {
         !self.is_button_down(button)
     }
@@ -65,14 +68,17 @@ impl MouseState {
         self.previous.contains(&button)
     }
 
+    /// Current cursor position in window coordinates.
     pub fn position(&self) -> Vec2 {
         self.position
     }
 
+    /// Cursor motion accumulated this frame.
     pub fn delta(&self) -> Vec2 {
         self.delta
     }
 
+    /// Scroll motion accumulated this frame.
     pub fn scroll_delta(&self) -> Vec2 {
         self.scroll_delta
     }
@@ -82,6 +88,7 @@ impl MouseState {
 pub struct Mouse;
 
 impl Mouse {
+    /// Returns the current input snapshot.
     pub fn get_state() -> MouseState {
         lock_mouse().clone()
     }

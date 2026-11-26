@@ -8,19 +8,24 @@ use super::{Color, Texture};
 #[derive(Debug, Clone)]
 /// Explicit ambient, image-based-lighting, and background settings for a scene.
 pub struct Environment {
+    /// Constant ambient-light color.
     pub ambient_color: Color,
+    /// Non-negative ambient-light multiplier.
     pub ambient_intensity: f32,
 
     /// Optional equirectangular texture used for image-based lighting.
     pub environment_texture: Option<Texture>,
+    /// Non-negative IBL multiplier.
     pub environment_intensity: f32,
 
     /// Optional equirectangular texture used only as the visible background.
     pub background_texture: Option<Texture>,
+    /// Fallback background color.
     pub background_color: Color,
 }
 
 impl Environment {
+    /// Public Oxide new API.
     pub fn new(
         ambient_color: Color,
         ambient_intensity: f32,

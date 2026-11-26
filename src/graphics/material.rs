@@ -39,13 +39,18 @@ impl Material {
         }
     }
 
+    /// Base-color texture.
     pub fn base_texture(&self) -> &Texture {
         &self.base_texture
     }
 
+    /// Tangent-space normal map.
     pub fn normal_texture(&self) -> &Texture { &self.normal_texture }
+    /// Sets the tangent-space normal map.
     pub fn set_normal_texture(&mut self, texture: Texture) { self.normal_texture = texture; }
+    /// Normal-map strength.
     pub fn normal_strength(&self) -> f32 { self.normal_strength }
+    /// Sets normal-map strength.
     pub fn set_normal_strength(&mut self, strength: f32) -> OxideResult<()> {
         if !strength.is_finite() {
             return Err(OxideError::InvalidArgument {
@@ -57,46 +62,56 @@ impl Material {
         Ok(())
     }
 
+    /// Base-color multiplier.
     pub fn base_color(&self) -> Color {
         self.base_color
     }
 
+    /// Sets the base-color multiplier.
     pub fn set_base_color(&mut self, color: Color) {
         self.base_color = color;
     }
 
+    /// Metallic factor from 0 to 1.
     pub fn metallic(&self) -> f32 {
         self.metallic
     }
 
+    /// Sets metallic factor from 0 to 1.
     pub fn set_metallic(&mut self, metallic: f32) -> OxideResult<()> {
         validate_unit("metallic", metallic)?;
         self.metallic = metallic;
         Ok(())
     }
 
+    /// Perceptual roughness from 0 to 1.
     pub fn roughness(&self) -> f32 {
         self.roughness
     }
 
+    /// Sets perceptual roughness from 0 to 1.
     pub fn set_roughness(&mut self, roughness: f32) -> OxideResult<()> {
         validate_unit("roughness", roughness)?;
         self.roughness = roughness;
         Ok(())
     }
 
+    /// Emissive color.
     pub fn emissive_color(&self) -> Color {
         self.emissive_color
     }
 
+    /// Sets emissive color.
     pub fn set_emissive_color(&mut self, color: Color) {
         self.emissive_color = color;
     }
 
+    /// Emissive multiplier.
     pub fn emissive_strength(&self) -> f32 {
         self.emissive_strength
     }
 
+    /// Sets the non-negative emissive multiplier.
     pub fn set_emissive_strength(&mut self, strength: f32) -> OxideResult<()> {
         if !strength.is_finite() || strength < 0.0 {
             return Err(OxideError::InvalidArgument {

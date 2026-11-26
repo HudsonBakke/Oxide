@@ -35,4 +35,5 @@ impl From<io::Error> for GraphicsError {
     }
 }
 
+/// Public Oxide GraphicsResult API.
 pub type GraphicsResult<T> = Result<T, GraphicsError>;

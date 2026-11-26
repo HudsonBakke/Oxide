@@ -95,6 +95,7 @@ impl ContentManager {
         Ok(asset)
     }
 
+    /// Returns the compiled-content cache directory.
     pub fn cache_directory(&self) -> &Path {
         &self.cache_directory
     }

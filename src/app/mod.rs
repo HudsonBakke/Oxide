@@ -377,9 +377,13 @@ pub fn run<G: Game>(game: G, config: AppConfig) {
 }
 
 #[derive(Debug, Clone)]
+/// Public Oxide AppConfig API.
 pub struct AppConfig {
+    /// Public Oxide title API.
     pub title: String,
+    /// Public Oxide width API.
     pub width: u32,
+    /// Public Oxide height API.
     pub height: u32,
 }
 
@@ -393,6 +397,7 @@ impl Default for AppConfig {
     }
 }
 
+/// Public Oxide Game API.
 pub trait Game {
     fn initialize(&mut self) {}
     fn update(&mut self, _time: &GameTime) {}
@@ -402,16 +407,19 @@ pub trait Game {
 /// Timing information for the current frame.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
+/// Public Oxide GameTime API.
 pub struct GameTime {
     delta_seconds: f64,
     total_seconds: f64,
 }
 
 impl GameTime {
+    /// Public Oxide delta seconds API.
     pub fn delta_seconds(&self) -> f64 {
         self.delta_seconds
     }
 
+    /// Public Oxide total seconds API.
     pub fn total_seconds(&self) -> f64 {
         self.total_seconds
     }

@@ -6,6 +6,7 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Public Oxide Keys API.
 pub enum Keys {
     A,
     B,
@@ -86,10 +87,12 @@ pub struct KeyboardState {
 }
 
 impl KeyboardState {
+    /// Returns whether the key is held.
     pub fn is_key_down(&self, key: Keys) -> bool {
         self.current.contains(&key)
     }
 
+    /// Returns whether the key is not held.
     pub fn is_key_up(&self, key: Keys) -> bool {
         !self.is_key_down(key)
     }
@@ -117,6 +120,7 @@ impl KeyboardState {
 pub struct Keyboard;
 
 impl Keyboard {
+    /// Returns the current input snapshot.
     pub fn get_state() -> KeyboardState {
         lock_keyboard().clone()
     }

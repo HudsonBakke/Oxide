@@ -89,10 +89,12 @@ impl Texture {
         }
     }
 
+    /// Texture width in pixels.
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Texture height in pixels.
     pub fn height(&self) -> u32 {
         self.height
     }

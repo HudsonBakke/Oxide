@@ -49,6 +49,7 @@ pub enum ContentError {
     },
 }
 
+/// Public Oxide ContentResult API.
 pub type ContentResult<T> = Result<T, ContentError>;
 
 impl fmt::Display for ContentError {

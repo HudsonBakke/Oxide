@@ -13,6 +13,7 @@ pub enum OxideError {
     },
 }
 
+/// Public Oxide OxideResult API.
 pub type OxideResult<T> = Result<T, OxideError>;
 
 impl fmt::Display for OxideError {

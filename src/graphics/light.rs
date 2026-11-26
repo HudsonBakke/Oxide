@@ -18,6 +18,7 @@ pub struct PointLight {
 }
 
 impl PointLight {
+    /// Public Oxide new API.
     pub fn new(position: Vec3, color: Color, intensity: f32) -> OxideResult<Self> {
         if intensity < 0.0 {
             return Err(OxideError::InvalidArgument {
@@ -33,26 +34,32 @@ impl PointLight {
         })
     }
 
+    /// World-space position.
     pub fn position(&self) -> Vec3 {
         self.position
     }
 
+    /// Sets the world-space position.
     pub fn set_position(&mut self, position: Vec3) {
         self.position = position;
     }
 
+    /// Light or material color.
     pub fn color(&self) -> Color {
         self.color
     }
 
+    /// Sets the color.
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
     }
 
+    /// Non-negative light intensity.
     pub fn intensity(&self) -> f32 {
         self.intensity
     }
 
+    /// Sets non-negative light intensity.
     pub fn set_intensity(&mut self, intensity: f32) -> OxideResult<()> {
         if intensity < 0.0 {
             return Err(OxideError::InvalidArgument {
@@ -81,6 +88,7 @@ pub struct SpotLight {
 }
 
 impl SpotLight {
+    /// Public Oxide new API.
     pub fn new(
         position: Vec3,
         direction: Vec3,
@@ -120,18 +128,22 @@ impl SpotLight {
         })
     }
 
+    /// World-space position.
     pub fn position(&self) -> Vec3 {
         self.position
     }
 
+    /// Sets the world-space position.
     pub fn set_position(&mut self, position: Vec3) {
         self.position = position;
     }
 
+    /// Normalized light or mesh direction.
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
 
+    /// Sets and normalizes the direction.
     pub fn set_direction(&mut self, direction: Vec3) -> OxideResult<()> {
         if direction.length() <= LIGHT_EPSILON {
             return Err(OxideError::InvalidArgument {
@@ -145,10 +157,12 @@ impl SpotLight {
         Ok(())
     }
 
+    /// Spotlight cone angle.
     pub fn angle(&self) -> Angle {
         self.angle
     }
 
+    /// Sets the spotlight cone angle.
     pub fn set_angle(&mut self, angle: Angle) -> OxideResult<()> {
         let radians = angle.as_radians();
 
@@ -164,18 +178,22 @@ impl SpotLight {
         Ok(())
     }
 
+    /// Light or material color.
     pub fn color(&self) -> Color {
         self.color
     }
 
+    /// Sets the color.
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
     }
 
+    /// Non-negative light intensity.
     pub fn intensity(&self) -> f32 {
         self.intensity
     }
 
+    /// Sets non-negative light intensity.
     pub fn set_intensity(&mut self, intensity: f32) -> OxideResult<()> {
         if intensity < 0.0 {
             return Err(OxideError::InvalidArgument {
@@ -203,6 +221,7 @@ pub struct DirectionalLight {
 }
 
 impl DirectionalLight {
+    /// Public Oxide new API.
     pub fn new(direction: Vec3, color: Color, intensity: f32) -> OxideResult<Self> {
         if direction.length() <= LIGHT_EPSILON {
             return Err(OxideError::InvalidArgument {
@@ -225,10 +244,12 @@ impl DirectionalLight {
         })
     }
 
+    /// Normalized light or mesh direction.
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
 
+    /// Sets and normalizes the direction.
     pub fn set_direction(&mut self, direction: Vec3) -> OxideResult<()> {
         if direction.length() <= LIGHT_EPSILON {
             return Err(OxideError::InvalidArgument {
@@ -242,18 +263,22 @@ impl DirectionalLight {
         Ok(())
     }
 
+    /// Light or material color.
     pub fn color(&self) -> Color {
         self.color
     }
 
+    /// Sets the color.
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
     }
 
+    /// Non-negative light intensity.
     pub fn intensity(&self) -> f32 {
         self.intensity
     }
 
+    /// Sets non-negative light intensity.
     pub fn set_intensity(&mut self, intensity: f32) -> OxideResult<()> {
         if intensity < 0.0 {
             return Err(OxideError::InvalidArgument {
@@ -272,11 +297,13 @@ impl DirectionalLight {
 // Sealed LightSource implementation
 // ---------------------------------------------------------
 
+/// Public Oxide LightSource API.
 pub trait LightSource: private::LightSourceInternal + Copy {}
 
 pub(crate) use private::LightSourceInternal;
 
 mod private {
+    /// Public Oxide LightSourceInternal API.
     pub trait LightSourceInternal: Copy {
         fn add_to_graphics(&self, graphics: &mut crate::graphics::Graphics);
     }

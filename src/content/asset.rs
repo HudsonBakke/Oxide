@@ -16,6 +16,7 @@ pub(crate) use private::ContentAssetInternal;
 mod private {
     use super::*;
 
+    /// Public Oxide ContentAssetInternal API.
     pub trait ContentAssetInternal: Sized {
         fn asset_type_name() -> &'static str;
 
