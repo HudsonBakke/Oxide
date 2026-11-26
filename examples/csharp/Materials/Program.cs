@@ -104,7 +104,7 @@ internal sealed class MaterialTest : Game
         {
             uint a = ring * stride + segment;
             uint b = a + stride;
-            indices.AddRange(new[] { a,a+1,b+1, a,b+1,b });
+            indices.AddRange(new[] { a,b+1,a+1, a,b,b+1 });
         }
 
         return new Mesh(vertices.ToArray(), indices.ToArray());

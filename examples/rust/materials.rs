@@ -132,8 +132,8 @@ fn sphere(segments: u32, rings: u32) -> Mesh {
             let a = ring * stride + segment;
             let b = a + stride;
             indices.extend_from_slice(&[
-                a, a + 1, b + 1,
-                a, b + 1, b,
+                a, b + 1, a + 1,
+                a, b, b + 1,
             ]);
         }
     }

@@ -33,7 +33,7 @@ def make_sphere(segments: int, rings: int) -> Mesh:
         for segment in range(segments):
             a = ring * stride + segment
             b = a + stride
-            indices.extend([a,a+1,b+1, a,b+1,b])
+            indices.extend([a,b+1,a+1, a,b,b+1])
 
     return Mesh(vertices, indices)
 
