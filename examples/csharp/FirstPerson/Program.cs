@@ -94,9 +94,9 @@ internal sealed class FirstPersonGame : Game
         graphics.BindCamera(_camera, graphics.FullRect);
         graphics.AddLight(_sun);
 
-        for (int x = -10; x <= 10; x++)
+        for (int x = -5; x <= 5; x++)
         {
-            for (int z = -10; z <= 10; z++)
+            for (int z = -5; z <= 5; z++)
             {
                 DrawBox(
                     graphics,

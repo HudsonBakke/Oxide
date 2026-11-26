@@ -14,8 +14,10 @@ use super::D3D12Device;
 
 const CONSTANT_BUFFER_ALIGNMENT: usize = 256;
 
-// Temporary capacity. Later we'll make this grow dynamically.
-const MAX_CONSTANTS_PER_FRAME: usize = 1024;
+// Per-frame upload arena. The renderer currently waits for the GPU at the
+// end of each frame, so this arena can be safely reused after reset().
+// 16K aligned allocations = 4 MiB of upload memory.
+const MAX_CONSTANTS_PER_FRAME: usize = 16 * 1024;
 
 pub(crate) struct D3D12ConstantBuffer {
     resource: ID3D12Resource,

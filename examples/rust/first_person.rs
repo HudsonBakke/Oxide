@@ -114,8 +114,8 @@ impl Game for Demo {
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
         graphics.add_light(&self.sun);
 
-        for x in -10..=10 {
-            for z in -10..=10 {
+        for x in -5..=5 {
+            for z in -5..=5 {
                 let material = if (x + z) & 1 == 0 {
                     &self.green
                 } else {

@@ -19,3 +19,8 @@ criterion = "0.8.2"
 [[bench]]
 name = "collision"
 harness = false
+
+
+[[example]]
+name = "first_person"
+path = "examples/rust/first_person.rs"

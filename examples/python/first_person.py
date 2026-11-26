@@ -130,8 +130,8 @@ class FirstPersonGame(Game):
         graphics.bind_camera(self.camera, graphics.full_rect)
         graphics.add_light(self.sun)
 
-        for x in range(-10, 11):
-            for z in range(-10, 11):
+        for x in range(-5, 6):
+            for z in range(-5, 6):
                 self.draw_box(
                     graphics,
                     self.floor,

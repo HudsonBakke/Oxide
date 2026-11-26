@@ -6,7 +6,15 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../../bindings/csharp/Oxide.NET/Oxide.NET.csproj" />
   </ItemGroup>
+
+  <Target Name="CopyOxideNative" AfterTargets="Build">
+    <Copy
+      SourceFiles="$(MSBuildProjectDirectory)......	argetdebugoxide.dll"
+      DestinationFolder="$(OutDir)"
+      SkipUnchangedFiles="true" />
+  </Target>
 </Project>
