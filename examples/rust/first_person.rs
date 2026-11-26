@@ -13,6 +13,7 @@ struct Demo {
     pitch: f32,
     floor: Mesh,
     cube: Mesh,
+    sphere: Mesh,
     green: Material,
     dark: Material,
     brown: Material,
@@ -33,6 +34,7 @@ impl Demo {
             pitch: 0.0,
             floor: quad(),
             cube: cube(),
+            sphere: sphere(16, 10),
             green: Material::solid(Color::rgb(0.25, 0.55, 0.22)),
             dark: Material::solid(Color::rgb(0.12, 0.18, 0.12)),
             brown: Material::solid(Color::rgb(0.45, 0.25, 0.10)),
@@ -44,7 +46,7 @@ impl Demo {
                 DirectionalLight::new(Vec3::new(-1.0, 0.0, 0.0), Color::rgb(1.0, 0.35, 0.30), 0.22).unwrap(),
                 DirectionalLight::new(Vec3::new(1.0, 0.0, 0.0), Color::rgb(0.30, 1.0, 0.45), 0.22).unwrap(),
             ],
-            sun: PointLight::new(Vec3::new(6.0, 7.0, -8.0), Color::rgb(1.0, 0.85, 0.55), 7.0).unwrap(),
+            sun: PointLight::new(Vec3::new(4.0, 4.0, -5.0), Color::rgb(1.0, 0.72, 0.15), 2.5).unwrap(),
             flashlight: SpotLight::new(
                 Vec3::new(-4.0, 1.2, -3.0),
                 Vec3::new(0.8, -0.15, -1.0),
@@ -134,6 +136,10 @@ impl Game for Demo {
         if keyboard.is_key_down(Keys::S) { movement = movement - forward; }
         if keyboard.is_key_down(Keys::D) { movement = movement + right; }
         if keyboard.is_key_down(Keys::A) { movement = movement - right; }
+        if keyboard.is_key_down(Keys::Space) { movement.y += 1.0; }
+        if keyboard.is_key_down(Keys::LeftShift) || keyboard.is_key_down(Keys::RightShift) {
+            movement.y -= 1.0;
+        }
 
         if movement.length() > 0.0 {
             self.camera.translate_by(
@@ -148,6 +154,16 @@ impl Game for Demo {
             graphics.add_light(light);
         }
         graphics.add_light(&self.sun);
+        let camera_rotation = self.camera.rotation();
+        let camera_position = self.camera.position();
+        let forward3d = camera_rotation.rotate_vector(Vec3::new(0.0, 0.0, -1.0));
+        let right3d = camera_rotation.rotate_vector(Vec3::new(1.0, 0.0, 0.0));
+        let down3d = camera_rotation.rotate_vector(Vec3::new(0.0, -1.0, 0.0));
+
+        self.flashlight.set_position(
+            camera_position + forward3d * 0.7 + right3d * 0.35 + down3d * 0.25
+        );
+        self.flashlight.set_direction(forward3d).unwrap();
         graphics.add_light(&self.flashlight);
 
         for x in -5..=5 {
@@ -166,12 +182,25 @@ impl Game for Demo {
         }
 
         // Visible sun marker at exactly the point-light position.
-        Self::draw_box(graphics, &self.cube, &self.yellow, Vec3::new(6.0, 7.0, -8.0), Vec3::new(1.2, 1.2, 1.2));
+        Self::draw_box(graphics, &self.sphere, &self.yellow, Vec3::new(4.0, 4.0, -5.0), Vec3::new(1.1, 1.1, 1.1));
 
         // Flashlight body. The spotlight originates at its bright front cap
         // and points diagonally across the floor toward the scarecrow.
-        Self::draw_box(graphics, &self.cube, &self.gray, Vec3::new(-4.35, 1.25, -2.55), Vec3::new(0.45, 0.45, 1.4));
-        Self::draw_box(graphics, &self.cube, &self.yellow, Vec3::new(-4.0, 1.2, -3.0), Vec3::new(0.55, 0.55, 0.18));
+        let flashlight_position =
+            camera_position + forward3d * 0.9 + right3d * 0.35 + down3d * 0.25;
+        let mut flashlight_transform = Transform::new();
+        flashlight_transform.set_position(flashlight_position);
+        flashlight_transform.set_rotation(camera_rotation);
+        flashlight_transform.set_scale(Vec3::new(0.22, 0.22, 0.8));
+        graphics.draw_mesh(&self.cube, &self.gray, &flashlight_transform).unwrap();
+
+        let lens_position =
+            camera_position + forward3d * 1.3 + right3d * 0.35 + down3d * 0.25;
+        let mut lens_transform = Transform::new();
+        lens_transform.set_position(lens_position);
+        lens_transform.set_rotation(camera_rotation);
+        lens_transform.set_scale(Vec3::new(0.28, 0.28, 0.12));
+        graphics.draw_mesh(&self.cube, &self.yellow, &lens_transform).unwrap();
 
         // Scarecrow: post, torso, head, arms, and hat.
         Self::draw_box(graphics, &self.cube, &self.brown, Vec3::new(0.0, 1.5, -6.0), Vec3::new(0.22, 3.0, 0.22));
@@ -225,4 +254,47 @@ fn main() {
             height: 720,
         },
     );
+}
+
+
+fn sphere(segments: u32, rings: u32) -> Mesh {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+
+    for ring in 0..=rings {
+        let v = ring as f32 / rings as f32;
+        let phi = v * std::f32::consts::PI;
+        let y = phi.cos();
+        let radius = phi.sin();
+
+        for segment in 0..=segments {
+            let u = segment as f32 / segments as f32;
+            let theta = u * std::f32::consts::TAU;
+            let normal = Vec3::new(
+                radius * theta.cos(),
+                y,
+                radius * theta.sin(),
+            );
+
+            vertices.push(Vertex::new(
+                normal * 0.5,
+                normal,
+                Vec2::new(u, v),
+            ));
+        }
+    }
+
+    let stride = segments + 1;
+    for ring in 0..rings {
+        for segment in 0..segments {
+            let a = ring * stride + segment;
+            let b = a + stride;
+            indices.extend_from_slice(&[
+                a, a + 1, b + 1,
+                a, b + 1, b,
+            ]);
+        }
+    }
+
+    Mesh::new(vertices, indices)
 }

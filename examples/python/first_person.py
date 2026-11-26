@@ -1,3 +1,5 @@
+import math
+
 from oxide.app import AppConfig, Game, GameTime
 from oxide.content import Material, Mesh, Vertex
 from oxide.graphics import Camera, Color, DirectionalLight, Graphics, PointLight, SpotLight
@@ -45,12 +47,43 @@ def make_cube() -> Mesh:
     return Mesh(vertices, indices)
 
 
+def make_sphere(segments: int, rings: int) -> Mesh:
+    vertices: list[Vertex] = []
+    indices: list[int] = []
+
+    for ring in range(rings + 1):
+        v = ring / rings
+        phi = v * math.pi
+        y = math.cos(phi)
+        radius = math.sin(phi)
+
+        for segment in range(segments + 1):
+            u = segment / segments
+            theta = u * math.tau
+            normal = Vec3(
+                radius * math.cos(theta),
+                y,
+                radius * math.sin(theta),
+            )
+            vertices.append(Vertex(normal * 0.5, normal, Vec2(u, v)))
+
+    stride = segments + 1
+    for ring in range(rings):
+        for segment in range(segments):
+            a = ring * stride + segment
+            b = a + stride
+            indices.extend([a, a+1, b+1, a, b+1, b])
+
+    return Mesh(vertices, indices)
+
+
 class FirstPersonGame(Game):
     def __init__(self) -> None:
         super().__init__()
         self.camera = Camera()
         self.floor = make_quad()
         self.cube = make_cube()
+        self.sphere = make_sphere(16, 10)
         self.green = Material.solid(Color.rgb(0.25, 0.55, 0.22))
         self.dark = Material.solid(Color.rgb(0.12, 0.18, 0.12))
         self.brown = Material.solid(Color.rgb(0.45, 0.25, 0.10))
@@ -61,7 +94,7 @@ class FirstPersonGame(Game):
             DirectionalLight(Vec3(-1,0,0), Color.rgb(1.0,0.35,0.30), 0.22),
             DirectionalLight(Vec3(1,0,0), Color.rgb(0.30,1.0,0.45), 0.22),
         ]
-        self.sun = PointLight(Vec3(6,7,-8), Color.rgb(1.0,0.85,0.55), 7.0)
+        self.sun = PointLight(Vec3(4,4,-5), Color.rgb(1.0,0.72,0.15), 2.5)
         self.flashlight = SpotLight(
             Vec3(-4,1.2,-3),
             Vec3(0.8,-0.15,-1),
@@ -127,11 +160,27 @@ class FirstPersonGame(Game):
         if keyboard.is_key_down(Keys.S): movement = movement - forward
         if keyboard.is_key_down(Keys.D): movement = movement + right
         if keyboard.is_key_down(Keys.A): movement = movement - right
+        if keyboard.is_key_down(Keys.SPACE): movement = movement + Vec3(0,1,0)
+        if keyboard.is_key_down(Keys.LEFT_SHIFT) or keyboard.is_key_down(Keys.RIGHT_SHIFT): movement = movement - Vec3(0,1,0)
 
         if movement.length > 0.0:
             self.camera.translate_by(
                 movement.normalized() * (5.0 * time.delta_seconds)
             )
+
+    @staticmethod
+    def draw_oriented_box(
+        graphics: Graphics,
+        mesh: Mesh,
+        material: Material,
+        position: Vec3,
+        scale: Vec3,
+        rotation: Quaternion,
+    ) -> None:
+        graphics.draw_mesh(
+            mesh, material,
+            Transform(position=position, scale=scale, rotation=rotation),
+        )
 
     @staticmethod
     def draw_box(
@@ -152,6 +201,13 @@ class FirstPersonGame(Game):
         for light in self.directional_lights:
             graphics.add_light(light)
         graphics.add_light(self.sun)
+        camera_rotation = self.camera.rotation
+        camera_position = self.camera.position
+        forward3d = camera_rotation.rotate_vector(Vec3(0,0,-1))
+        right3d = camera_rotation.rotate_vector(Vec3(1,0,0))
+        down3d = camera_rotation.rotate_vector(Vec3(0,-1,0))
+        self.flashlight.position = camera_position + forward3d * 0.7 + right3d * 0.35 + down3d * 0.25
+        self.flashlight.direction = forward3d
         graphics.add_light(self.flashlight)
 
         for x in range(-5, 6):
@@ -164,9 +220,17 @@ class FirstPersonGame(Game):
                     Vec3(2.0, 1.0, 2.0),
                 )
 
-        self.draw_box(graphics, self.cube, self.yellow, Vec3(6,7,-8), Vec3(1.2,1.2,1.2))
-        self.draw_box(graphics, self.cube, self.gray, Vec3(-4.35,1.25,-2.55), Vec3(0.45,0.45,1.4))
-        self.draw_box(graphics, self.cube, self.yellow, Vec3(-4,1.2,-3), Vec3(0.55,0.55,0.18))
+        self.draw_box(graphics, self.sphere, self.yellow, Vec3(4,4,-5), Vec3(1.1,1.1,1.1))
+        self.draw_oriented_box(
+            graphics, self.cube, self.gray,
+            camera_position + forward3d * 0.9 + right3d * 0.35 + down3d * 0.25,
+            Vec3(0.22,0.22,0.8), camera_rotation,
+        )
+        self.draw_oriented_box(
+            graphics, self.cube, self.yellow,
+            camera_position + forward3d * 1.3 + right3d * 0.35 + down3d * 0.25,
+            Vec3(0.28,0.28,0.12), camera_rotation,
+        )
 
         self.draw_box(graphics, self.cube, self.brown, Vec3(0,1.5,-6), Vec3(0.22,3,0.22))
         self.draw_box(graphics, self.cube, self.red, Vec3(0,2.8,-6), Vec3(1.4,1.3,0.55))
