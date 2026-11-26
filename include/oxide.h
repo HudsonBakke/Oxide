@@ -207,6 +207,23 @@ extern "C"
         float intensity;
     } OxideDirectionalLight;
 
+    /** Orthographic directional shadow volume and receiver bias. Initialize with oxide_directional_shadow_settings_default. */
+    typedef struct OxideDirectionalShadowSettings
+    {
+        /** Finite world-space volume center; default origin. */
+        OxideVec3 center;
+        /** Finite positive full square width and height in world units; default 30. */
+        float size;
+        /** Finite positive full depth along light rays, centered on center; default 60. */
+        float depth;
+        /** Power-of-two square resolution from 128 through 4096; default 1024. */
+        uint32_t resolution;
+        /** Finite non-negative comparison offset in normalized depth units; default 0.0001. */
+        float depth_bias;
+        /** Finite non-negative receiver offset along the geometric normal in world units; default 0.01. */
+        float normal_bias;
+    } OxideDirectionalShadowSettings;
+
     /* ============================================================
  * Handles
  * ============================================================ */
@@ -544,6 +561,21 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
     OXIDE_API OxideStatus oxide_graphics_bind_camera(OxideGraphicsHandle graphics,
                                                      OxideCameraHandle camera,
                                                      OxideRect destination);
+
+    /** Initializes shadow settings to documented defaults; result must not be null. */
+    OXIDE_API OxideStatus oxide_directional_shadow_settings_default(OxideDirectionalShadowSettings *result);
+
+    /** Begins the frame's single shadow pass before any camera is bound. Add the same unchanged directional light for scene draws. */
+    OXIDE_API OxideStatus oxide_graphics_begin_shadow_pass(OxideGraphicsHandle graphics,
+                                                         OxideDirectionalLight light,
+                                                         OxideDirectionalShadowSettings settings);
+
+    /** Submits opaque geometry during an open shadow pass, using the same transform as the scene draw. */
+    OXIDE_API OxideStatus oxide_graphics_draw_shadow_mesh(OxideGraphicsHandle graphics,
+                                                        OxideMeshHandle mesh, OxideTransform transform);
+
+    /** Ends the shadow pass; bind a camera before scene draws. The map applies to all subsequent viewports this frame. */
+    OXIDE_API OxideStatus oxide_graphics_end_shadow_pass(OxideGraphicsHandle graphics);
 
     /**
  * @brief Draws a mesh with a material and world transform in the currently bound camera viewport.

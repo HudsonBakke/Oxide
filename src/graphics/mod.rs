@@ -13,6 +13,7 @@ mod environment;
 mod light;
 mod material;
 mod vertex;
+mod shadow;
 
 pub use attachment::from_attachment;
 pub use camera::Camera;
@@ -23,6 +24,7 @@ pub use material::Material;
 pub use mesh::Mesh;
 pub use texture::Texture;
 pub use vertex::Vertex;
+pub use shadow::DirectionalShadowSettings;
 
 pub use error::{GraphicsError, GraphicsResult};
 

@@ -533,6 +533,37 @@ class Camera:
         )
 
 
+class DirectionalShadowSettings(ctypes.Structure):
+    """Orthographic coverage and receiver bias for one directional shadow map.
+
+    Attributes:
+        center: Finite world-space volume center (default origin).
+        size: Positive finite full square width and height in world units (30).
+        depth: Positive finite full extent along light rays (60), centered on center.
+        resolution: Power-of-two square map size, 128 through 4096 pixels (1024).
+        depth_bias: Finite non-negative normalized depth comparison offset (0.0001).
+        normal_bias: Finite non-negative geometric normal offset in world units (0.01).
+    """
+
+    _fields_ = [
+        ("center", Vec3),
+        ("size", ctypes.c_float),
+        ("depth", ctypes.c_float),
+        ("resolution", ctypes.c_uint32),
+        ("depth_bias", ctypes.c_float),
+        ("normal_bias", ctypes.c_float),
+    ]
+
+    def __init__(self, center: Vec3 | None = None, size: float = 30.0,
+                 depth: float = 60.0, resolution: int = 1024,
+                 depth_bias: float = 0.0001, normal_bias: float = 0.01) -> None:
+        """Creates shadow settings; the native begin call validates field values."""
+        if not isinstance(resolution, int) or not 128 <= resolution <= 4096 or resolution & (resolution - 1):
+            raise ValueError("resolution must be a power of two from 128 through 4096")
+        super().__init__(center if center is not None else Vec3(), size, depth,
+                         resolution, depth_bias, normal_bias)
+
+
 class Graphics:
     """Rendering interface supplied to the draw callback; bind a camera before drawing geometry.
 
@@ -650,6 +681,36 @@ class Graphics:
                 destination,
             )
         )
+
+    def begin_shadow_pass(self, light: DirectionalLight, settings: DirectionalShadowSettings) -> None:
+        """Begins the frame's single directional shadow pass before binding a camera.
+
+        Add the same unchanged light for scene draws. Submit opaque casters,
+        end the pass, then bind a camera. Invalid settings or order raise OxideError.
+        """
+        self._require_valid()
+        if not isinstance(light, DirectionalLight):
+            raise TypeError("light must be a DirectionalLight")
+        if not isinstance(settings, DirectionalShadowSettings):
+            raise TypeError("settings must be DirectionalShadowSettings")
+        _native.check(_native.lib.oxide_graphics_begin_shadow_pass(self._handle, light, settings))
+
+    def draw_shadow_mesh(self, mesh: Mesh, transform: Transform) -> None:
+        """Submits an opaque caster during an open shadow pass using its scene transform.
+
+        Materials are not sampled; transparent cutouts cast solid shadows.
+        """
+        self._require_valid()
+        if not isinstance(mesh, Mesh):
+            raise TypeError("mesh must be a Mesh")
+        if not isinstance(transform, Transform):
+            raise TypeError("transform must be a Transform")
+        _native.check(_native.lib.oxide_graphics_draw_shadow_mesh(self._handle, mesh._handle, transform))
+
+    def end_shadow_pass(self) -> None:
+        """Ends the shadow pass. Bind a camera before scene draws; all viewports share this frame's map."""
+        self._require_valid()
+        _native.check(_native.lib.oxide_graphics_end_shadow_pass(self._handle))
 
     def draw_mesh(
         self,
@@ -828,3 +889,14 @@ _native.lib.oxide_graphics_add_directional_light.argtypes = [
     DirectionalLight,
 ]
 _native.lib.oxide_graphics_add_directional_light.restype = ctypes.c_int
+
+_native.lib.oxide_graphics_begin_shadow_pass.argtypes = [
+    _native.NativeGraphicsHandle, DirectionalLight, DirectionalShadowSettings,
+]
+_native.lib.oxide_graphics_begin_shadow_pass.restype = ctypes.c_int
+_native.lib.oxide_graphics_draw_shadow_mesh.argtypes = [
+    _native.NativeGraphicsHandle, _native.NativeMeshHandle, Transform,
+]
+_native.lib.oxide_graphics_draw_shadow_mesh.restype = ctypes.c_int
+_native.lib.oxide_graphics_end_shadow_pass.argtypes = [_native.NativeGraphicsHandle]
+_native.lib.oxide_graphics_end_shadow_pass.restype = ctypes.c_int

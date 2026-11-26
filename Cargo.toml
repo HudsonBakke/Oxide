@@ -48,3 +48,7 @@ path = "examples/rust/model.rs"
 [[example]]
 name = "split_screen"
 path = "examples/rust/split_screen.rs"
+
+[[example]]
+name = "shadows"
+path = "examples/rust/shadows.rs"

@@ -20,6 +20,14 @@ Texture2D environment_texture : register(t2);
 Texture2D irradiance_texture : register(t3);
 Texture2D background_texture : register(t4);
 SamplerState base_sampler : register(s0);
+Texture2D<float> directional_shadow_map : register(t5);
+SamplerComparisonState shadow_sampler : register(s1);
+
+cbuffer ShadowConstants : register(b3)
+{
+    float4x4 world_to_shadow;
+    float4 shadow_parameters; // x=depth bias, y=normal bias, z=texel size, w=enabled
+};
 
 struct PointLight
 {
@@ -183,6 +191,31 @@ float3 evaluate_environment(float3 normal, float3 view_direction, float3 albedo,
     return ambient + diffuse + specular_environment * intensity * fresnel * specular_energy;
 }
 
+float directional_visibility(float3 world_position, float3 geometric_normal)
+{
+    if (shadow_parameters.w < 0.5)
+        return 1.0;
+    float4 clip = mul(world_to_shadow,
+                      float4(world_position + geometric_normal * shadow_parameters.y, 1.0));
+    float3 projected = clip.xyz / clip.w;
+    float2 uv = projected.xy * float2(0.5, -0.5) + 0.5;
+    if (projected.z <= 0.0 || projected.z >= 1.0 || any(uv < 0.0) || any(uv > 1.0))
+        return 1.0;
+
+    // Nine bilinear comparison samples soften the edge without blurring depths.
+    float visibility = 0.0;
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+            visibility += directional_shadow_map.SampleCmpLevelZero(
+                shadow_sampler, uv + float2(x, y) * shadow_parameters.z,
+                projected.z - shadow_parameters.x);
+    }
+    return visibility / 9.0;
+}
+
 float4 ps_main(VertexOutput input) : SV_TARGET
 {
     float3 geometric_normal = normalize(input.normal);
@@ -222,6 +255,8 @@ float4 ps_main(VertexOutput input) : SV_TARGET
     {
         float3 light_direction = -normalize(directional_lights[i].direction.xyz);
         float3 radiance = directional_lights[i].color.rgb * directional_lights[i].color.a;
+        if (directional_lights[i].direction.w > 0.5)
+            radiance *= directional_visibility(input.world_position, geometric_normal);
 
         lighting += evaluate_brdf(normal, view_direction, light_direction, radiance, albedo,
                                   metallic, roughness);

@@ -60,3 +60,10 @@ The three materials examples support **Q** to halve exposure, **E** to double
 it, and **R** to reset it. The title displays the current value. Changing exposure
 should affect the sky, lit surfaces, and emissive surfaces together. Also check
 window resizing and the Rust split-screen example when validating a GPU backend.
+
+## Shadows
+
+Directional lights can use an explicit depth pass with configurable coverage,
+resolution, and receiver bias. See [directional shadows](shadows.md) for the
+pass order, binding APIs, and examples. Shadows modulate direct lighting in
+linear HDR space before the shared display transform.

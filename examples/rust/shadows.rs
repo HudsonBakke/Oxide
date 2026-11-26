@@ -1,0 +1,107 @@
+//! Explicit directional shadow pass with moving opaque casters. Space toggles shadows.
+use oxide::{
+    app::{AppConfig, Game, GameTime},
+    graphics::{Camera, Color, DirectionalLight, DirectionalShadowSettings, Environment, Graphics, Material, Mesh, Vertex},
+    input::{Keyboard, Keys},
+    math::{Angle, Quaternion, Transform, Vec2, Vec3},
+};
+
+struct Shadows {
+    camera: Camera,
+    mesh: Mesh,
+    materials: [Material; 3],
+    transforms: [Transform; 3],
+    light: DirectionalLight,
+    settings: DirectionalShadowSettings,
+    environment: Environment,
+    enabled: bool,
+}
+
+impl Shadows {
+    fn new() -> Self {
+        let mut camera = Camera::new();
+        let position = Vec3::new(9.0, 8.0, 13.0);
+        camera.set_position(position);
+        camera.set_rotation(Quaternion::from_to(Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 0.5, 0.0) - position));
+        Self {
+            camera,
+            mesh: cube(),
+            materials: [
+                Material::solid(Color::rgb(0.55, 0.58, 0.62)),
+                Material::solid(Color::rgb(0.8, 0.18, 0.06)),
+                Material::solid(Color::rgb(0.08, 0.35, 0.8)),
+            ],
+            transforms: [
+                instance(Vec3::new(0.0, -0.1, 0.0), Vec3::new(16.0, 0.2, 16.0)),
+                instance(Vec3::new(0.0, 1.5, 0.0), Vec3::new(2.0, 2.0, 2.0)),
+                instance(Vec3::new(3.0, 1.5, -2.5), Vec3::new(1.5, 3.0, 1.5)),
+            ],
+            light: DirectionalLight::new(Vec3::new(-0.5, -1.0, -0.35), Color::WHITE, 3.0).unwrap(),
+            settings: DirectionalShadowSettings::default(),
+            environment: Environment::new(Color::WHITE, 0.12, None, 0.0, None, Color::rgb(0.04, 0.06, 0.09)).unwrap(),
+            enabled: true,
+        }
+    }
+}
+
+impl Game for Shadows {
+    fn update(&mut self, time: &GameTime) {
+        let t = time.total_seconds() as f32;
+        self.transforms[1].set_position(Vec3::new(t.sin() * 2.5, 1.5 + t.cos() * 0.4, 0.0));
+        self.transforms[1].set_rotation(Quaternion::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), Angle::radians(t * 0.5)));
+        if Keyboard::get_state().is_key_pressed(Keys::Space) {
+            self.enabled = !self.enabled;
+        }
+        oxide::app::set_window_name(format!("Oxide Shadows | {} | Space toggles", if self.enabled { "on" } else { "off" }));
+    }
+
+    fn draw(&mut self, graphics: &mut Graphics) {
+        if self.enabled {
+            graphics.begin_shadow_pass(&self.light, &self.settings).unwrap();
+            // The game submits the same mesh and transforms to both passes.
+            for transform in &self.transforms {
+                graphics.draw_shadow_mesh(&self.mesh, transform).unwrap();
+            }
+            graphics.end_shadow_pass().unwrap();
+        }
+        graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
+        graphics.set_environment(&self.environment);
+        graphics.add_light(&self.light);
+        for (material, transform) in self.materials.iter().zip(&self.transforms) {
+            graphics.draw_mesh(&self.mesh, material, transform).unwrap();
+        }
+    }
+}
+
+fn instance(position: Vec3, scale: Vec3) -> Transform {
+    let mut transform = Transform::new();
+    transform.set_position(position);
+    transform.set_scale(scale);
+    transform
+}
+
+fn cube() -> Mesh {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    // Each face has separate vertices for its flat normal. Clockwise winding
+    // matches the renderer; right and up span the face around its center.
+    for (normal, right, up) in [
+        (Vec3::new(0.0, 0.0, 1.0), Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0)),
+        (Vec3::new(0.0, 0.0, -1.0), Vec3::new(-1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0)),
+        (Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 1.0, 0.0)),
+        (Vec3::new(-1.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 1.0), Vec3::new(0.0, 1.0, 0.0)),
+        (Vec3::new(0.0, 1.0, 0.0), Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -1.0)),
+        (Vec3::new(0.0, -1.0, 0.0), Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 1.0)),
+    ] {
+        let base = vertices.len() as u32;
+        for (x, y) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+            vertices.push(Vertex::new((normal + right * x + up * y) * 0.5, normal, Vec2::new((x + 1.0) * 0.5, (y + 1.0) * 0.5)));
+        }
+        indices.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
+    }
+    Mesh::new(vertices, indices)
+}
+
+fn main() {
+    oxide::app::run(Shadows::new(), AppConfig { title: "Oxide Shadows".into(), width: 1280, height: 800 });
+}

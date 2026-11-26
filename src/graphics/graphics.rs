@@ -1,7 +1,7 @@
 use crate::{math::Rect, math::Transform, platform::window::PlatformWindow};
 
 use super::{
-    Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
+    Camera, DirectionalLight, DirectionalShadowSettings, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
     SpotLight,
     backend::d3d12::{D3D12Device, D3D12Renderer, D3D12SwapChain},
 };
@@ -60,6 +60,37 @@ impl Graphics {
     pub(crate) fn end_frame(&mut self) -> GraphicsResult<()> {
         self.renderer.end_frame(&self.device, &self.swap_chain)?;
 
+        Ok(())
+    }
+
+    /// Begins the frame's single directional shadow pass, before binding a camera.
+    ///
+    /// The light is copied; add the same unchanged light with `add_light` for
+    /// subsequent scene draws to receive shadows. Submit opaque casters with
+    /// `draw_shadow_mesh`, then call `end_shadow_pass` and bind a scene camera.
+    /// Returns an error for invalid settings or pass order.
+    pub fn begin_shadow_pass(
+        &mut self,
+        light: &DirectionalLight,
+        settings: &DirectionalShadowSettings,
+    ) -> GraphicsResult<()> {
+        self.renderer.begin_shadow_pass(&self.device, light, settings)?;
+        Ok(())
+    }
+
+    /// Submits an opaque caster during an open shadow pass, using its scene transform.
+    ///
+    /// No material is sampled; transparent cutouts are treated as solid geometry.
+    pub fn draw_shadow_mesh(&mut self, mesh: &Mesh, transform: &Transform) -> GraphicsResult<()> {
+        self.renderer.draw_shadow_mesh(&self.device, mesh, transform)?;
+        Ok(())
+    }
+
+    /// Ends an open shadow pass. Bind a camera before drawing the scene.
+    ///
+    /// The map is shared by all subsequent camera viewports this frame.
+    pub fn end_shadow_pass(&mut self) -> GraphicsResult<()> {
+        self.renderer.end_shadow_pass(&self.swap_chain)?;
         Ok(())
     }
 

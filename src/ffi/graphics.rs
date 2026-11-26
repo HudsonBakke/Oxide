@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{DirectionalLight, Environment, Graphics, PointLight, SpotLight},
+    graphics::{DirectionalShadowSettings, DirectionalLight, Environment, Graphics, PointLight, SpotLight},
     math::{Rect, Transform},
 };
 
@@ -298,4 +298,87 @@ pub extern "C" fn oxide_graphics_add_directional_light(
 
         OxideStatus::Ok
     })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_directional_shadow_settings_default(result: *mut DirectionalShadowSettings) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() {
+            set_last_error("result pointer cannot be null");
+            return OxideStatus::InvalidArgument;
+        }
+        unsafe { *result = DirectionalShadowSettings::default(); }
+        OxideStatus::Ok
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_begin_shadow_pass(
+    graphics: OxideGraphicsHandle,
+    light: DirectionalLight,
+    settings: DirectionalShadowSettings,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+            return OxideStatus::InvalidArgument;
+        };
+        if let Err(error) = settings.light_matrix(light.direction()) {
+            set_last_error(error.to_string());
+            return OxideStatus::InvalidArgument;
+        }
+        match graphics.begin_shadow_pass(&light, &settings) {
+            Ok(()) => OxideStatus::Ok,
+            Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_draw_shadow_mesh(
+    graphics: OxideGraphicsHandle,
+    mesh: OxideMeshHandle,
+    transform: Transform,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+            return OxideStatus::InvalidArgument;
+        };
+        let Some(result) = with_mesh(mesh, |mesh| graphics.draw_shadow_mesh(mesh, &transform)) else {
+            set_last_error("mesh handle is invalid");
+            return OxideStatus::InvalidArgument;
+        };
+        match result {
+            Ok(()) => OxideStatus::Ok,
+            Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_end_shadow_pass(graphics: OxideGraphicsHandle) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+            return OxideStatus::InvalidArgument;
+        };
+        match graphics.end_shadow_pass() {
+            Ok(()) => OxideStatus::Ok,
+            Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shadow_defaults_cross_the_c_boundary_and_reject_null_output() {
+        let mut settings = DirectionalShadowSettings { resolution: 0, ..Default::default() };
+        assert_eq!(oxide_directional_shadow_settings_default(&mut settings), OxideStatus::Ok);
+        assert_eq!(settings, DirectionalShadowSettings::default());
+        assert_eq!(oxide_directional_shadow_settings_default(std::ptr::null_mut()), OxideStatus::InvalidArgument);
+    }
 }
