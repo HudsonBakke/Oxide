@@ -3,11 +3,13 @@ use std::{fmt, io, path::PathBuf};
 /// Error produced while validating, importing, caching, or loading content.
 #[derive(Debug)]
 pub enum ContentError {
+    /// The requested primary source file does not exist.
     FileNotFound {
         /// Source path associated with the failure.
         path: PathBuf,
     },
 
+    /// The source path has no supported file extension.
     UnsupportedFormat {
         /// Source path associated with the failure.
         path: PathBuf,
@@ -15,6 +17,7 @@ pub enum ContentError {
         extension: Option<String>,
     },
 
+    /// This engine asset type cannot be imported from the source format.
     UnsupportedAssetType {
         /// Source path associated with the failure.
         path: PathBuf,
@@ -24,6 +27,7 @@ pub enum ContentError {
         extension: Option<String>,
     },
 
+    /// The source importer could not decode or validate the asset.
     ImportFailed {
         /// Source path associated with the failure.
         path: PathBuf,
@@ -37,6 +41,7 @@ pub enum ContentError {
     /// A compiled cache is corrupt, incompatible, or stale; normal loads fall back to the source.
     InvalidCache(String),
 
+    /// This source format cannot select named subobjects.
     SubObjectNotSupported {
         /// Source path associated with the failure.
         path: PathBuf,
@@ -46,6 +51,7 @@ pub enum ContentError {
         subobject: String,
     },
 
+    /// No compatible subobject has the requested name.
     SubObjectNotFound {
         /// Source path associated with the failure.
         path: PathBuf,
@@ -55,6 +61,7 @@ pub enum ContentError {
         subobject: String,
     },
 
+    /// More than one compatible object matches; select a unique subobject name.
     AmbiguousSubObject {
         /// Source path associated with the failure.
         path: PathBuf,
@@ -62,6 +69,7 @@ pub enum ContentError {
         asset_type: &'static str,
     },
 
+    /// The subobject selector is invalid, such as an empty name.
     InvalidSubObject {
         /// Diagnostic explanation of the failure.
         message: &'static str,

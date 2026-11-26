@@ -3,6 +3,7 @@ use std::{error::Error, fmt};
 /// Error returned by public Oxide operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxideError {
+    /// An argument violates the operation requirements.
     InvalidArgument {
         /// Name of the invalid argument.
         argument: &'static str,
@@ -10,6 +11,7 @@ pub enum OxideError {
         message: &'static str,
     },
 
+    /// The current engine state does not permit the requested operation.
     InvalidOperation {
         /// Diagnostic explanation of the failure.
         message: &'static str,

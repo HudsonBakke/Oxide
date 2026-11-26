@@ -1,0 +1,14 @@
+PROJECT_NAME           = Oxide
+OUTPUT_DIRECTORY       = target/doxygen
+INPUT                  = include/oxide.h
+FILE_PATTERNS          = *.h
+EXTRACT_ALL            = NO
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+QUIET                  = YES
+JAVADOC_AUTOBRIEF      = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = OXIDE_API=

@@ -47,6 +47,11 @@ jobs:
       - name: Check Rust library, examples, tests, and benchmarks
         run: cargo check --locked --all-targets
 
+      - name: Check public Rust documentation
+        env:
+          RUSTDOCFLAGS: '-D missing_docs -D rustdoc::broken_intra_doc_links'
+        run: cargo doc --locked --no-deps
+
       - name: Run Rust unit and integration tests
         run: cargo test --locked --lib --tests
 
@@ -55,7 +60,7 @@ jobs:
 
       - name: Build C# bindings and every C# example
         run: |
-          dotnet build bindings/csharp/Oxide.NET/Oxide.NET.csproj --configuration Debug
+          dotnet build bindings/csharp/Oxide.NET/Oxide.NET.csproj --configuration Debug -warnaserror:CS1591
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-ChildItem examples/csharp -Recurse -Filter *.csproj | ForEach-Object {
             dotnet build $_.FullName --configuration Debug
