@@ -61,7 +61,9 @@ impl D3D12Pipeline {
                     },
                 },
 
-                ShaderVisibility: D3D12_SHADER_VISIBILITY_VERTEX,
+                // ObjectConstants contains both transform data used by the
+                // vertex shader and material data used by the pixel shader.
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_ALL,
             },
             D3D12_ROOT_PARAMETER {
                 ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
