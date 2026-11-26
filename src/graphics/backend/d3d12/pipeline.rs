@@ -50,6 +50,14 @@ impl D3D12Pipeline {
             OffsetInDescriptorsFromTableStart: 0,
         }];
 
+        let environment_range = [D3D12_DESCRIPTOR_RANGE {
+            RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            NumDescriptors: 2,
+            BaseShaderRegister: 2,
+            RegisterSpace: 0,
+            OffsetInDescriptorsFromTableStart: 0,
+        }];
+
         let root_parameters = [
             D3D12_ROOT_PARAMETER {
                 ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
@@ -100,6 +108,16 @@ impl D3D12Pipeline {
                     },
                 },
 
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_PIXEL,
+            },
+            D3D12_ROOT_PARAMETER {
+                ParameterType: D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+                Anonymous: D3D12_ROOT_PARAMETER_0 {
+                    DescriptorTable: D3D12_ROOT_DESCRIPTOR_TABLE {
+                        NumDescriptorRanges: environment_range.len() as u32,
+                        pDescriptorRanges: environment_range.as_ptr(),
+                    },
+                },
                 ShaderVisibility: D3D12_SHADER_VISIBILITY_PIXEL,
             },
         ];

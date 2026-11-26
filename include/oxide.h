@@ -98,16 +98,7 @@ typedef struct OxideColor
     float a;
 } OxideColor;
 
-typedef struct OxideEnvironment
-{
-    OxideColor ambient_color;
-    float ambient_intensity;
-    OxideColor sky_color;
-    OxideColor horizon_color;
-    OxideColor ground_color;
-    float environment_intensity;
-    OxideColor background_color;
-} OxideEnvironment;
+
 
 
 typedef struct OxideVertex
@@ -377,9 +368,14 @@ oxide_graphics_draw_mesh(
     OxideTransform transform
 );
 
-OXIDE_API OxideStatus oxide_graphics_set_environment(
+OXIDE_API OxideStatus oxide_graphics_set_environment_explicit(
     OxideGraphicsHandle graphics,
-    OxideEnvironment environment
+    OxideColor ambient_color,
+    float ambient_intensity,
+    OxideTextureHandle environment_texture,
+    bool has_environment_texture,
+    float environment_intensity,
+    OxideColor background_color
 );
 
 OXIDE_API OxideStatus oxide_graphics_clear_environment(

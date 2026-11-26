@@ -4,10 +4,10 @@ use crate::{
 };
 
 use super::{
-    OxideCameraHandle, OxideGraphicsHandle, OxideMaterialHandle, OxideMeshHandle, OxideStatus,
+    OxideCameraHandle, OxideGraphicsHandle, OxideMaterialHandle, OxideMeshHandle, OxideStatus, OxideTextureHandle,
     camera::with_camera,
     error::{ffi_boundary, set_last_error},
-    resources::{with_material, with_mesh},
+    resources::{with_material, with_mesh, with_texture},
 };
 
 fn graphics_from_handle<'a>(handle: OxideGraphicsHandle) -> Option<&'a mut Graphics> {
@@ -87,10 +87,16 @@ pub extern "C" fn oxide_graphics_full_rect(
 }
 
 
+
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_set_environment(
+pub extern "C" fn oxide_graphics_set_environment_explicit(
     graphics: OxideGraphicsHandle,
-    environment: Environment,
+    ambient_color: crate::graphics::Color,
+    ambient_intensity: f32,
+    environment_texture: OxideTextureHandle,
+    has_environment_texture: bool,
+    environment_intensity: f32,
+    background_color: crate::graphics::Color,
 ) -> OxideStatus {
     ffi_boundary(|| {
         let Some(graphics) = graphics_from_handle(graphics) else {
@@ -98,14 +104,29 @@ pub extern "C" fn oxide_graphics_set_environment(
             return OxideStatus::InvalidArgument;
         };
 
-        if !environment.ambient_intensity.is_finite()
-            || environment.ambient_intensity < 0.0
-            || !environment.environment_intensity.is_finite()
-            || environment.environment_intensity < 0.0
-        {
-            set_last_error("environment intensities must be finite and non-negative");
-            return OxideStatus::InvalidArgument;
-        }
+        let texture = if has_environment_texture {
+            let Some(texture) = with_texture(environment_texture, |texture| texture.clone()) else {
+                set_last_error("environment texture handle is invalid");
+                return OxideStatus::InvalidArgument;
+            };
+            Some(texture)
+        } else {
+            None
+        };
+
+        let environment = match Environment::new(
+            ambient_color,
+            ambient_intensity,
+            texture,
+            environment_intensity,
+            background_color,
+        ) {
+            Ok(environment) => environment,
+            Err(error) => {
+                set_last_error(error.to_string());
+                return OxideStatus::InvalidArgument;
+            }
+        };
 
         graphics.set_environment(environment);
         OxideStatus::Ok

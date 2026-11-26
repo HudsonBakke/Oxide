@@ -1,41 +1,29 @@
-using System.Runtime.InteropServices;
-
 namespace Oxide.Graphics;
 
-[StructLayout(LayoutKind.Sequential)]
-public struct Environment
+public sealed class Environment
 {
-    public Color AmbientColor;
-    public float AmbientIntensity;
-
-    public Color SkyColor;
-    public Color HorizonColor;
-    public Color GroundColor;
-    public float EnvironmentIntensity;
-
-    public Color BackgroundColor;
+    public Color AmbientColor { get; }
+    public float AmbientIntensity { get; }
+    public Texture? EnvironmentTexture { get; }
+    public float EnvironmentIntensity { get; }
+    public Color BackgroundColor { get; }
 
     public Environment(
         Color ambientColor,
         float ambientIntensity,
-        Color skyColor,
-        Color horizonColor,
-        Color groundColor,
+        Texture? environmentTexture,
         float environmentIntensity,
         Color backgroundColor
     )
     {
         if (!float.IsFinite(ambientIntensity) || ambientIntensity < 0.0f)
             throw new ArgumentOutOfRangeException(nameof(ambientIntensity));
-
         if (!float.IsFinite(environmentIntensity) || environmentIntensity < 0.0f)
             throw new ArgumentOutOfRangeException(nameof(environmentIntensity));
 
         AmbientColor = ambientColor;
         AmbientIntensity = ambientIntensity;
-        SkyColor = skyColor;
-        HorizonColor = horizonColor;
-        GroundColor = groundColor;
+        EnvironmentTexture = environmentTexture;
         EnvironmentIntensity = environmentIntensity;
         BackgroundColor = backgroundColor;
     }

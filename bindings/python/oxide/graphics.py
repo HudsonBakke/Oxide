@@ -133,24 +133,12 @@ Color.YELLOW = Color.rgb(
 
 
 
-class Environment(ctypes.Structure):
-    _fields_ = [
-        ("ambient_color", Color),
-        ("ambient_intensity", ctypes.c_float),
-        ("sky_color", Color),
-        ("horizon_color", Color),
-        ("ground_color", Color),
-        ("environment_intensity", ctypes.c_float),
-        ("background_color", Color),
-    ]
-
+class Environment:
     def __init__(
         self,
         ambient_color: Color,
         ambient_intensity: float,
-        sky_color: Color,
-        horizon_color: Color,
-        ground_color: Color,
+        environment_texture: Texture | None,
         environment_intensity: float,
         background_color: Color,
     ) -> None:
@@ -159,15 +147,11 @@ class Environment(ctypes.Structure):
         if not math.isfinite(environment_intensity) or environment_intensity < 0.0:
             raise ValueError("environment intensity must be finite and non-negative")
 
-        super().__init__(
-            ambient_color,
-            float(ambient_intensity),
-            sky_color,
-            horizon_color,
-            ground_color,
-            float(environment_intensity),
-            background_color,
-        )
+        self.ambient_color = ambient_color
+        self.ambient_intensity = float(ambient_intensity)
+        self.environment_texture = environment_texture
+        self.environment_intensity = float(environment_intensity)
+        self.background_color = background_color
 
 
 class PointLight(ctypes.Structure):
@@ -647,9 +631,18 @@ class Graphics:
         if not isinstance(environment, Environment):
             raise TypeError("environment must be an Environment")
         _native.check(
-            _native.lib.oxide_graphics_set_environment(
+            _native.lib.oxide_graphics_set_environment_explicit(
                 self._handle,
-                environment,
+                environment.ambient_color,
+                environment.ambient_intensity,
+                (
+                    environment.environment_texture._handle
+                    if environment.environment_texture is not None
+                    else _native.NativeTextureHandle()
+                ),
+                environment.environment_texture is not None,
+                environment.environment_intensity,
+                environment.background_color,
             )
         )
 
@@ -745,11 +738,16 @@ for _name in ("base_color", "emissive_color"):
     _set.restype = ctypes.c_int
 
 
-_native.lib.oxide_graphics_set_environment.argtypes = [
+_native.lib.oxide_graphics_set_environment_explicit.argtypes = [
     _native.NativeGraphicsHandle,
-    Environment,
+    Color,
+    ctypes.c_float,
+    _native.NativeTextureHandle,
+    ctypes.c_bool,
+    ctypes.c_float,
+    Color,
 ]
-_native.lib.oxide_graphics_set_environment.restype = ctypes.c_int
+_native.lib.oxide_graphics_set_environment_explicit.restype = ctypes.c_int
 _native.lib.oxide_graphics_clear_environment.argtypes = [
     _native.NativeGraphicsHandle,
 ]

@@ -38,6 +38,29 @@ def make_sphere(segments: int, rings: int) -> Mesh:
     return Mesh(vertices, indices)
 
 
+
+def environment_texture() -> Texture:
+    width, height = 256, 128
+    pixels = bytearray()
+    for y in range(height):
+        v = y / (height - 1)
+        for x in range(width):
+            u = x / (width - 1)
+            horizon = (1 - abs(v - 0.5) * 2) ** 3
+            sun = math.exp(-((u-0.72)**2 + (v-0.32)**2) / 0.0015)
+            if v < 0.5:
+                r,g,b = 0.12+0.28*horizon, 0.28+0.38*horizon, 0.62+0.28*horizon
+            else:
+                r,g,b = 0.12+0.20*horizon, 0.10+0.18*horizon, 0.08+0.18*horizon
+            pixels.extend((
+                int(min(1,r+sun*0.85)*255),
+                int(min(1,g+sun*0.72)*255),
+                int(min(1,b+sun*0.38)*255),
+                255,
+            ))
+    return Texture.from_rgba(width,height,pixels)
+
+
 def procedural_normal_map() -> Texture:
     size = 64
     pixels = bytearray()
@@ -100,9 +123,7 @@ class MaterialTest(Game):
             Environment(
                 Color.WHITE,
                 0.08,
-                Color.rgb(0.28,0.48,0.90),
-                Color.rgb(0.72,0.78,0.88),
-                Color.rgb(0.16,0.13,0.10),
+                environment_texture(),
                 0.65,
                 Color.rgb(0.10,0.15,0.25),
             )

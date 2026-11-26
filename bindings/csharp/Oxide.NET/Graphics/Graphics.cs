@@ -90,9 +90,14 @@ public sealed class Graphics
     )
     {
         NativeMethods.Check(
-            NativeMethods.oxide_graphics_set_environment(
+            NativeMethods.oxide_graphics_set_environment_explicit(
                 _handle,
-                environment
+                environment.AmbientColor,
+                environment.AmbientIntensity,
+                environment.EnvironmentTexture?.Handle ?? default,
+                environment.EnvironmentTexture is not null,
+                environment.EnvironmentIntensity,
+                environment.BackgroundColor
             )
         );
     }

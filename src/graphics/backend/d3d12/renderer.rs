@@ -132,9 +132,6 @@ struct LightConstants {
     _padding: u32,
 
     environment_ambient: [f32; 4],
-    environment_sky: [f32; 4],
-    environment_horizon: [f32; 4],
-    environment_ground: [f32; 4],
     environment_params: [f32; 4],
 }
 
@@ -211,6 +208,8 @@ pub(crate) struct D3D12Renderer {
 
     active_lights: Vec<ActiveLight>,
     environment: Option<Environment>,
+    environment_descriptor_cache: HashMap<Option<TextureId>, u32>,
+    fallback_environment_texture: crate::graphics::Texture,
     texture_cache: HashMap<TextureId, D3D12Texture>,
     material_descriptor_cache: HashMap<(TextureId, TextureId), u32>,
     texture_heap: ID3D12DescriptorHeap,
@@ -291,6 +290,8 @@ impl D3D12Renderer {
 
             active_lights: Vec::new(),
             environment: None,
+            environment_descriptor_cache: HashMap::new(),
+            fallback_environment_texture: crate::graphics::Texture::solid(crate::graphics::Color::BLACK),
             texture_cache: HashMap::new(),
             material_descriptor_cache: HashMap::new(),
             texture_heap,
@@ -331,7 +332,7 @@ impl D3D12Renderer {
             D3D12_RESOURCE_STATE_RENDER_TARGET,
         );
 
-        let clear_color = if let Some(environment) = self.environment {
+        let clear_color = if let Some(environment) = &self.environment {
             [
                 environment.background_color.r,
                 environment.background_color.g,
@@ -458,6 +459,8 @@ impl D3D12Renderer {
             unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
         gpu_handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
 
+        let environment_handle = self.prepare_environment_descriptors(device)?;
+
         let base_color = material.base_color();
         let emissive = material.emissive_color();
 
@@ -510,40 +513,19 @@ impl D3D12Renderer {
 
             _padding: 0,
             environment_ambient: [0.0; 4],
-            environment_sky: [0.0; 4],
-            environment_horizon: [0.0; 4],
-            environment_ground: [0.0; 4],
             environment_params: [0.0; 4],
         };
 
-        if let Some(environment) = self.environment {
+        if let Some(environment) = &self.environment {
             light_constants.environment_ambient = [
                 environment.ambient_color.r,
                 environment.ambient_color.g,
                 environment.ambient_color.b,
                 environment.ambient_intensity,
             ];
-            light_constants.environment_sky = [
-                environment.sky_color.r,
-                environment.sky_color.g,
-                environment.sky_color.b,
-                environment.sky_color.a,
-            ];
-            light_constants.environment_horizon = [
-                environment.horizon_color.r,
-                environment.horizon_color.g,
-                environment.horizon_color.b,
-                environment.horizon_color.a,
-            ];
-            light_constants.environment_ground = [
-                environment.ground_color.r,
-                environment.ground_color.g,
-                environment.ground_color.b,
-                environment.ground_color.a,
-            ];
             light_constants.environment_params = [
                 environment.environment_intensity,
-                1.0,
+                environment.environment_texture.is_some() as u8 as f32,
                 0.0,
                 0.0,
             ];
@@ -635,6 +617,9 @@ impl D3D12Renderer {
 
             self.command_list
                 .SetGraphicsRootDescriptorTable(3, gpu_handle);
+
+            self.command_list
+                .SetGraphicsRootDescriptorTable(4, environment_handle);
 
             self.command_list
                 .DrawIndexedInstanced(cached.index_buffer.index_count(), 1, 0, 0, 0);
@@ -791,6 +776,64 @@ impl D3D12Renderer {
         self.active_lights.clear();
     }
 
+
+
+    fn prepare_environment_descriptors(
+        &mut self,
+        device: &D3D12Device,
+    ) -> Result<D3D12_GPU_DESCRIPTOR_HANDLE> {
+        let environment_texture = self
+            .environment
+            .as_ref()
+            .and_then(|environment| environment.environment_texture.as_ref());
+        // A black 1x1 fallback is represented by the renderer's default
+        // texture pair when either optional environment input is absent.
+        let first = environment_texture.unwrap_or(&self.fallback_environment_texture);
+        let second = &self.fallback_environment_texture;
+
+        let first_id = first.id();
+        let second_id = second.id();
+
+        for texture in [first, second] {
+            if !self.texture_cache.contains_key(&texture.id()) {
+                let descriptor_index = self.next_texture_descriptor;
+                assert!(descriptor_index < MAX_TEXTURES);
+                self.next_texture_descriptor += 1;
+                let gpu = D3D12Texture::new(
+                    device,
+                    &self.command_list,
+                    texture,
+                    descriptor_index,
+                )?;
+                self.create_texture_srv(device, &gpu);
+                self.texture_cache.insert(texture.id(), gpu);
+            }
+        }
+
+        let key = environment_texture.map(|texture| texture.id());
+
+        let descriptor_index = if let Some(&index) =
+            self.environment_descriptor_cache.get(&key)
+        {
+            index
+        } else {
+            let index = self.next_texture_descriptor;
+            assert!(index + 1 < MAX_TEXTURES);
+            self.next_texture_descriptor += 2;
+            let first_descriptor = self.texture_cache[&first_id].descriptor_index();
+            let second_descriptor = self.texture_cache[&second_id].descriptor_index();
+            self.copy_texture_descriptor(device, first_descriptor, index);
+            self.copy_texture_descriptor(device, second_descriptor, index + 1);
+            self.environment_descriptor_cache.insert(key, index);
+            index
+        };
+
+        let mut handle =
+            unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+        handle.ptr +=
+            descriptor_index as u64 * self.texture_descriptor_size as u64;
+        Ok(handle)
+    }
 
     fn copy_texture_descriptor(
         &self,

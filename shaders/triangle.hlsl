@@ -16,6 +16,8 @@ cbuffer ViewConstants : register(b1)
 
 Texture2D base_texture : register(t0);
 Texture2D normal_texture : register(t1);
+Texture2D environment_texture : register(t2);
+Texture2D background_texture : register(t3);
 SamplerState base_sampler : register(s0);
 
 struct PointLight
@@ -49,10 +51,7 @@ cbuffer LightConstants : register(b2)
     uint light_padding;
 
     float4 environment_ambient; // rgb=color, a=intensity
-    float4 environment_sky;
-    float4 environment_horizon;
-    float4 environment_ground;
-    float4 environment_params; // x=intensity, y=enabled
+    float4 environment_params; // x=IBL intensity, y=IBL texture enabled, z=background texture enabled
 };
 
 struct VertexInput
@@ -166,26 +165,57 @@ float3 evaluate_brdf(
 }
 
 
-float3 sample_environment(float3 direction)
+float2 direction_to_equirectangular_uv(float3 direction)
 {
-    float y = clamp(direction.y, -1.0, 1.0);
+    direction = normalize(direction);
+    float u = atan2(direction.z, direction.x) / (2.0 * 3.14159265) + 0.5;
+    float v = acos(clamp(direction.y, -1.0, 1.0)) / 3.14159265;
+    return float2(u, v);
+}
 
-    if (y >= 0.0)
+float3 sample_environment_texture(float3 direction)
+{
+    return environment_texture.Sample(
+        base_sampler,
+        direction_to_equirectangular_uv(direction)
+    ).rgb;
+}
+
+float3 filtered_environment(
+    float3 reflection_direction,
+    float roughness)
+{
+    if (roughness <= 0.02)
+        return sample_environment_texture(reflection_direction);
+
+    float3 up = abs(reflection_direction.y) < 0.99
+        ? float3(0.0, 1.0, 0.0)
+        : float3(1.0, 0.0, 0.0);
+    float3 tangent = normalize(cross(up, reflection_direction));
+    float3 bitangent = cross(reflection_direction, tangent);
+
+    float radius = roughness * roughness * 0.75;
+    float3 result = sample_environment_texture(reflection_direction) * 0.28;
+
+    static const float2 offsets[8] = {
+        float2( 1.0,  0.0), float2(-1.0,  0.0),
+        float2( 0.0,  1.0), float2( 0.0, -1.0),
+        float2( 0.707,  0.707), float2(-0.707,  0.707),
+        float2( 0.707, -0.707), float2(-0.707, -0.707)
+    };
+
+    [unroll]
+    for (uint i = 0; i < 8; ++i)
     {
-        float t = pow(y, 0.55);
-        return lerp(
-            environment_horizon.rgb,
-            environment_sky.rgb,
-            t
+        float3 direction = normalize(
+            reflection_direction
+            + tangent * offsets[i].x * radius
+            + bitangent * offsets[i].y * radius
         );
+        result += sample_environment_texture(direction) * 0.09;
     }
 
-    float t = pow(-y, 0.55);
-    return lerp(
-        environment_horizon.rgb,
-        environment_ground.rgb,
-        t
-    );
+    return result;
 }
 
 float3 evaluate_environment(
@@ -195,57 +225,48 @@ float3 evaluate_environment(
     float metallic,
     float roughness)
 {
-    if (environment_params.y < 0.5)
-        return float3(0.0, 0.0, 0.0);
-
-    float intensity = environment_params.x;
-
-    // Approximate diffuse irradiance from the procedural hemisphere.
-    float3 diffuse_irradiance =
-        (
-            sample_environment(normal)
-            + sample_environment(float3(0.0, 1.0, 0.0))
-            + environment_horizon.rgb
-        ) / 3.0;
-
     float n_dot_v = max(dot(normal, view_direction), 0.0);
     float3 f0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
     float3 fresnel =
         f0 + (1.0 - f0) * pow(1.0 - n_dot_v, 5.0);
 
-    float3 ambient_irradiance =
-        environment_ambient.rgb * environment_ambient.a;
-
-    float3 diffuse =
-        (diffuse_irradiance * intensity + ambient_irradiance)
+    float3 ambient =
+        environment_ambient.rgb
+        * environment_ambient.a
         * albedo
         * (1.0 - metallic)
         * (1.0 - fresnel);
 
+    if (environment_params.y < 0.5)
+        return ambient;
+
     float3 reflection_direction =
         reflect(-view_direction, normal);
-
-    float3 sharp_reflection =
-        sample_environment(reflection_direction);
-
-    float3 average_environment =
-        (
-            environment_sky.rgb
-            + environment_horizon.rgb * 2.0
-            + environment_ground.rgb
-        ) * 0.25;
-
-    // Analytic equivalent of sampling progressively blurrier cubemap mips.
-    float blur = roughness * roughness;
     float3 specular_environment =
-        lerp(sharp_reflection, average_environment, blur);
+        filtered_environment(reflection_direction, roughness);
 
-    // Rough surfaces spread the reflected energy over a larger lobe.
+    // A small directional diffuse estimate. Full irradiance convolution can
+    // replace this without changing the public Environment API.
+    float3 diffuse_environment =
+        (
+            sample_environment_texture(normal)
+            + sample_environment_texture(float3(0.0, 1.0, 0.0))
+        ) * 0.5;
+
+    float intensity = environment_params.x;
+    float3 diffuse =
+        diffuse_environment
+        * intensity
+        * albedo
+        * (1.0 - metallic)
+        * (1.0 - fresnel);
+
     float specular_energy = 1.0 - 0.45 * roughness;
 
-    return diffuse
-        + intensity
-            * specular_environment
+    return ambient
+        + diffuse
+        + specular_environment
+            * intensity
             * fresnel
             * specular_energy;
 }

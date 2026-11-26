@@ -75,9 +75,7 @@ impl Game for MaterialTest {
             Environment::new(
                 Color::WHITE,
                 0.08,
-                Color::rgb(0.28, 0.48, 0.90),
-                Color::rgb(0.72, 0.78, 0.88),
-                Color::rgb(0.16, 0.13, 0.10),
+                Some(environment_texture()),
                 0.65,
                 Color::rgb(0.10, 0.15, 0.25),
             )
@@ -125,6 +123,34 @@ impl Game for MaterialTest {
     }
 }
 
+
+
+fn environment_texture() -> Texture {
+    let width = 256_u32;
+    let height = 128_u32;
+    let mut pixels = Vec::with_capacity((width * height * 4) as usize);
+
+    for y in 0..height {
+        let v = y as f32 / (height - 1) as f32;
+        for x in 0..width {
+            let u = x as f32 / (width - 1) as f32;
+            let horizon = (1.0 - ((v - 0.5).abs() * 2.0)).powf(3.0);
+            let sun = (
+                -((u - 0.72).powi(2) + (v - 0.32).powi(2)) / 0.0015
+            ).exp();
+            let sky = if v < 0.5 {
+                Color::rgb(0.12 + 0.28 * horizon, 0.28 + 0.38 * horizon, 0.62 + 0.28 * horizon)
+            } else {
+                Color::rgb(0.12 + 0.20 * horizon, 0.10 + 0.18 * horizon, 0.08 + 0.18 * horizon)
+            };
+            let r = (sky.r + sun * 0.85).clamp(0.0, 1.0);
+            let g = (sky.g + sun * 0.72).clamp(0.0, 1.0);
+            let b = (sky.b + sun * 0.38).clamp(0.0, 1.0);
+            pixels.extend_from_slice(&[(r*255.0) as u8,(g*255.0) as u8,(b*255.0) as u8,255]);
+        }
+    }
+    Texture::rgba(width, height, pixels).unwrap()
+}
 
 fn procedural_normal_map() -> Texture {
     let size = 64_u32;

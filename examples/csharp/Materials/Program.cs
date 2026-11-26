@@ -47,9 +47,7 @@ internal sealed class MaterialTest : Game
             new Oxide.Graphics.Environment(
                 Color.White,
                 0.08f,
-                new Color(0.28f,0.48f,0.90f,1),
-                new Color(0.72f,0.78f,0.88f,1),
-                new Color(0.16f,0.13f,0.10f,1),
+                EnvironmentTexture(),
                 0.65f,
                 new Color(0.10f,0.15f,0.25f,1)
             )
@@ -97,6 +95,30 @@ internal sealed class MaterialTest : Game
         );
     }
 
+
+
+    private static Texture EnvironmentTexture()
+    {
+        const int width = 256, height = 128;
+        byte[] pixels = new byte[width * height * 4];
+        for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            float v = (float)y / (height - 1);
+            float u = (float)x / (width - 1);
+            float horizon = MathF.Pow(1 - MathF.Abs(v - 0.5f) * 2, 3);
+            float sun = MathF.Exp(-((u-0.72f)*(u-0.72f)+(v-0.32f)*(v-0.32f))/0.0015f);
+            float r = v < 0.5f ? 0.12f+0.28f*horizon : 0.12f+0.20f*horizon;
+            float g = v < 0.5f ? 0.28f+0.38f*horizon : 0.10f+0.18f*horizon;
+            float b = v < 0.5f ? 0.62f+0.28f*horizon : 0.08f+0.18f*horizon;
+            int i=(y*width+x)*4;
+            pixels[i]=(byte)(Math.Clamp(r+sun*0.85f,0,1)*255);
+            pixels[i+1]=(byte)(Math.Clamp(g+sun*0.72f,0,1)*255);
+            pixels[i+2]=(byte)(Math.Clamp(b+sun*0.38f,0,1)*255);
+            pixels[i+3]=255;
+        }
+        return Texture.FromRgba(width,height,pixels);
+    }
 
     private static Texture ProceduralNormalMap()
     {
