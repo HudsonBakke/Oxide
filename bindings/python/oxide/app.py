@@ -38,6 +38,83 @@ class Game:
     ) -> None:
         pass
 
+    @property
+    def window_width(self) -> int:
+        return _native.lib.oxide_app_window_width()
+
+    @property
+    def window_height(self) -> int:
+        return _native.lib.oxide_app_window_height()
+
+    @property
+    def is_window_focused(self) -> bool:
+        return _native.lib.oxide_app_is_window_focused() != 0
+
+    @property
+    def is_fullscreen(self) -> bool:
+        return _native.lib.oxide_app_is_fullscreen() != 0
+
+    @is_fullscreen.setter
+    def is_fullscreen(self, value: bool) -> None:
+        _native.check(
+            _native.lib.oxide_app_set_fullscreen(
+                1 if value else 0
+            )
+        )
+
+    def exit(self) -> None:
+        _native.check(
+            _native.lib.oxide_app_exit()
+        )
+
+    def set_window_name(
+        self,
+        name: str,
+    ) -> None:
+        if not isinstance(name, str):
+            raise TypeError("name must be a string")
+
+        _native.check(
+            _native.lib.oxide_app_set_window_name(
+                name.encode("utf-8")
+            )
+        )
+
+    def set_window_logo(
+        self,
+        texture,
+    ) -> None:
+        from .content import Texture
+
+        if not isinstance(texture, Texture):
+            raise TypeError("texture must be a Texture")
+
+        _native.check(
+            _native.lib.oxide_app_set_window_logo(
+                texture._handle
+            )
+        )
+
+    def set_cursor_visible(
+        self,
+        visible: bool,
+    ) -> None:
+        _native.check(
+            _native.lib.oxide_app_set_cursor_visible(
+                1 if visible else 0
+            )
+        )
+
+    def set_cursor_grabbed(
+        self,
+        grabbed: bool,
+    ) -> None:
+        _native.check(
+            _native.lib.oxide_app_set_cursor_grabbed(
+                1 if grabbed else 0
+            )
+        )
+
     def run(
         self,
         config: AppConfig | None = None,

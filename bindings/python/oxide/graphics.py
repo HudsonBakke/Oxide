@@ -505,6 +505,48 @@ class Graphics:
         self._valid = False
 
     @property
+    def preferred_backbuffer_width(self) -> int:
+        return _native.lib.oxide_app_window_width()
+
+    @preferred_backbuffer_width.setter
+    def preferred_backbuffer_width(
+        self,
+        value: int,
+    ) -> None:
+        if value <= 0:
+            raise ValueError(
+                "backbuffer width must be greater than zero"
+            )
+
+        _native.check(
+            _native.lib.oxide_app_set_preferred_backbuffer_size(
+                value,
+                _native.lib.oxide_app_window_height(),
+            )
+        )
+
+    @property
+    def preferred_backbuffer_height(self) -> int:
+        return _native.lib.oxide_app_window_height()
+
+    @preferred_backbuffer_height.setter
+    def preferred_backbuffer_height(
+        self,
+        value: int,
+    ) -> None:
+        if value <= 0:
+            raise ValueError(
+                "backbuffer height must be greater than zero"
+            )
+
+        _native.check(
+            _native.lib.oxide_app_set_preferred_backbuffer_size(
+                _native.lib.oxide_app_window_width(),
+                value,
+            )
+        )
+
+    @property
     def full_rect(self) -> Rect:
         self._require_valid()
 

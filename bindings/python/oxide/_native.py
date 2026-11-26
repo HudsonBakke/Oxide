@@ -437,6 +437,33 @@ lib.oxide_mouse_get_state.argtypes = [
 lib.oxide_mouse_get_state.restype = ctypes.c_int
 
 
+lib.oxide_app_exit.argtypes = []
+lib.oxide_app_exit.restype = ctypes.c_int
+lib.oxide_app_set_window_name.argtypes = [ctypes.c_char_p]
+lib.oxide_app_set_window_name.restype = ctypes.c_int
+lib.oxide_app_set_window_logo.argtypes = [NativeTextureHandle]
+lib.oxide_app_set_window_logo.restype = ctypes.c_int
+lib.oxide_app_set_preferred_backbuffer_size.argtypes = [
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+]
+lib.oxide_app_set_preferred_backbuffer_size.restype = ctypes.c_int
+lib.oxide_app_window_width.argtypes = []
+lib.oxide_app_window_width.restype = ctypes.c_uint32
+lib.oxide_app_window_height.argtypes = []
+lib.oxide_app_window_height.restype = ctypes.c_uint32
+lib.oxide_app_is_window_focused.argtypes = []
+lib.oxide_app_is_window_focused.restype = ctypes.c_uint8
+lib.oxide_app_set_fullscreen.argtypes = [ctypes.c_uint8]
+lib.oxide_app_set_fullscreen.restype = ctypes.c_int
+lib.oxide_app_is_fullscreen.argtypes = []
+lib.oxide_app_is_fullscreen.restype = ctypes.c_uint8
+lib.oxide_app_set_cursor_visible.argtypes = [ctypes.c_uint8]
+lib.oxide_app_set_cursor_visible.restype = ctypes.c_int
+lib.oxide_app_set_cursor_grabbed.argtypes = [ctypes.c_uint8]
+lib.oxide_app_set_cursor_grabbed.restype = ctypes.c_int
+
+
 def last_error_message() -> str:
     message = (
         lib.oxide_last_error_message()

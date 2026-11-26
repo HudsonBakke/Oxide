@@ -32,6 +32,93 @@ public abstract class Game
     {
     }
 
+    public uint WindowWidth =>
+        NativeMethods.oxide_app_window_width();
+
+    public uint WindowHeight =>
+        NativeMethods.oxide_app_window_height();
+
+    public bool IsWindowFocused =>
+        NativeMethods.oxide_app_is_window_focused() != 0;
+
+    public bool IsFullscreen
+    {
+        get =>
+            NativeMethods.oxide_app_is_fullscreen() != 0;
+
+        set =>
+            NativeMethods.Check(
+                NativeMethods.oxide_app_set_fullscreen(
+                    value ? (byte)1 : (byte)0
+                )
+            );
+    }
+
+    public void Exit()
+    {
+        NativeMethods.Check(
+            NativeMethods.oxide_app_exit()
+        );
+    }
+
+    public void SetWindowName(
+        string name
+    )
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        IntPtr nativeName =
+            Marshal.StringToCoTaskMemUTF8(name);
+
+        try
+        {
+            NativeMethods.Check(
+                NativeMethods.oxide_app_set_window_name(
+                    nativeName
+                )
+            );
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(nativeName);
+        }
+    }
+
+    public void SetWindowLogo(
+        Texture texture
+    )
+    {
+        ArgumentNullException.ThrowIfNull(texture);
+
+        NativeMethods.Check(
+            NativeMethods.oxide_app_set_window_logo(
+                texture.Handle
+            )
+        );
+    }
+
+    public void SetCursorVisible(
+        bool visible
+    )
+    {
+        NativeMethods.Check(
+            NativeMethods.oxide_app_set_cursor_visible(
+                visible ? (byte)1 : (byte)0
+            )
+        );
+    }
+
+    public void SetCursorGrabbed(
+        bool grabbed
+    )
+    {
+        NativeMethods.Check(
+            NativeMethods.oxide_app_set_cursor_grabbed(
+                grabbed ? (byte)1 : (byte)0
+            )
+        );
+    }
+
     public void Run()
     {
         Run(

@@ -1,3 +1,10 @@
+use std::sync::{
+    Mutex,
+    MutexGuard,
+    OnceLock,
+    atomic::{AtomicBool, AtomicU32, Ordering},
+};
+
 #[cfg(target_os = "windows")]
 use winit::platform::windows::WindowAttributesExtWindows;
 
@@ -5,17 +12,118 @@ use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
     event_loop::{ActiveEventLoop, EventLoop},
-    window::{WindowAttributes, WindowId},
+    window::{
+        CursorGrabMode,
+        Fullscreen,
+        Icon,
+        WindowAttributes,
+        WindowId,
+    },
 };
 
 use std::time::Instant;
 
-use crate::graphics::Graphics;
+use crate::graphics::{Graphics, Texture};
 use crate::input::{
     advance_keyboard_frame, advance_mouse_frame, handle_cursor_moved, handle_keyboard_input,
     handle_mouse_input, handle_mouse_wheel,
 };
 use crate::platform::window::PlatformWindow;
+
+#[derive(Debug)]
+enum AppCommand {
+    Exit,
+    SetTitle(String),
+    SetIcon {
+        width: u32,
+        height: u32,
+        rgba: Vec<u8>,
+    },
+    SetBackbufferSize(u32, u32),
+    SetFullscreen(bool),
+    SetCursorVisible(bool),
+    SetCursorGrabbed(bool),
+}
+
+static COMMANDS: OnceLock<Mutex<Vec<AppCommand>>> = OnceLock::new();
+static WINDOW_WIDTH: AtomicU32 = AtomicU32::new(0);
+static WINDOW_HEIGHT: AtomicU32 = AtomicU32::new(0);
+static WINDOW_FOCUSED: AtomicBool = AtomicBool::new(false);
+static WINDOW_FULLSCREEN: AtomicBool = AtomicBool::new(false);
+
+fn commands() -> MutexGuard<'static, Vec<AppCommand>> {
+    COMMANDS
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn push_command(command: AppCommand) {
+    commands().push(command);
+}
+
+/// Requests that the running Oxide application exit.
+pub fn exit() {
+    push_command(AppCommand::Exit);
+}
+
+/// Changes the window title.
+pub fn set_window_name(name: impl Into<String>) {
+    push_command(AppCommand::SetTitle(name.into()));
+}
+
+/// Changes the window icon using the RGBA pixels of a texture.
+pub fn set_window_logo(texture: &Texture) {
+    push_command(AppCommand::SetIcon {
+        width: texture.width(),
+        height: texture.height(),
+        rgba: texture.pixels().to_vec(),
+    });
+}
+
+/// Requests a new window/backbuffer size.
+pub fn set_preferred_backbuffer_size(width: u32, height: u32) {
+    if width == 0 || height == 0 {
+        return;
+    }
+
+    push_command(AppCommand::SetBackbufferSize(width, height));
+}
+
+/// Returns the current client width in physical pixels.
+pub fn window_width() -> u32 {
+    WINDOW_WIDTH.load(Ordering::Relaxed)
+}
+
+/// Returns the current client height in physical pixels.
+pub fn window_height() -> u32 {
+    WINDOW_HEIGHT.load(Ordering::Relaxed)
+}
+
+/// Returns whether the application window currently has focus.
+pub fn is_window_focused() -> bool {
+    WINDOW_FOCUSED.load(Ordering::Relaxed)
+}
+
+/// Enables or disables borderless fullscreen on the current monitor.
+pub fn set_fullscreen(fullscreen: bool) {
+    push_command(AppCommand::SetFullscreen(fullscreen));
+}
+
+/// Returns whether Oxide has requested fullscreen mode.
+pub fn is_fullscreen() -> bool {
+    WINDOW_FULLSCREEN.load(Ordering::Relaxed)
+}
+
+/// Shows or hides the OS cursor over the game window.
+pub fn set_cursor_visible(visible: bool) {
+    push_command(AppCommand::SetCursorVisible(visible));
+}
+
+/// Grabs/releases the cursor for mouse-look style controls.
+pub fn set_cursor_grabbed(grabbed: bool) {
+    push_command(AppCommand::SetCursorGrabbed(grabbed));
+}
 
 struct App<G: Game> {
     game: G,
@@ -27,7 +135,7 @@ struct App<G: Game> {
 }
 
 impl<G: Game> App<G> {
-    fn run_frame(&mut self) {
+    fn run_frame(&mut self, event_loop: &ActiveEventLoop) {
         let now = Instant::now();
 
         let start_time = self
@@ -46,6 +154,7 @@ impl<G: Game> App<G> {
         self.last_frame_time = Some(now);
 
         self.game.update(&time);
+        self.apply_commands(event_loop);
 
         if let Some(graphics) = &mut self.graphics {
             graphics
@@ -59,6 +168,8 @@ impl<G: Game> App<G> {
                 .expect("failed to finish Oxide graphics frame");
         }
 
+        self.apply_commands(event_loop);
+
         advance_keyboard_frame();
         advance_mouse_frame();
 
@@ -68,10 +179,94 @@ impl<G: Game> App<G> {
     }
 
     fn resize(&mut self, width: u32, height: u32) {
+        WINDOW_WIDTH.store(width, Ordering::Relaxed);
+        WINDOW_HEIGHT.store(height, Ordering::Relaxed);
+
         if let Some(graphics) = &mut self.graphics {
             graphics
                 .resize(width, height)
                 .expect("failed to resize Oxide graphics");
+        }
+    }
+
+    fn apply_commands(&mut self, event_loop: &ActiveEventLoop) {
+        let pending = {
+            let mut queue = commands();
+            std::mem::take(&mut *queue)
+        };
+
+        for command in pending {
+            match command {
+                AppCommand::Exit => event_loop.exit(),
+
+                AppCommand::SetTitle(title) => {
+                    if let Some(window) = &self.window {
+                        window.inner().set_title(&title);
+                    }
+                }
+
+                AppCommand::SetIcon {
+                    width,
+                    height,
+                    rgba,
+                } => {
+                    if let Some(window) = &self.window {
+                        if let Ok(icon) = Icon::from_rgba(rgba, width, height) {
+                            window.inner().set_window_icon(Some(icon));
+                        }
+                    }
+                }
+
+                AppCommand::SetBackbufferSize(width, height) => {
+                    if let Some(window) = &self.window {
+                        let _ = window.inner().request_inner_size(
+                            winit::dpi::PhysicalSize::new(width, height)
+                        );
+                    }
+
+                    self.resize(width, height);
+                }
+
+                AppCommand::SetFullscreen(fullscreen) => {
+                    if let Some(window) = &self.window {
+                        let mode = if fullscreen {
+                            Some(Fullscreen::Borderless(None))
+                        } else {
+                            None
+                        };
+
+                        window.inner().set_fullscreen(mode);
+                        WINDOW_FULLSCREEN.store(fullscreen, Ordering::Relaxed);
+                    }
+                }
+
+                AppCommand::SetCursorVisible(visible) => {
+                    if let Some(window) = &self.window {
+                        window.inner().set_cursor_visible(visible);
+                    }
+                }
+
+                AppCommand::SetCursorGrabbed(grabbed) => {
+                    if let Some(window) = &self.window {
+                        let result = if grabbed {
+                            window
+                                .inner()
+                                .set_cursor_grab(CursorGrabMode::Locked)
+                                .or_else(|_| {
+                                    window
+                                        .inner()
+                                        .set_cursor_grab(CursorGrabMode::Confined)
+                                })
+                        } else {
+                            window
+                                .inner()
+                                .set_cursor_grab(CursorGrabMode::None)
+                        };
+
+                        let _ = result;
+                    }
+                }
+            }
         }
     }
 }
@@ -101,6 +296,11 @@ impl<G: Game> ApplicationHandler for App<G> {
         let graphics =
             Graphics::new(&platform_window).expect("failed to initialize Oxide graphics");
 
+        let size = platform_window.inner().inner_size();
+        WINDOW_WIDTH.store(size.width, Ordering::Relaxed);
+        WINDOW_HEIGHT.store(size.height, Ordering::Relaxed);
+        WINDOW_FOCUSED.store(platform_window.inner().has_focus(), Ordering::Relaxed);
+
         self.window = Some(platform_window);
         self.graphics = Some(graphics);
 
@@ -110,6 +310,7 @@ impl<G: Game> ApplicationHandler for App<G> {
         self.last_frame_time = Some(now);
 
         self.game.initialize();
+        self.apply_commands(event_loop);
 
         if let Some(window) = &self.window {
             window.inner().request_redraw();
@@ -123,16 +324,18 @@ impl<G: Game> ApplicationHandler for App<G> {
         event: WindowEvent,
     ) {
         match event {
-            WindowEvent::CloseRequested => {
-                event_loop.exit();
-            }
+            WindowEvent::CloseRequested => event_loop.exit(),
 
             WindowEvent::RedrawRequested => {
-                self.run_frame();
+                self.run_frame(event_loop);
             }
 
             WindowEvent::Resized(size) => {
                 self.resize(size.width, size.height);
+            }
+
+            WindowEvent::Focused(focused) => {
+                WINDOW_FOCUSED.store(focused, Ordering::Relaxed);
             }
 
             WindowEvent::KeyboardInput { event, .. } => {
@@ -206,12 +409,10 @@ pub struct GameTime {
 }
 
 impl GameTime {
-    /// Returns the elapsed time since the previous update, in seconds.
     pub fn delta_seconds(&self) -> f64 {
         self.delta_seconds
     }
 
-    /// Returns the total elapsed time since the application started, in seconds.
     pub fn total_seconds(&self) -> f64 {
         self.total_seconds
     }

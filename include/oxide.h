@@ -211,6 +211,32 @@ oxide_run(
 );
 
 
+
+/* ============================================================
+ * Application / window control
+ * ============================================================ */
+
+OXIDE_API OxideStatus oxide_app_exit(void);
+OXIDE_API OxideStatus oxide_app_set_window_name(const char* name);
+OXIDE_API OxideStatus oxide_app_set_window_logo(OxideTextureHandle texture);
+
+OXIDE_API OxideStatus
+oxide_app_set_preferred_backbuffer_size(
+    uint32_t width,
+    uint32_t height
+);
+
+OXIDE_API uint32_t oxide_app_window_width(void);
+OXIDE_API uint32_t oxide_app_window_height(void);
+OXIDE_API uint8_t oxide_app_is_window_focused(void);
+
+OXIDE_API OxideStatus oxide_app_set_fullscreen(uint8_t fullscreen);
+OXIDE_API uint8_t oxide_app_is_fullscreen(void);
+
+OXIDE_API OxideStatus oxide_app_set_cursor_visible(uint8_t visible);
+OXIDE_API OxideStatus oxide_app_set_cursor_grabbed(uint8_t grabbed);
+
+
 /* ============================================================
  * Camera
  * ============================================================ */

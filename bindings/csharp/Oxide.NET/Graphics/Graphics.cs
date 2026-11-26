@@ -21,6 +21,52 @@ public sealed class Graphics
         _valid = true;
     }
 
+    public uint PreferredBackbufferWidth
+    {
+        get => NativeMethods.oxide_app_window_width();
+
+        set
+        {
+            if (value == 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    "Backbuffer width must be greater than zero."
+                );
+            }
+
+            NativeMethods.Check(
+                NativeMethods.oxide_app_set_preferred_backbuffer_size(
+                    value,
+                    NativeMethods.oxide_app_window_height()
+                )
+            );
+        }
+    }
+
+    public uint PreferredBackbufferHeight
+    {
+        get => NativeMethods.oxide_app_window_height();
+
+        set
+        {
+            if (value == 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    "Backbuffer height must be greater than zero."
+                );
+            }
+
+            NativeMethods.Check(
+                NativeMethods.oxide_app_set_preferred_backbuffer_size(
+                    NativeMethods.oxide_app_window_width(),
+                    value
+                )
+            );
+        }
+    }
+
     public Rect FullRect
     {
         get

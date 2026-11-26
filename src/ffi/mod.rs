@@ -1,4 +1,5 @@
 mod app;
+mod app_control;
 mod attachment;
 mod camera;
 mod collision;

@@ -525,5 +525,43 @@ internal static class NativeMethods
         out NativeMouseState result
     );
 
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_app_exit();
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_app_set_window_name(IntPtr name);
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_app_set_window_logo(
+        NativeTextureHandle texture
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_app_set_preferred_backbuffer_size(
+        uint width,
+        uint height
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint oxide_app_window_width();
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint oxide_app_window_height();
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern byte oxide_app_is_window_focused();
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_app_set_fullscreen(byte fullscreen);
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern byte oxide_app_is_fullscreen();
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_app_set_cursor_visible(byte visible);
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_app_set_cursor_grabbed(byte grabbed);
+
 }
 
