@@ -97,6 +97,49 @@ public abstract class Game
         );
     }
 
+    public void SetPreferredBackbufferSize(
+        uint width,
+        uint height
+    )
+    {
+        if (width == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width));
+        }
+
+        if (height == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(height));
+        }
+
+        NativeMethods.Check(
+            NativeMethods.oxide_app_set_preferred_backbuffer_size(
+                width,
+                height
+            )
+        );
+    }
+
+    public void SetPreferredBackbufferWidth(
+        uint width
+    )
+    {
+        SetPreferredBackbufferSize(
+            width,
+            WindowHeight
+        );
+    }
+
+    public void SetPreferredBackbufferHeight(
+        uint height
+    )
+    {
+        SetPreferredBackbufferSize(
+            WindowWidth,
+            height
+        );
+    }
+
     public void SetCursorVisible(
         bool visible
     )

@@ -95,6 +95,41 @@ class Game:
             )
         )
 
+    def set_preferred_backbuffer_size(
+        self,
+        width: int,
+        height: int,
+    ) -> None:
+        if width <= 0 or height <= 0:
+            raise ValueError(
+                "backbuffer dimensions must be greater than zero"
+            )
+
+        _native.check(
+            _native.lib.oxide_app_set_preferred_backbuffer_size(
+                width,
+                height,
+            )
+        )
+
+    def set_preferred_backbuffer_width(
+        self,
+        width: int,
+    ) -> None:
+        self.set_preferred_backbuffer_size(
+            width,
+            self.window_height,
+        )
+
+    def set_preferred_backbuffer_height(
+        self,
+        height: int,
+    ) -> None:
+        self.set_preferred_backbuffer_size(
+            self.window_width,
+            height,
+        )
+
     def set_cursor_visible(
         self,
         visible: bool,
