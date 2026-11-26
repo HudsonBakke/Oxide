@@ -753,6 +753,8 @@ _native.lib.oxide_graphics_set_environment_explicit.argtypes = [
     _native.NativeTextureHandle,
     ctypes.c_bool,
     ctypes.c_float,
+    _native.NativeTextureHandle,
+    ctypes.c_bool,
     Color,
 ]
 _native.lib.oxide_graphics_set_environment_explicit.restype = ctypes.c_int
