@@ -1,6 +1,6 @@
 use oxide::{
     app::{AppConfig, Game},
-    graphics::{Camera, Color, DirectionalLight, Graphics, Material, Mesh, PointLight, Texture, Vertex},
+    graphics::{Camera, Color, DirectionalLight, Environment, Graphics, Material, Mesh, PointLight, Texture, Vertex},
     math::{Transform, Vec2, Vec3},
 };
 
@@ -71,6 +71,7 @@ impl Game for MaterialTest {
 
     fn draw(&mut self, graphics: &mut Graphics) {
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
+        graphics.set_environment(Environment::daylight());
         graphics.add_light(&self.light);
         graphics.add_light(&self.fill);
 

@@ -2,7 +2,7 @@ import math
 
 from oxide.app import AppConfig, Game
 from oxide.content import Material, Mesh, Texture, Vertex
-from oxide.graphics import Camera, Color, DirectionalLight, Graphics, PointLight
+from oxide.graphics import Camera, Color, DirectionalLight, Environment, Graphics, PointLight
 from oxide.math import Transform, Vec2, Vec3
 
 STEPS = 6
@@ -96,6 +96,7 @@ class MaterialTest(Game):
 
     def draw(self, graphics: Graphics) -> None:
         graphics.bind_camera(self.camera, graphics.full_rect)
+        graphics.set_environment(Environment.daylight())
         graphics.add_light(self.light)
         graphics.add_light(self.fill)
 

@@ -656,5 +656,16 @@ internal static class NativeMethods
         float value
     );
 
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_set_environment(
+        NativeGraphicsHandle graphics,
+        Environment environment
+    );
+
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_clear_environment(
+        NativeGraphicsHandle graphics
+    );
+
 }
 

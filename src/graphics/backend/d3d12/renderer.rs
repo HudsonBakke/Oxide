@@ -34,7 +34,7 @@ use super::{
 
 use crate::{
     graphics::{
-        Camera, DirectionalLight, GraphicsResult, Material, Mesh, PointLight, SpotLight,
+        Camera, DirectionalLight, Environment, GraphicsResult, Material, Mesh, PointLight, SpotLight,
         mesh::MeshId, texture::TextureId,
     },
     math::{Rect, Transform},
@@ -130,6 +130,11 @@ struct LightConstants {
     directional_light_count: u32,
 
     _padding: u32,
+
+    environment_sky: [f32; 4],
+    environment_horizon: [f32; 4],
+    environment_ground: [f32; 4],
+    environment_params: [f32; 4],
 }
 
 #[repr(C)]
@@ -204,6 +209,7 @@ pub(crate) struct D3D12Renderer {
     constant_buffer: D3D12ConstantBuffer,
 
     active_lights: Vec<ActiveLight>,
+    environment: Option<Environment>,
     texture_cache: HashMap<TextureId, D3D12Texture>,
     material_descriptor_cache: HashMap<(TextureId, TextureId), u32>,
     texture_heap: ID3D12DescriptorHeap,
@@ -283,6 +289,7 @@ impl D3D12Renderer {
             constant_buffer,
 
             active_lights: Vec::new(),
+            environment: None,
             texture_cache: HashMap::new(),
             material_descriptor_cache: HashMap::new(),
             texture_heap,
@@ -492,7 +499,38 @@ impl D3D12Renderer {
             directional_light_count: 0,
 
             _padding: 0,
+            environment_sky: [0.0; 4],
+            environment_horizon: [0.0; 4],
+            environment_ground: [0.0; 4],
+            environment_params: [0.0; 4],
         };
+
+        if let Some(environment) = self.environment {
+            light_constants.environment_sky = [
+                environment.sky_color.r,
+                environment.sky_color.g,
+                environment.sky_color.b,
+                environment.sky_color.a,
+            ];
+            light_constants.environment_horizon = [
+                environment.horizon_color.r,
+                environment.horizon_color.g,
+                environment.horizon_color.b,
+                environment.horizon_color.a,
+            ];
+            light_constants.environment_ground = [
+                environment.ground_color.r,
+                environment.ground_color.g,
+                environment.ground_color.b,
+                environment.ground_color.a,
+            ];
+            light_constants.environment_params = [
+                environment.intensity,
+                1.0,
+                0.0,
+                0.0,
+            ];
+        }
 
         for light in &self.active_lights {
             match light {
@@ -709,6 +747,15 @@ impl D3D12Renderer {
         }
 
         Ok(())
+    }
+
+
+    pub(crate) fn set_environment(&mut self, environment: Environment) {
+        self.environment = Some(environment);
+    }
+
+    pub(crate) fn clear_environment(&mut self) {
+        self.environment = None;
     }
 
     pub(crate) fn add_point_light(&mut self, light: &PointLight) {

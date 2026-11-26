@@ -85,6 +85,27 @@ public sealed class Graphics
         }
     }
 
+    public void SetEnvironment(
+        Environment environment
+    )
+    {
+        NativeMethods.Check(
+            NativeMethods.oxide_graphics_set_environment(
+                _handle,
+                environment
+            )
+        );
+    }
+
+    public void ClearEnvironment()
+    {
+        NativeMethods.Check(
+            NativeMethods.oxide_graphics_clear_environment(
+                _handle
+            )
+        );
+    }
+
     public void ClearLights()
     {
         EnsureValid();

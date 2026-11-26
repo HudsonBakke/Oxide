@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{DirectionalLight, Graphics, PointLight, SpotLight},
+    graphics::{DirectionalLight, Environment, Graphics, PointLight, SpotLight},
     math::{Rect, Transform},
 };
 
@@ -82,6 +82,43 @@ pub extern "C" fn oxide_graphics_full_rect(
             *result = graphics.full_rect();
         }
 
+        OxideStatus::Ok
+    })
+}
+
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_set_environment(
+    graphics: OxideGraphicsHandle,
+    environment: Environment,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+            return OxideStatus::InvalidArgument;
+        };
+
+        if !environment.intensity.is_finite() || environment.intensity < 0.0 {
+            set_last_error("environment intensity must be finite and non-negative");
+            return OxideStatus::InvalidArgument;
+        }
+
+        graphics.set_environment(environment);
+        OxideStatus::Ok
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_clear_environment(
+    graphics: OxideGraphicsHandle,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+            return OxideStatus::InvalidArgument;
+        };
+
+        graphics.clear_environment();
         OxideStatus::Ok
     })
 }

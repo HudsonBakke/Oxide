@@ -1,7 +1,7 @@
 use crate::{math::Rect, math::Transform, platform::window::PlatformWindow};
 
 use super::{
-    Camera, DirectionalLight, GraphicsResult, LightSource, Material, Mesh, PointLight, SpotLight,
+    Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight, SpotLight,
     backend::d3d12::{D3D12Device, D3D12Renderer, D3D12SwapChain},
 };
 
@@ -106,6 +106,16 @@ impl Graphics {
             self.swap_chain.width() as f32,
             self.swap_chain.height() as f32,
         )
+    }
+
+    /// Sets the environment used for ambient diffuse and specular IBL.
+    pub fn set_environment(&mut self, environment: Environment) {
+        self.renderer.set_environment(environment);
+    }
+
+    /// Removes environment lighting.
+    pub fn clear_environment(&mut self) {
+        self.renderer.clear_environment();
     }
 
     /// Adds a light to the active lighting state.

@@ -132,6 +132,42 @@ Color.YELLOW = Color.rgb(
 )
 
 
+
+class Environment(ctypes.Structure):
+    _fields_ = [
+        ("sky_color", Color),
+        ("horizon_color", Color),
+        ("ground_color", Color),
+        ("intensity", ctypes.c_float),
+    ]
+
+    def __init__(
+        self,
+        sky_color: Color,
+        horizon_color: Color,
+        ground_color: Color,
+        intensity: float = 1.0,
+    ) -> None:
+        if not math.isfinite(intensity) or intensity < 0.0:
+            raise ValueError("environment intensity must be finite and non-negative")
+
+        super().__init__(
+            sky_color,
+            horizon_color,
+            ground_color,
+            float(intensity),
+        )
+
+    @classmethod
+    def daylight(cls):
+        return cls(
+            Color.rgb(0.28, 0.48, 0.90),
+            Color.rgb(0.72, 0.78, 0.88),
+            Color.rgb(0.16, 0.13, 0.10),
+            0.65,
+        )
+
+
 class PointLight(ctypes.Structure):
     _fields_ = [
         ("position", Vec3),
@@ -601,6 +637,28 @@ class Graphics:
             )
         )
 
+    def set_environment(
+        self,
+        environment: Environment,
+    ) -> None:
+        self._require_valid()
+        if not isinstance(environment, Environment):
+            raise TypeError("environment must be an Environment")
+        _native.check(
+            _native.lib.oxide_graphics_set_environment(
+                self._handle,
+                environment,
+            )
+        )
+
+    def clear_environment(self) -> None:
+        self._require_valid()
+        _native.check(
+            _native.lib.oxide_graphics_clear_environment(
+                self._handle
+            )
+        )
+
     def clear_lights(self) -> None:
         self._require_valid()
 
@@ -683,6 +741,17 @@ for _name in ("base_color", "emissive_color"):
         Color,
     ]
     _set.restype = ctypes.c_int
+
+
+_native.lib.oxide_graphics_set_environment.argtypes = [
+    _native.NativeGraphicsHandle,
+    Environment,
+]
+_native.lib.oxide_graphics_set_environment.restype = ctypes.c_int
+_native.lib.oxide_graphics_clear_environment.argtypes = [
+    _native.NativeGraphicsHandle,
+]
+_native.lib.oxide_graphics_clear_environment.restype = ctypes.c_int
 
 _native.lib.oxide_graphics_draw_mesh.argtypes = [
     _native.NativeGraphicsHandle,

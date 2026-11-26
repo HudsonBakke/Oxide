@@ -47,6 +47,11 @@ cbuffer LightConstants : register(b2)
     uint spot_light_count;
     uint directional_light_count;
     uint light_padding;
+
+    float4 environment_sky;
+    float4 environment_horizon;
+    float4 environment_ground;
+    float4 environment_params; // x=intensity, y=enabled
 };
 
 struct VertexInput
@@ -159,6 +164,87 @@ float3 evaluate_brdf(
     return (diffuse + specular) * radiance * n_dot_l;
 }
 
+
+float3 sample_environment(float3 direction)
+{
+    float y = clamp(direction.y, -1.0, 1.0);
+
+    if (y >= 0.0)
+    {
+        float t = pow(y, 0.55);
+        return lerp(
+            environment_horizon.rgb,
+            environment_sky.rgb,
+            t
+        );
+    }
+
+    float t = pow(-y, 0.55);
+    return lerp(
+        environment_horizon.rgb,
+        environment_ground.rgb,
+        t
+    );
+}
+
+float3 evaluate_environment(
+    float3 normal,
+    float3 view_direction,
+    float3 albedo,
+    float metallic,
+    float roughness)
+{
+    if (environment_params.y < 0.5)
+        return float3(0.0, 0.0, 0.0);
+
+    float intensity = environment_params.x;
+
+    // Approximate diffuse irradiance from the procedural hemisphere.
+    float3 diffuse_irradiance =
+        (
+            sample_environment(normal)
+            + sample_environment(float3(0.0, 1.0, 0.0))
+            + environment_horizon.rgb
+        ) / 3.0;
+
+    float n_dot_v = max(dot(normal, view_direction), 0.0);
+    float3 f0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
+    float3 fresnel =
+        f0 + (1.0 - f0) * pow(1.0 - n_dot_v, 5.0);
+
+    float3 diffuse =
+        diffuse_irradiance
+        * albedo
+        * (1.0 - metallic)
+        * (1.0 - fresnel);
+
+    float3 reflection_direction =
+        reflect(-view_direction, normal);
+
+    float3 sharp_reflection =
+        sample_environment(reflection_direction);
+
+    float3 average_environment =
+        (
+            environment_sky.rgb
+            + environment_horizon.rgb * 2.0
+            + environment_ground.rgb
+        ) * 0.25;
+
+    // Analytic equivalent of sampling progressively blurrier cubemap mips.
+    float blur = roughness * roughness;
+    float3 specular_environment =
+        lerp(sharp_reflection, average_environment, blur);
+
+    // Rough surfaces spread the reflected energy over a larger lobe.
+    float specular_energy = 1.0 - 0.45 * roughness;
+
+    return intensity * (
+        diffuse
+        + specular_environment * fresnel * specular_energy
+    );
+}
+
 float4 ps_main(VertexOutput input) : SV_TARGET
 {
     float3 geometric_normal = normalize(input.normal);
@@ -240,6 +326,14 @@ float4 ps_main(VertexOutput input) : SV_TARGET
                 radiance, albedo, metallic, roughness);
         }
     }
+
+    lighting += evaluate_environment(
+        normal,
+        view_direction,
+        albedo,
+        metallic,
+        roughness
+    );
 
     float3 emissive =
         emissive_color.rgb * material_factors.z;
