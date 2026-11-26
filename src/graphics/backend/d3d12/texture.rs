@@ -287,14 +287,14 @@ impl D3D12Texture {
             Type: D3D12_HEAP_TYPE_UPLOAD,
             ..Default::default()
         };
-        let mut upload = None;
+        let mut upload: Option<ID3D12Resource> = None;
         unsafe {
             device.device().CreateCommittedResource(
                 &upload_heap, Default::default(), &upload_desc,
                 D3D12_RESOURCE_STATE_GENERIC_READ, None, &mut upload,
             )?;
         }
-        let upload = upload.unwrap();
+        let upload: ID3D12Resource = upload.unwrap();
         let mut mapped = std::ptr::null_mut();
         unsafe { upload.Map(0, None, Some(&mut mapped))?; }
         let mapped = mapped as *mut u8;

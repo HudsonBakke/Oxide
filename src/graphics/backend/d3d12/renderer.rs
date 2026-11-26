@@ -232,8 +232,6 @@ pub(crate) struct D3D12Renderer {
     next_texture_descriptor: u32,
     pending_background: Option<BackgroundConstants>,
     background_drawn: bool,
-    pending_background: Option<BackgroundConstants>,
-    background_drawn: bool,
 }
 
 impl D3D12Renderer {
@@ -322,8 +320,6 @@ impl D3D12Renderer {
             texture_heap,
             texture_descriptor_size,
             next_texture_descriptor: 0,
-            pending_background: None,
-            background_drawn: false,
             pending_background: None,
             background_drawn: false,
         })
@@ -869,37 +865,6 @@ impl D3D12Renderer {
         Ok(())
     }
 
-
-    fn draw_background(&mut self, device: &D3D12Device) -> Result<()> {
-        let Some(constants) = self.pending_background else { return Ok(()); };
-        let Some(texture) = self.environment.as_ref()
-            .and_then(|environment| environment.background_texture.as_ref())
-        else { return Ok(()); };
-
-        let texture_id = texture.id();
-        if !self.texture_cache.contains_key(&texture_id) {
-            let descriptor_index = self.next_texture_descriptor;
-            assert!(descriptor_index < MAX_TEXTURES);
-            self.next_texture_descriptor += 1;
-            let gpu = D3D12Texture::new(device, &self.command_list, texture, descriptor_index)?;
-            self.create_texture_srv(device, &gpu);
-            self.texture_cache.insert(texture_id, gpu);
-        }
-        let descriptor_index = self.texture_cache[&texture_id].descriptor_index();
-        let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
-        handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
-        let address = self.constant_buffer.write(&constants);
-        unsafe {
-            self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
-            self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
-            self.command_list.SetGraphicsRootConstantBufferView(0, address);
-            self.command_list.SetGraphicsRootDescriptorTable(1, handle);
-            self.command_list.DrawInstanced(3, 1, 0, 0);
-            self.command_list.SetGraphicsRootSignature(self.pipeline.root_signature());
-            self.command_list.SetPipelineState(self.pipeline.pipeline_state());
-        }
-        Ok(())
-    }
 
     fn prepare_environment_descriptors(
         &mut self,

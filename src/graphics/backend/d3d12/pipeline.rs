@@ -390,7 +390,7 @@ impl D3D12Pipeline {
         let mut blob = None;
         unsafe { D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &mut blob, None)?; }
         let blob = blob.unwrap();
-        let root_signature = unsafe {
+        let root_signature: ID3D12RootSignature = unsafe {
             device.device().CreateRootSignature(
                 0,
                 std::slice::from_raw_parts(blob.GetBufferPointer() as *const u8, blob.GetBufferSize()),
