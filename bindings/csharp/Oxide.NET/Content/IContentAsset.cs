@@ -1,6 +1,5 @@
 namespace Oxide.Content;
-
-/// <summary>Marker interface for asset types loadable by ContentManager.</summary>
+/// <summary>Marks engine types supported by ContentManager: Mesh, Material, and Texture.</summary>
 public interface IContentAsset
 {
 }

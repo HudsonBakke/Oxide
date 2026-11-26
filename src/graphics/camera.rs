@@ -2,7 +2,6 @@ use crate::math::{Angle, Mat4, Quaternion, Transform, Vec3};
 
 /// Defines a viewpoint from which a 3D scene can be rendered.
 #[derive(Debug, Clone, Copy, PartialEq)]
-/// A perspective camera defining the viewpoint used to render a scene.
 pub struct Camera {
     transform: Transform,
 
@@ -12,7 +11,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    /// Creates a camera with default projection settings.
+    /// Creates a camera at the origin with identity rotation, a 60-degree vertical field of view, and clipping distances 0.1 and 1000.
     pub const fn new() -> Self {
         Self {
             transform: Transform::new(),
@@ -24,57 +23,57 @@ impl Camera {
         }
     }
 
-    /// Public Oxide position API.
+    /// Position in world space.
     pub fn position(&self) -> Vec3 {
         self.transform.position()
     }
 
-    /// Public Oxide set position API.
+    /// Sets the position in world space.
     pub fn set_position(&mut self, position: Vec3) {
         self.transform.set_position(position);
     }
 
-    /// Public Oxide translate by API.
+    /// Adds a world-space translation without rotating it by the current orientation.
     pub fn translate_by(&mut self, translation: Vec3) {
         self.transform.translate_by(translation);
     }
 
-    /// Public Oxide rotate pitch by API.
+    /// Applies an additional rotation about the world X axis.
     pub fn rotate_pitch_by(&mut self, angle: Angle) {
         self.transform.rotate_pitch_by(angle);
     }
 
-    /// Public Oxide rotate yaw by API.
+    /// Applies an additional rotation about the world Y axis.
     pub fn rotate_yaw_by(&mut self, angle: Angle) {
         self.transform.rotate_yaw_by(angle);
     }
 
-    /// Public Oxide rotate roll by API.
+    /// Applies an additional rotation about the world Z axis.
     pub fn rotate_roll_by(&mut self, angle: Angle) {
         self.transform.rotate_roll_by(angle);
     }
 
-    /// Public Oxide rotation API.
+    /// Orientation quaternion; assigned values are normalized.
     pub fn rotation(&self) -> Quaternion {
         self.transform.rotation()
     }
 
-    /// Public Oxide set rotation API.
+    /// Sets the orientation to a normalized copy of the quaternion.
     pub fn set_rotation(&mut self, rotation: Quaternion) {
         self.transform.set_rotation(rotation);
     }
 
-    /// Public Oxide set euler API.
+    /// Sets orientation to yaw * pitch * roll, about Y, X, and Z respectively.
     pub fn set_euler(&mut self, pitch: Angle, yaw: Angle, roll: Angle) {
         self.transform.set_euler(pitch, yaw, roll);
     }
 
-    /// Public Oxide field of view API.
+    /// Vertical perspective field of view; use an angle strictly between zero and pi radians.
     pub fn field_of_view(&self) -> Angle {
         self.field_of_view
     }
 
-    /// Public Oxide set field of view API.
+    /// Sets the vertical field of view; returns an error outside the open interval (0, pi) radians.
     pub fn set_field_of_view(&mut self, field_of_view: Angle) -> crate::OxideResult<()> {
         let radians = field_of_view.as_radians();
 
@@ -91,17 +90,17 @@ impl Camera {
         Ok(())
     }
 
-    /// Public Oxide near plane API.
+    /// Distance from the camera to the near clipping plane in world units.
     pub fn near_plane(&self) -> f32 {
         self.near_plane
     }
 
-    /// Public Oxide far plane API.
+    /// Distance from the camera to the far clipping plane in world units.
     pub fn far_plane(&self) -> f32 {
         self.far_plane
     }
 
-    /// Public Oxide set clip planes API.
+    /// Sets clipping distances in world units; requires 0 < near < far.
     pub fn set_clip_planes(&mut self, near_plane: f32, far_plane: f32) -> crate::OxideResult<()> {
         if near_plane <= 0.0 {
             return Err(crate::OxideError::InvalidArgument {

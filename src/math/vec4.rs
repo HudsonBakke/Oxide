@@ -1,17 +1,19 @@
+//! Four-component vectors and homogeneous position/direction conversions.
+
 use super::vec3::Vec3;
 use std::ops::{Add, Div, Mul, Sub};
 
+/// Four-component floating-point vector.
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-/// Four-component floating-point vector.
 pub struct Vec4 {
-    /// Public Oxide x API.
+    /// X component.
     pub x: f32,
-    /// Public Oxide y API.
+    /// Y component.
     pub y: f32,
-    /// Public Oxide z API.
+    /// Z component.
     pub z: f32,
-    /// Public Oxide w API.
+    /// W component.
     pub w: f32,
 }
 
@@ -21,12 +23,12 @@ impl Vec4 {
         Self { x, y, z, w }
     }
 
-    /// Public Oxide from position API.
+    /// Creates homogeneous coordinates from XYZ with W = 1.
     pub fn from_position(v: Vec3) -> Self {
         Self::new(v.x, v.y, v.z, 1.0)
     }
 
-    /// Public Oxide from direction API.
+    /// Creates homogeneous direction coordinates from XYZ with W = 0.
     pub fn from_direction(v: Vec3) -> Self {
         Self::new(v.x, v.y, v.z, 0.0)
     }

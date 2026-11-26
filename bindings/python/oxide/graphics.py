@@ -1,3 +1,5 @@
+"""Camera, lighting, and rendering commands for a draw callback."""
+
 from __future__ import annotations
 
 import ctypes
@@ -16,7 +18,14 @@ from .content import Material, Mesh
 
 
 class Color(ctypes.Structure):
-    """Linear RGBA color with floating-point channels."""
+    """Floating-point RGBA color; values are stored without clamping.
+
+    Attributes:
+        r: Red component.
+        g: Green component.
+        b: Blue component.
+        a: Alpha component: zero is transparent and one is opaque."""
+
     _fields_ = [
         ("r", ctypes.c_float),
         ("g", ctypes.c_float),
@@ -31,6 +40,7 @@ class Color(ctypes.Structure):
         b: float = 0.0,
         a: float = 1.0,
     ) -> None:
+        """Creates a color from RGBA components without clamping."""
         super().__init__(
             float(r),
             float(g),
@@ -45,7 +55,7 @@ class Color(ctypes.Structure):
         g: float,
         b: float,
     ) -> Color:
-        """Public Oxide rgb operation."""
+        """Creates an RGB color with alpha set to one."""
         return cls(
             r,
             g,
@@ -61,7 +71,7 @@ class Color(ctypes.Structure):
         b: float,
         a: float,
     ) -> Color:
-        """Public Oxide rgba operation."""
+        """Creates a color from red, green, blue, and alpha components without clamping."""
         return cls(
             r,
             g,
@@ -73,6 +83,7 @@ class Color(ctypes.Structure):
         self,
         other: object,
     ) -> bool:
+        """Tests exact component equality; returns NotImplemented for an unrelated type."""
         if not isinstance(
             other,
             Color,
@@ -87,14 +98,8 @@ class Color(ctypes.Structure):
         )
 
     def __repr__(self) -> str:
-        return (
-            f"Color("
-            f"{self.r}, "
-            f"{self.g}, "
-            f"{self.b}, "
-            f"{self.a}"
-            f")"
-        )
+        """Returns a representation containing the component values."""
+        return f"Color(" f"{self.r}, " f"{self.g}, " f"{self.b}, " f"{self.a}" f")"
 
 
 # Python class attributes corresponding to the Rust/C# constants.
@@ -136,7 +141,16 @@ Color.YELLOW = Color.rgb(
 
 
 class Environment:
-    """Explicit ambient, IBL, and visible-background settings for a scene."""
+    """Independent ambient, image-based lighting, and equirectangular background settings.
+
+    Attributes:
+        ambient_color: RGB color of constant ambient lighting.
+        ambient_intensity: Finite, non-negative multiplier for constant ambient lighting.
+        environment_texture: Optional equirectangular texture used for diffuse and specular image-based lighting.
+        environment_intensity: Finite, non-negative multiplier for image-based lighting.
+        background_texture: Optional equirectangular texture displayed behind geometry, independent of lighting.
+        background_color: Clear color used when no background texture is displayed."""
+
     def __init__(
         self,
         ambient_color: Color,
@@ -146,6 +160,7 @@ class Environment:
         background_texture: Texture | None,
         background_color: Color,
     ) -> None:
+        """Creates explicit lighting and background settings; intensity multipliers must be finite and non-negative."""
         if not math.isfinite(ambient_intensity) or ambient_intensity < 0.0:
             raise ValueError("ambient intensity must be finite and non-negative")
         if not math.isfinite(environment_intensity) or environment_intensity < 0.0:
@@ -160,7 +175,14 @@ class Environment:
 
 
 class PointLight(ctypes.Structure):
-    """Omnidirectional light emitted from a world-space point."""
+    """Omnidirectional point light with inverse-square distance attenuation.
+
+    Attributes:
+        position: Position in world space.
+        color: RGB light color; alpha is not used for lighting.
+        intensity: Non-negative light intensity; point and spot lights attenuate with squared distance.
+    """
+
     _fields_ = [
         ("position", Vec3),
         ("color", Color),
@@ -173,10 +195,9 @@ class PointLight(ctypes.Structure):
         color: Color,
         intensity: float,
     ) -> None:
+        """Creates a point light; intensity must not be negative."""
         if intensity < 0.0:
-            raise ValueError(
-                "Light intensity cannot be negative."
-            )
+            raise ValueError("Light intensity cannot be negative.")
 
         super().__init__(
             position,
@@ -185,6 +206,7 @@ class PointLight(ctypes.Structure):
         )
 
     def __setattr__(self, name, value):
+        """Assigns a field, applying this type's normalization and validation rules."""
         if name == "intensity" and float(value) < 0.0:
             raise ValueError("Light intensity cannot be negative.")
 
@@ -192,7 +214,16 @@ class PointLight(ctypes.Structure):
 
 
 class SpotLight(ctypes.Structure):
-    """Cone-shaped positional light."""
+    """Point light restricted to a directional cone, with inverse-square distance attenuation.
+
+    Attributes:
+        position: Position in world space.
+        direction: Normalized world-space direction in which light rays travel.
+        angle: Spotlight cone half-angle measured from its direction; use an angle strictly between zero and pi radians.
+        color: RGB light color; alpha is not used for lighting.
+        intensity: Non-negative light intensity; point and spot lights attenuate with squared distance.
+    """
+
     _fields_ = [
         ("position", Vec3),
         ("direction", Vec3),
@@ -209,24 +240,15 @@ class SpotLight(ctypes.Structure):
         color: Color,
         intensity: float,
     ) -> None:
+        """Creates a cone light; requires a nonzero direction, non-negative intensity, and half-angle in (0, pi) radians."""
         if direction.length <= 1.0e-6:
-            raise ValueError(
-                "Spot light direction cannot be zero."
-            )
+            raise ValueError("Spot light direction cannot be zero.")
 
-        if (
-            angle.as_radians <= 0.0
-            or angle.as_radians >= math.pi
-        ):
-            raise ValueError(
-                "Spot light angle must be "
-                "between 0 and pi radians."
-            )
+        if angle.as_radians <= 0.0 or angle.as_radians >= math.pi:
+            raise ValueError("Spot light angle must be " "between 0 and pi radians.")
 
         if intensity < 0.0:
-            raise ValueError(
-                "Light intensity cannot be negative."
-            )
+            raise ValueError("Light intensity cannot be negative.")
 
         super().__init__(
             position,
@@ -237,15 +259,14 @@ class SpotLight(ctypes.Structure):
         )
 
     def __setattr__(self, name, value):
+        """Assigns a field, applying this type's normalization and validation rules."""
         if name == "direction":
             if value.length <= 1.0e-6:
                 raise ValueError("Spot light direction cannot be zero.")
             value = value.normalized()
         elif name == "angle":
             if value.as_radians <= 0.0 or value.as_radians >= math.pi:
-                raise ValueError(
-                    "Spot light angle must be between 0 and pi radians."
-                )
+                raise ValueError("Spot light angle must be between 0 and pi radians.")
         elif name == "intensity" and float(value) < 0.0:
             raise ValueError("Light intensity cannot be negative.")
 
@@ -253,7 +274,14 @@ class SpotLight(ctypes.Structure):
 
 
 class DirectionalLight(ctypes.Structure):
-    """Infinitely distant light with parallel rays."""
+    """Light whose rays travel in one world-space direction, with no distance attenuation.
+
+    Attributes:
+        direction: Normalized world-space direction in which light rays travel.
+        color: RGB light color; alpha is not used for lighting.
+        intensity: Non-negative light intensity; point and spot lights attenuate with squared distance.
+    """
+
     _fields_ = [
         ("direction", Vec3),
         ("color", Color),
@@ -266,15 +294,12 @@ class DirectionalLight(ctypes.Structure):
         color: Color,
         intensity: float,
     ) -> None:
+        """Creates a directional light; requires a nonzero direction and non-negative intensity."""
         if direction.length <= 1.0e-6:
-            raise ValueError(
-                "Directional light direction cannot be zero."
-            )
+            raise ValueError("Directional light direction cannot be zero.")
 
         if intensity < 0.0:
-            raise ValueError(
-                "Light intensity cannot be negative."
-            )
+            raise ValueError("Light intensity cannot be negative.")
 
         super().__init__(
             direction.normalized(),
@@ -283,11 +308,10 @@ class DirectionalLight(ctypes.Structure):
         )
 
     def __setattr__(self, name, value):
+        """Assigns a field, applying this type's normalization and validation rules."""
         if name == "direction":
             if value.length <= 1.0e-6:
-                raise ValueError(
-                    "Directional light direction cannot be zero."
-                )
+                raise ValueError("Directional light direction cannot be zero.")
             value = value.normalized()
         elif name == "intensity" and float(value) < 0.0:
             raise ValueError("Light intensity cannot be negative.")
@@ -296,17 +320,15 @@ class DirectionalLight(ctypes.Structure):
 
 
 class Camera:
-    """Perspective camera defining the viewpoint used to render a scene."""
-    def __init__(self) -> None:
-        handle = (
-            _native.NativeCameraHandle()
-        )
+    """Perspective camera looking along local -Z with +Y up at its default orientation.
 
-        _native.check(
-            _native.lib.oxide_camera_create(
-                ctypes.byref(handle)
-            )
-        )
+    Native resources are released automatically when their Python owner is collected."""
+
+    def __init__(self) -> None:
+        """Creates a camera at the origin with identity rotation, a 60-degree vertical field of view, and clipping distances 0.1 and 1000."""
+        handle = _native.NativeCameraHandle()
+
+        _native.check(_native.lib.oxide_camera_create(ctypes.byref(handle)))
 
         self._handle = handle
 
@@ -321,18 +343,15 @@ class Camera:
         handle: _native.NativeCameraHandle,
     ) -> None:
         # Finalizers must not raise.
-        _native.lib.oxide_camera_destroy(
-            handle
-        )
+        _native.lib.oxide_camera_destroy(handle)
 
     @property
     def position(self) -> Vec3:
-        """Public Oxide position operation."""
+        """Position in world space."""
         result = Vec3()
 
         _native.check(
-            _native.lib
-            .oxide_camera_get_position(
+            _native.lib.oxide_camera_get_position(
                 self._handle,
                 ctypes.byref(result),
             )
@@ -345,10 +364,9 @@ class Camera:
         self,
         value: Vec3,
     ) -> None:
-        """Public Oxide position operation."""
+        """Position in world space."""
         _native.check(
-            _native.lib
-            .oxide_camera_set_position(
+            _native.lib.oxide_camera_set_position(
                 self._handle,
                 value,
             )
@@ -356,12 +374,11 @@ class Camera:
 
     @property
     def rotation(self) -> Quaternion:
-        """Public Oxide rotation operation."""
+        """Orientation quaternion; assigned values are normalized."""
         result = Quaternion()
 
         _native.check(
-            _native.lib
-            .oxide_camera_get_rotation(
+            _native.lib.oxide_camera_get_rotation(
                 self._handle,
                 ctypes.byref(result),
             )
@@ -374,10 +391,9 @@ class Camera:
         self,
         value: Quaternion,
     ) -> None:
-        """Public Oxide rotation operation."""
+        """Orientation quaternion; assigned values are normalized."""
         _native.check(
-            _native.lib
-            .oxide_camera_set_rotation(
+            _native.lib.oxide_camera_set_rotation(
                 self._handle,
                 value,
             )
@@ -385,12 +401,11 @@ class Camera:
 
     @property
     def field_of_view(self) -> Angle:
-        """Public Oxide field of view operation."""
+        """Vertical perspective field of view; use an angle strictly between zero and pi radians."""
         result = Angle()
 
         _native.check(
-            _native.lib
-            .oxide_camera_get_field_of_view(
+            _native.lib.oxide_camera_get_field_of_view(
                 self._handle,
                 ctypes.byref(result),
             )
@@ -403,10 +418,9 @@ class Camera:
         self,
         value: Angle,
     ) -> None:
-        """Public Oxide field of view operation."""
+        """Vertical perspective field of view; use an angle strictly between zero and pi radians."""
         _native.check(
-            _native.lib
-            .oxide_camera_set_field_of_view(
+            _native.lib.oxide_camera_set_field_of_view(
                 self._handle,
                 value,
             )
@@ -414,46 +428,39 @@ class Camera:
 
     @property
     def near_plane(self) -> float:
-        """Public Oxide near plane operation."""
+        """Distance from the camera to the near clipping plane in world units."""
         result = ctypes.c_float()
 
         _native.check(
-            _native.lib
-            .oxide_camera_get_near_plane(
+            _native.lib.oxide_camera_get_near_plane(
                 self._handle,
                 ctypes.byref(result),
             )
         )
 
-        return float(
-            result.value
-        )
+        return float(result.value)
 
     @property
     def far_plane(self) -> float:
-        """Public Oxide far plane operation."""
+        """Distance from the camera to the far clipping plane in world units."""
         result = ctypes.c_float()
 
         _native.check(
-            _native.lib
-            .oxide_camera_get_far_plane(
+            _native.lib.oxide_camera_get_far_plane(
                 self._handle,
                 ctypes.byref(result),
             )
         )
 
-        return float(
-            result.value
-        )
+        return float(result.value)
 
     def translate_by(
         self,
         translation: Vec3,
     ) -> None:
-        """Add a world-space translation."""
+        """Adds a world-space translation without rotating it by the current orientation."""
         _native.check(
-            _native.lib
-            .oxide_camera_translate_by(
+            _native.lib.oxide_camera_translate_by(
                 self._handle,
                 translation,
             )
@@ -465,10 +472,9 @@ class Camera:
         yaw: Angle,
         roll: Angle,
     ) -> None:
-        """Set orientation from pitch, yaw, and roll."""
+        """Sets orientation to yaw * pitch * roll, about Y, X, and Z respectively."""
         _native.check(
-            _native.lib
-            .oxide_camera_set_euler(
+            _native.lib.oxide_camera_set_euler(
                 self._handle,
                 pitch,
                 yaw,
@@ -480,10 +486,9 @@ class Camera:
         self,
         angle: Angle,
     ) -> None:
-        """Public Oxide rotate pitch by operation."""
+        """Applies an additional rotation about the world X axis."""
         _native.check(
-            _native.lib
-            .oxide_camera_rotate_pitch_by(
+            _native.lib.oxide_camera_rotate_pitch_by(
                 self._handle,
                 angle,
             )
@@ -493,10 +498,9 @@ class Camera:
         self,
         angle: Angle,
     ) -> None:
-        """Public Oxide rotate yaw by operation."""
+        """Applies an additional rotation about the world Y axis."""
         _native.check(
-            _native.lib
-            .oxide_camera_rotate_yaw_by(
+            _native.lib.oxide_camera_rotate_yaw_by(
                 self._handle,
                 angle,
             )
@@ -506,10 +510,9 @@ class Camera:
         self,
         angle: Angle,
     ) -> None:
-        """Public Oxide rotate roll by operation."""
+        """Applies an additional rotation about the world Z axis."""
         _native.check(
-            _native.lib
-            .oxide_camera_rotate_roll_by(
+            _native.lib.oxide_camera_rotate_roll_by(
                 self._handle,
                 angle,
             )
@@ -520,10 +523,9 @@ class Camera:
         near_plane: float,
         far_plane: float,
     ) -> None:
-        """Set near and far clipping distances."""
+        """Sets clipping distances in world units; requires 0 < near < far."""
         _native.check(
-            _native.lib
-            .oxide_camera_set_clip_planes(
+            _native.lib.oxide_camera_set_clip_planes(
                 self._handle,
                 float(near_plane),
                 float(far_plane),
@@ -532,19 +534,23 @@ class Camera:
 
 
 class Graphics:
-    """Per-frame rendering interface valid only during the current draw callback."""
+    """Rendering interface supplied to the draw callback; bind a camera before drawing geometry.
+
+    Valid only during Game.draw; retaining this object for later use raises RuntimeError.
+    """
+
     def __init__(
         self,
         handle: _native.NativeGraphicsHandle,
     ) -> None:
+        """Wraps a borrowed rendering handle supplied by the current draw callback."""
         self._handle = handle
         self._valid = True
 
     def _require_valid(self) -> None:
         if not self._valid:
             raise RuntimeError(
-                "Graphics is only valid during "
-                "the current draw callback."
+                "Graphics is only valid during " "the current draw callback."
             )
 
     def _invalidate(self) -> None:
@@ -552,7 +558,7 @@ class Graphics:
 
     @property
     def preferred_backbuffer_width(self) -> int:
-        """Public Oxide preferred backbuffer width operation."""
+        """Current client width in physical pixels; assignment requests a resize."""
         return _native.lib.oxide_app_window_width()
 
     @preferred_backbuffer_width.setter
@@ -560,11 +566,9 @@ class Graphics:
         self,
         value: int,
     ) -> None:
-        """Public Oxide preferred backbuffer width operation."""
+        """Current client width in physical pixels; assignment requests a resize."""
         if value <= 0:
-            raise ValueError(
-                "backbuffer width must be greater than zero"
-            )
+            raise ValueError("backbuffer width must be greater than zero")
 
         _native.check(
             _native.lib.oxide_app_set_preferred_backbuffer_size(
@@ -575,7 +579,7 @@ class Graphics:
 
     @property
     def preferred_backbuffer_height(self) -> int:
-        """Public Oxide preferred backbuffer height operation."""
+        """Current client height in physical pixels; assignment requests a resize."""
         return _native.lib.oxide_app_window_height()
 
     @preferred_backbuffer_height.setter
@@ -583,11 +587,9 @@ class Graphics:
         self,
         value: int,
     ) -> None:
-        """Public Oxide preferred backbuffer height operation."""
+        """Current client height in physical pixels; assignment requests a resize."""
         if value <= 0:
-            raise ValueError(
-                "backbuffer height must be greater than zero"
-            )
+            raise ValueError("backbuffer height must be greater than zero")
 
         _native.check(
             _native.lib.oxide_app_set_preferred_backbuffer_size(
@@ -598,14 +600,13 @@ class Graphics:
 
     @property
     def full_rect(self) -> Rect:
-        """Public Oxide full rect operation."""
+        """Rectangle covering the entire render surface in physical pixels."""
         self._require_valid()
 
         result = Rect()
 
         _native.check(
-            _native.lib
-            .oxide_graphics_full_rect(
+            _native.lib.oxide_graphics_full_rect(
                 self._handle,
                 ctypes.byref(result),
             )
@@ -618,12 +619,11 @@ class Graphics:
         camera: Camera,
         destination: Rect,
     ) -> None:
-        """Bind a camera to a destination rectangle for subsequent draws."""
+        """Binds a camera and a positive-size pixel viewport for subsequent draw calls."""
         self._require_valid()
 
         _native.check(
-            _native.lib
-            .oxide_graphics_bind_camera(
+            _native.lib.oxide_graphics_bind_camera(
                 self._handle,
                 camera._handle,
                 destination,
@@ -636,7 +636,7 @@ class Graphics:
         material: Material,
         transform: Transform,
     ) -> None:
-        """Draw a mesh with the supplied material and transform."""
+        """Draws a mesh with a material and world transform in the currently bound camera viewport."""
         self._require_valid()
 
         if not isinstance(mesh, Mesh):
@@ -658,7 +658,7 @@ class Graphics:
         self,
         environment: Environment,
     ) -> None:
-        """Set ambient lighting, IBL, and background rendering for the scene."""
+        """Sets ambient lighting, image-based lighting, and the independent visible background."""
         self._require_valid()
         if not isinstance(environment, Environment):
             raise TypeError("environment must be an Environment")
@@ -685,82 +685,56 @@ class Graphics:
         )
 
     def clear_environment(self) -> None:
-        """Remove the current environment."""
+        """Removes environment lighting and its background settings."""
         self._require_valid()
-        _native.check(
-            _native.lib.oxide_graphics_clear_environment(
-                self._handle
-            )
-        )
+        _native.check(_native.lib.oxide_graphics_clear_environment(self._handle))
 
     def clear_lights(self) -> None:
-        """Remove lights accumulated for the current frame."""
+        """Removes lights added so far in the current frame."""
         self._require_valid()
 
-        _native.check(
-            _native.lib
-            .oxide_graphics_clear_lights(
-                self._handle
-            )
-        )
+        _native.check(_native.lib.oxide_graphics_clear_lights(self._handle))
 
     def add_light(
         self,
-        light: (
-            PointLight
-            | SpotLight
-            | DirectionalLight
-        ),
+        light: PointLight | SpotLight | DirectionalLight,
     ) -> None:
-        """Add a light to the current frame."""
+        """Adds a point, spot, or directional light for subsequent draws; lights reset at frame start."""
         self._require_valid()
 
         if isinstance(
             light,
             PointLight,
         ):
-            status = (
-                _native.lib
-                .oxide_graphics_add_point_light(
-                    self._handle,
-                    light,
-                )
+            status = _native.lib.oxide_graphics_add_point_light(
+                self._handle,
+                light,
             )
 
         elif isinstance(
             light,
             SpotLight,
         ):
-            status = (
-                _native.lib
-                .oxide_graphics_add_spot_light(
-                    self._handle,
-                    light,
-                )
+            status = _native.lib.oxide_graphics_add_spot_light(
+                self._handle,
+                light,
             )
 
         elif isinstance(
             light,
             DirectionalLight,
         ):
-            status = (
-                _native.lib
-                .oxide_graphics_add_directional_light(
-                    self._handle,
-                    light,
-                )
+            status = _native.lib.oxide_graphics_add_directional_light(
+                self._handle,
+                light,
             )
 
         else:
             raise TypeError(
-                "light must be a PointLight, "
-                "SpotLight, or DirectionalLight"
+                "light must be a PointLight, " "SpotLight, or DirectionalLight"
             )
 
-        _native.check(
-            status
-        )
-
+        _native.check(status)
 
 
 for _name in ("base_color", "emissive_color"):
@@ -820,22 +794,16 @@ _native.lib.oxide_graphics_add_point_light.argtypes = [
     _native.NativeGraphicsHandle,
     PointLight,
 ]
-_native.lib.oxide_graphics_add_point_light.restype = (
-    ctypes.c_int
-)
+_native.lib.oxide_graphics_add_point_light.restype = ctypes.c_int
 
 _native.lib.oxide_graphics_add_spot_light.argtypes = [
     _native.NativeGraphicsHandle,
     SpotLight,
 ]
-_native.lib.oxide_graphics_add_spot_light.restype = (
-    ctypes.c_int
-)
+_native.lib.oxide_graphics_add_spot_light.restype = ctypes.c_int
 
 _native.lib.oxide_graphics_add_directional_light.argtypes = [
     _native.NativeGraphicsHandle,
     DirectionalLight,
 ]
-_native.lib.oxide_graphics_add_directional_light.restype = (
-    ctypes.c_int
-)
+_native.lib.oxide_graphics_add_directional_light.restype = ctypes.c_int

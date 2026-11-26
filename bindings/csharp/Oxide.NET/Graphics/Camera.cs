@@ -3,249 +3,127 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-/// <summary>Perspective camera defining the viewpoint used to render a scene.</summary>
+/// <summary>Perspective camera looking along local -Z with +Y up at its default orientation.</summary>
+/// <remarks>Owns a native handle released by a SafeHandle finalizer. Native failures raise OxideException.</remarks>
 public sealed class Camera
 {
-    private readonly CameraSafeHandle
-        _handle;
+    private readonly CameraSafeHandle _handle;
 
-    /// <summary>Initializes or accesses Camera.</summary>
+    /// <summary>Creates a camera at the origin with identity rotation, a 60-degree vertical field of view, and clipping distances 0.1 and 1000.</summary>
     public Camera()
     {
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_create(
-                    out NativeCameraHandle handle
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_camera_create(out NativeCameraHandle handle));
 
-        _handle =
-            new CameraSafeHandle(
-                handle
-            );
+        _handle = new CameraSafeHandle(handle);
     }
 
     internal NativeCameraHandle Handle
     {
-        get
-        {
-            if (_handle.IsInvalid
-                || _handle.IsClosed)
+        get {
+            if (_handle.IsInvalid || _handle.IsClosed)
             {
-                throw new ObjectDisposedException(
-                    nameof(Camera)
-                );
+                throw new ObjectDisposedException(nameof(Camera));
             }
 
             return _handle.NativeHandle;
         }
     }
-
-        /// <summary>Gets or sets the camera position in world space.</summary>
-public Vec3 Position
+    /// <summary>Position in world space.</summary>
+    public Vec3 Position
     {
-        get
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_get_position(
-                        Handle,
-                        out Vec3 result
-                    )
-            );
+        get {
+            NativeMethods.Check(NativeMethods.oxide_camera_get_position(Handle, out Vec3 result));
 
             return result;
         }
 
-        set
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_set_position(
-                        Handle,
-                        value
-                    )
-            );
+        set {
+            NativeMethods.Check(NativeMethods.oxide_camera_set_position(Handle, value));
         }
     }
-
-        /// <summary>Gets or sets the camera orientation.</summary>
-public Quaternion Rotation
+    /// <summary>Orientation quaternion; assigned values are normalized.</summary>
+    public Quaternion Rotation
     {
-        get
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_get_rotation(
-                        Handle,
-                        out Quaternion result
-                    )
-            );
+        get {
+            NativeMethods.Check(NativeMethods.oxide_camera_get_rotation(Handle,
+                                                                        out Quaternion result));
 
             return result;
         }
 
-        set
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_set_rotation(
-                        Handle,
-                        value
-                    )
-            );
+        set {
+            NativeMethods.Check(NativeMethods.oxide_camera_set_rotation(Handle, value));
         }
     }
-
-        /// <summary>Gets or sets the camera's vertical perspective field of view.</summary>
-public Angle FieldOfView
+    /// <summary>Vertical perspective field of view; use an angle strictly between zero and pi radians.</summary>
+    public Angle FieldOfView
     {
-        get
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_get_field_of_view(
-                        Handle,
-                        out Angle result
-                    )
-            );
+        get {
+            NativeMethods.Check(NativeMethods.oxide_camera_get_field_of_view(Handle,
+                                                                             out Angle result));
 
             return result;
         }
 
-        set
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_set_field_of_view(
-                        Handle,
-                        value
-                    )
-            );
+        set {
+            NativeMethods.Check(NativeMethods.oxide_camera_set_field_of_view(Handle, value));
         }
     }
 
-    /// <summary>Translates the camera in world space.</summary>
-    public void TranslateBy(
-        Vec3 translation
-    )
+    /// <summary>Adds a world-space translation without rotating it by the current orientation.</summary>
+    public void TranslateBy(Vec3 translation)
     {
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_translate_by(
-                    Handle,
-                    translation
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_camera_translate_by(Handle, translation));
     }
 
-    /// <summary>Sets camera orientation from pitch, yaw, and roll.</summary>
-    public void SetEuler(
-        Angle pitch,
-        Angle yaw,
-        Angle roll
-    )
+    /// <summary>Sets orientation to yaw * pitch * roll, about Y, X, and Z respectively.</summary>
+    public void SetEuler(Angle pitch, Angle yaw, Angle roll)
     {
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_set_euler(
-                    Handle,
-                    pitch,
-                    yaw,
-                    roll
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_camera_set_euler(Handle, pitch, yaw, roll));
     }
 
-        /// <summary>Sets the near and far clipping distances.</summary>
-public void SetClipPlanes(
-        float nearPlane,
-        float farPlane
-    )
+    /// <summary>Sets clipping distances in world units; requires 0 &lt; near &lt; far.</summary>
+    public void SetClipPlanes(float nearPlane, float farPlane)
     {
         NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_set_clip_planes(
-                    Handle,
-                    nearPlane,
-                    farPlane
-                )
-        );
+            NativeMethods.oxide_camera_set_clip_planes(Handle, nearPlane, farPlane));
     }
 
-        /// <summary>Gets the near clipping distance.</summary>
-public float NearPlane
+    /// <summary>Distance from the camera to the near clipping plane in world units.</summary>
+    public float NearPlane
     {
-        get
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_get_near_plane(
-                        Handle,
-                        out float result
-                    )
-            );
+        get {
+            NativeMethods.Check(NativeMethods.oxide_camera_get_near_plane(Handle,
+                                                                          out float result));
+
+            return result;
+        }
+    }
+    /// <summary>Distance from the camera to the far clipping plane in world units.</summary>
+    public float FarPlane
+    {
+        get {
+            NativeMethods.Check(NativeMethods.oxide_camera_get_far_plane(Handle, out float result));
 
             return result;
         }
     }
 
-        /// <summary>Gets the far clipping distance.</summary>
-public float FarPlane
+    /// <summary>Applies an additional rotation about the world X axis.</summary>
+    public void RotatePitchBy(Angle angle)
     {
-        get
-        {
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_camera_get_far_plane(
-                        Handle,
-                        out float result
-                    )
-            );
-
-            return result;
-        }
+        NativeMethods.Check(NativeMethods.oxide_camera_rotate_pitch_by(Handle, angle));
     }
 
-    /// <summary>Applies an incremental pitch rotation.</summary>
-    public void RotatePitchBy(
-        Angle angle
-    )
+    /// <summary>Applies an additional rotation about the world Y axis.</summary>
+    public void RotateYawBy(Angle angle)
     {
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_rotate_pitch_by(
-                    Handle,
-                    angle
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_camera_rotate_yaw_by(Handle, angle));
     }
 
-    /// <summary>Applies an incremental yaw rotation.</summary>
-    public void RotateYawBy(
-        Angle angle
-    )
+    /// <summary>Applies an additional rotation about the world Z axis.</summary>
+    public void RotateRollBy(Angle angle)
     {
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_rotate_yaw_by(
-                    Handle,
-                    angle
-                )
-        );
-    }
-
-    /// <summary>Applies an incremental roll rotation.</summary>
-    public void RotateRollBy(
-        Angle angle
-    )
-    {
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_camera_rotate_roll_by(
-                    Handle,
-                    angle
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_camera_rotate_roll_by(Handle, angle));
     }
 }

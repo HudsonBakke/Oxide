@@ -1,3 +1,5 @@
+//! Mesh drawing, materials, cameras, textures, and lighting for Direct3D 12.
+
 pub(crate) mod backend;
 pub(crate) mod mesh;
 pub(crate) mod texture;

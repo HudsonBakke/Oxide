@@ -1,3 +1,5 @@
+"""Triangle-mesh collision queries using world transforms and model-space pivots."""
+
 from __future__ import annotations
 
 import ctypes
@@ -13,7 +15,7 @@ def collides(
     mesh_b: Mesh,
     transform_b: Transform,
 ) -> bool:
-    """Return whether the two transformed meshes intersect."""
+    """Tests intersection of two transformed triangle meshes, including containment, using their model-space pivots."""
     if not isinstance(mesh_a, Mesh):
         raise TypeError("mesh_a must be a Mesh")
 

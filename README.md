@@ -49,7 +49,7 @@ dotnet run --project examples/csharp/Materials/Materials.csproj
 
 ### Python
 
-Install the bindings into your active Python environment after building the native library:
+Install the bindings once into your active Python environment after building the native library:
 
 ```powershell
 cargo build --locked --lib
@@ -58,6 +58,10 @@ python .\examples\python\materials.py
 ```
 
 The development bindings look for `target/debug/oxide.dll`, then `target/release/oxide.dll`. To select another build, set `OXIDE_LIBRARY` to the absolute DLL path. The Python package installation does not compile or bundle the native engine.
+
+The editable install persists: run the example directly on later sessions.
+Python source changes are picked up automatically; Rust changes require a native
+library rebuild.
 
 ### C
 
@@ -69,6 +73,13 @@ target\debug\hello_window_c.exe
 ```
 
 The executable is placed beside `oxide.dll` so Windows can load it.
+
+## API documentation
+
+Public Rust APIs use Rustdoc, C# APIs use XML documentation, Python APIs expose
+docstrings through `help()`, and `include/oxide.h` documents the C ABI with
+Doxygen comments. See [documentation and style conventions](docs/contributing.md)
+for the documentation-build and formatting commands.
 
 ## Automated checks
 

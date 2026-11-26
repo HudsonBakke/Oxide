@@ -1,19 +1,24 @@
 use std::{error::Error, fmt};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// Error returned by public Oxide operations.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxideError {
+    /// An argument violates the operation requirements.
     InvalidArgument {
+        /// Name of the invalid argument.
         argument: &'static str,
+        /// Diagnostic explanation of the failure.
         message: &'static str,
     },
 
+    /// The current engine state does not permit the requested operation.
     InvalidOperation {
+        /// Diagnostic explanation of the failure.
         message: &'static str,
     },
 }
 
-/// Public Oxide OxideResult API.
+/// Result of a core operation, containing OxideError on failure.
 pub type OxideResult<T> = Result<T, OxideError>;
 
 impl fmt::Display for OxideError {

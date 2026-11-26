@@ -1,3 +1,5 @@
+"""Public Python interface to Oxide. Build the native DLL before importing this package."""
+
 from .input import (
     Keyboard,
     KeyboardState,
@@ -56,7 +58,6 @@ __all__ = [
     "Mouse",
     "MouseButtons",
     "MouseState",
-
     "ContentError",
     "GraphicsError",
     "InternalError",
@@ -75,13 +76,11 @@ __all__ = [
     "Vec2",
     "Vec3",
     "Vec4",
-
     "ContentManager",
     "Material",
     "Mesh",
     "Texture",
     "Vertex",
-
     "Camera",
     "Color",
     "DirectionalLight",

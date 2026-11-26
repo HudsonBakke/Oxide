@@ -4,7 +4,8 @@ use crate::{
 };
 
 use super::{
-    OxideCameraHandle, OxideGraphicsHandle, OxideMaterialHandle, OxideMeshHandle, OxideStatus, OxideTextureHandle,
+    OxideCameraHandle, OxideGraphicsHandle, OxideMaterialHandle, OxideMeshHandle, OxideStatus,
+    OxideTextureHandle,
     camera::with_camera,
     error::{ffi_boundary, set_last_error},
     resources::{with_material, with_mesh, with_texture},
@@ -86,8 +87,6 @@ pub extern "C" fn oxide_graphics_full_rect(
     })
 }
 
-
-
 #[unsafe(no_mangle)]
 pub extern "C" fn oxide_graphics_set_environment_explicit(
     graphics: OxideGraphicsHandle,
@@ -147,9 +146,7 @@ pub extern "C" fn oxide_graphics_set_environment_explicit(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_clear_environment(
-    graphics: OxideGraphicsHandle,
-) -> OxideStatus {
+pub extern "C" fn oxide_graphics_clear_environment(graphics: OxideGraphicsHandle) -> OxideStatus {
     ffi_boundary(|| {
         let Some(graphics) = graphics_from_handle(graphics) else {
             set_last_error("graphics handle is null");

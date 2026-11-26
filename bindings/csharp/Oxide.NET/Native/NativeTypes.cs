@@ -67,31 +67,14 @@ internal struct NativeAppConfig
     public uint Height;
 }
 
-[UnmanagedFunctionPointer(
-    CallingConvention.Cdecl
-)]
-internal delegate void
-    NativeInitializeCallback(
-        IntPtr userData
-    );
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+internal delegate void NativeInitializeCallback(IntPtr userData);
 
-[UnmanagedFunctionPointer(
-    CallingConvention.Cdecl
-)]
-internal delegate void
-    NativeUpdateCallback(
-        IntPtr userData,
-        NativeGameTime time
-    );
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+internal delegate void NativeUpdateCallback(IntPtr userData, NativeGameTime time);
 
-[UnmanagedFunctionPointer(
-    CallingConvention.Cdecl
-)]
-internal delegate void
-    NativeDrawCallback(
-        IntPtr userData,
-        NativeGraphicsHandle graphics
-    );
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+internal delegate void NativeDrawCallback(IntPtr userData, NativeGraphicsHandle graphics);
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeGameCallbacks
@@ -102,8 +85,6 @@ internal struct NativeGameCallbacks
     public NativeUpdateCallback Update;
     public NativeDrawCallback Draw;
 }
-
-
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeKeyboardState

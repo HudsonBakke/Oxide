@@ -1,9 +1,10 @@
+//! World placement using translation, quaternion orientation, and local scale.
+
 use super::{Angle, Mat4, Quaternion, Vec3};
 
 /// Position, orientation, and scale of an object in 3D space.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-/// Position, rotation, and scale describing an object's placement in world space.
 pub struct Transform {
     position: Vec3,
     rotation: Quaternion,
@@ -11,8 +12,7 @@ pub struct Transform {
 }
 
 impl Transform {
-    /// Creates a transform with no translation or rotation
-    /// and a scale of one.
+    /// Creates a transform at the origin with identity rotation and unit scale.
     pub const fn new() -> Self {
         Self {
             position: Vec3 {
@@ -31,71 +31,70 @@ impl Transform {
         }
     }
 
-    /// Returns the transform's position.
+    /// Position in world space.
     pub fn position(&self) -> Vec3 {
         self.position
     }
 
-    /// Sets the transform's position.
+    /// Sets the position in world space.
     pub fn set_position(&mut self, position: Vec3) {
         self.position = position;
     }
 
-    /// Moves the transform by the given amount.
+    /// Adds a world-space translation without rotating it by the current orientation.
     pub fn translate_by(&mut self, translation: Vec3) {
         self.position = self.position + translation;
     }
 
-    /// Returns the transform's orientation.
+    /// Orientation quaternion; assigned values are normalized.
     pub fn rotation(&self) -> Quaternion {
         self.rotation
     }
 
-    /// Sets the transform's orientation.
+    /// Sets the orientation to a normalized copy of the quaternion.
     pub fn set_rotation(&mut self, rotation: Quaternion) {
         self.rotation = rotation.normalized();
     }
 
     /// Sets the transform's orientation from Euler angles.
     ///
-    /// Rotation order is yaw, then pitch, then roll,
-    /// matching Oxide's existing transform convention.
+    /// Composition is yaw * pitch * roll; the rightmost rotation acts first.
     pub fn set_euler(&mut self, pitch: Angle, yaw: Angle, roll: Angle) {
         self.rotation = Quaternion::from_euler(pitch, yaw, roll);
     }
 
-    /// Rotates around the world X axis.
+    /// Applies an additional rotation about the world X axis.
     pub fn rotate_pitch_by(&mut self, angle: Angle) {
         let rotation = Quaternion::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), angle);
 
         self.rotation = (rotation * self.rotation).normalized();
     }
 
-    /// Rotates around the world Y axis.
+    /// Applies an additional rotation about the world Y axis.
     pub fn rotate_yaw_by(&mut self, angle: Angle) {
         let rotation = Quaternion::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), angle);
 
         self.rotation = (rotation * self.rotation).normalized();
     }
 
-    /// Rotates around the world Z axis.
+    /// Applies an additional rotation about the world Z axis.
     pub fn rotate_roll_by(&mut self, angle: Angle) {
         let rotation = Quaternion::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), angle);
 
         self.rotation = (rotation * self.rotation).normalized();
     }
 
-    /// Returns the transform's scale.
+    /// Component-wise scale along the model's local axes.
     pub fn scale(&self) -> Vec3 {
         self.scale
     }
 
-    /// Sets the transform's scale.
+    /// Sets the component-wise scale along the model's local axes.
     pub fn set_scale(&mut self, scale: Vec3) {
         self.scale = scale;
     }
 
-    /// Multiplies the current scale component-wise.
+    /// Multiplies the current scale component by component.
     pub fn scale_by(&mut self, scale: Vec3) {
         self.scale.x *= scale.x;
         self.scale.y *= scale.y;

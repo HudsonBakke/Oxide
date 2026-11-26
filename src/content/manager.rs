@@ -10,8 +10,8 @@ use super::{
     metadata::{self, DependencyMetadata},
 };
 
-#[derive(Debug)]
 /// Loads source assets and maintains Oxide's compiled-content cache.
+#[derive(Debug)]
 pub struct ContentManager {
     cache_directory: PathBuf,
 }
@@ -33,7 +33,10 @@ impl ContentManager {
         }
     }
 
-    /// Loads the default asset from a source file.
+    /// Loads a Mesh, Material, or Texture from a source path relative to the working directory.
+    ///
+    /// Multiple compatible glTF objects require load_sub. Missing or stale caches
+    /// are rebuilt from source; cache-write failures do not prevent a valid load.
     pub fn load<T: ContentAsset>(&mut self, path: impl AsRef<Path>) -> ContentResult<T> {
         self.load_internal::<T>(path.as_ref(), "")
     }

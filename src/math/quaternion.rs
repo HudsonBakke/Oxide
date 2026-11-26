@@ -1,3 +1,5 @@
+//! Quaternion construction, composition, and vector rotation.
+
 use std::ops::Mul;
 
 use super::{Angle, Mat4, Vec3};
@@ -5,20 +7,19 @@ use super::{Angle, Mat4, Vec3};
 /// A quaternion representing a 3D rotation.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-/// Quaternion rotation used for three-dimensional orientation and vector rotation.
 pub struct Quaternion {
-    /// Public Oxide x API.
+    /// X component.
     pub x: f32,
-    /// Public Oxide y API.
+    /// Y component.
     pub y: f32,
-    /// Public Oxide z API.
+    /// Z component.
     pub z: f32,
-    /// Public Oxide w API.
+    /// W component.
     pub w: f32,
 }
 
 impl Quaternion {
-    /// Public Oxide IDENTITY API.
+    /// Rotation quaternion (0, 0, 0, 1), which leaves vectors unchanged.
     pub const IDENTITY: Self = Self {
         x: 0.0,
         y: 0.0,
@@ -26,12 +27,12 @@ impl Quaternion {
         w: 1.0,
     };
 
-    /// Public Oxide fn API.
+    /// Creates a quaternion from XYZW components without normalizing it.
     pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
         Self { x, y, z, w }
     }
 
-    /// Creates a rotation around an arbitrary axis.
+    /// Creates a rotation about a nonzero axis, normalizing the axis before use.
     pub fn from_axis_angle(axis: Vec3, angle: Angle) -> Self {
         let axis = axis.normalized();
 
@@ -46,12 +47,12 @@ impl Quaternion {
         }
     }
 
-    /// Returns the magnitude of this quaternion.
+    /// Euclidean magnitude of the components.
     pub fn length(&self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt()
     }
 
-    /// Returns a normalized copy of this quaternion.
+    /// Returns a unit-length quaternion; a zero quaternion becomes the identity.
     pub fn normalized(&self) -> Self {
         let length = self.length();
 
@@ -70,7 +71,7 @@ impl Quaternion {
     /// Creates an orientation from pitch, yaw, and roll.
     ///
     /// Rotation order matches Transform:
-    /// yaw, then pitch, then roll.
+    /// yaw * pitch * roll; the rightmost rotation acts first on a vector.
     pub fn from_euler(pitch: Angle, yaw: Angle, roll: Angle) -> Self {
         let pitch_rotation = Self::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), pitch);
 
@@ -81,7 +82,7 @@ impl Quaternion {
         (yaw_rotation * pitch_rotation * roll_rotation).normalized()
     }
 
-    /// Returns the conjugate of this quaternion.
+    /// Returns the quaternion with negated XYZ components; the inverse for a unit quaternion.
     pub fn conjugate(&self) -> Self {
         Self {
             x: -self.x,
@@ -91,7 +92,7 @@ impl Quaternion {
         }
     }
 
-    /// Rotates a vector by this quaternion.
+    /// Rotates a vector by this quaternion; use a unit quaternion for a pure rotation.
     pub fn rotate_vector(&self, vector: Vec3) -> Vec3 {
         let q = Vec3::new(self.x, self.y, self.z);
 
@@ -100,7 +101,7 @@ impl Quaternion {
         vector + t * self.w + q.cross(&t)
     }
 
-    /// Creates the shortest rotation that maps `from` onto `to`.
+    /// Returns the shortest rotation aligning two nonzero directions; vector lengths are ignored.
     pub fn from_to(from: Vec3, to: Vec3) -> Self {
         let from = from.normalized();
         let to = to.normalized();

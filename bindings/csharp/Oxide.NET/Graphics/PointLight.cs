@@ -5,7 +5,7 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-/// <summary>Omnidirectional light emitted from a point in world space.</summary>
+/// <summary>Omnidirectional point light with inverse-square distance attenuation.</summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct PointLight
 {
@@ -13,19 +13,13 @@ public struct PointLight
     private Color _color;
     private float _intensity;
 
-    /// <summary>Creates or accesses PointLight.</summary>
-    public PointLight(
-        Vec3 position,
-        Color color,
-        float intensity
-    )
+    /// <summary>Creates a point light; intensity must not be negative.</summary>
+    public PointLight(Vec3 position, Color color, float intensity)
     {
         if (intensity < 0.0f)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(intensity),
-                "Light intensity cannot be negative."
-            );
+            throw new ArgumentOutOfRangeException(nameof(intensity),
+                                                  "Light intensity cannot be negative.");
         }
 
         _position = position;
@@ -33,21 +27,19 @@ public struct PointLight
         _intensity = intensity;
     }
 
-    /// <summary>Light position in world space.</summary>
+    /// <summary>Position in world space.</summary>
     public Vec3 Position
     {
         readonly get => _position;
         set => _position = value;
     }
-
-    /// <summary>Light color.</summary>
+    /// <summary>RGB light color; alpha is not used for lighting.</summary>
     public Color Color
     {
         readonly get => _color;
         set => _color = value;
     }
-
-    /// <summary>Non-negative light intensity.</summary>
+    /// <summary>Non-negative light intensity; point and spot lights attenuate with squared distance.</summary>
     public float Intensity
     {
         readonly get => _intensity;
@@ -56,10 +48,8 @@ public struct PointLight
         {
             if (value < 0.0f)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    "Light intensity cannot be negative."
-                );
+                throw new ArgumentOutOfRangeException(nameof(value),
+                                                      "Light intensity cannot be negative.");
             }
 
             _intensity = value;

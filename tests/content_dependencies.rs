@@ -23,7 +23,10 @@ struct Fixture {
 
 impl Fixture {
     fn new(binary: bool) -> Self {
-        let unique = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
         let sequence = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
         let root = PathBuf::from(format!(
             "target/test-content-cache/dependencies-{}-{unique}-{sequence}",
@@ -137,26 +140,44 @@ fn named_mesh_material_and_texture_caches_are_reused() {
     for binary in [false, true] {
         // Separate caches let us prove reuse for each public asset type.
         let fixture = Fixture::new(binary);
-        let first = fixture.content().load_sub::<Mesh>(&fixture.source, "TriangleNode").unwrap();
+        let first = fixture
+            .content()
+            .load_sub::<Mesh>(&fixture.source, "TriangleNode")
+            .unwrap();
         let cache = fixture.cache_file();
         let marked = mark_cache(&cache);
-        let second = fixture.content().load_sub::<Mesh>(&fixture.source, "TriangleNode").unwrap();
+        let second = fixture
+            .content()
+            .load_sub::<Mesh>(&fixture.source, "TriangleNode")
+            .unwrap();
         assert_eq!(first.vertices().len(), second.vertices().len());
         assert_eq!(fs::metadata(cache).unwrap().modified().unwrap(), marked);
 
         let fixture = Fixture::new(binary);
-        fixture.content().load_sub::<Material>(&fixture.source, "Paint").unwrap();
+        fixture
+            .content()
+            .load_sub::<Material>(&fixture.source, "Paint")
+            .unwrap();
         let cache = fixture.cache_file();
         let marked = mark_cache(&cache);
-        let material = fixture.content().load_sub::<Material>(&fixture.source, "Paint").unwrap();
+        let material = fixture
+            .content()
+            .load_sub::<Material>(&fixture.source, "Paint")
+            .unwrap();
         assert_eq!(material.base_texture().width(), 2);
         assert_eq!(fs::metadata(cache).unwrap().modified().unwrap(), marked);
 
         let fixture = Fixture::new(binary);
-        fixture.content().load_sub::<Texture>(&fixture.source, "Surface").unwrap();
+        fixture
+            .content()
+            .load_sub::<Texture>(&fixture.source, "Surface")
+            .unwrap();
         let cache = fixture.cache_file();
         let marked = mark_cache(&cache);
-        let texture = fixture.content().load_sub::<Texture>(&fixture.source, "Surface").unwrap();
+        let texture = fixture
+            .content()
+            .load_sub::<Texture>(&fixture.source, "Surface")
+            .unwrap();
         assert_eq!((texture.width(), texture.height()), (2, 2));
         assert_eq!(fs::metadata(cache).unwrap().modified().unwrap(), marked);
     }

@@ -12,7 +12,6 @@ use super::{Color, Texture};
 
 /// Describes the surface appearance used to render a mesh.
 #[derive(Debug)]
-/// Physically based surface material controlling color, metallicity, roughness, emission, and normal mapping.
 pub struct Material {
     base_texture: Texture,
     base_color: Color,
@@ -25,7 +24,7 @@ pub struct Material {
 }
 
 impl Material {
-    /// Creates a material using the given base texture.
+    /// Creates a material using a base-color texture, metallic factor zero, roughness one, and no emission.
     pub fn new(base_texture: Texture) -> Self {
         Self {
             base_texture,
@@ -39,17 +38,23 @@ impl Material {
         }
     }
 
-    /// Base-color texture.
+    /// Base-color texture sampled by the material.
     pub fn base_texture(&self) -> &Texture {
         &self.base_texture
     }
 
-    /// Tangent-space normal map.
-    pub fn normal_texture(&self) -> &Texture { &self.normal_texture }
+    /// Tangent-space normal map; RGB encodes a direction from -1 to 1.
+    pub fn normal_texture(&self) -> &Texture {
+        &self.normal_texture
+    }
     /// Sets the tangent-space normal map.
-    pub fn set_normal_texture(&mut self, texture: Texture) { self.normal_texture = texture; }
-    /// Normal-map strength.
-    pub fn normal_strength(&self) -> f32 { self.normal_strength }
+    pub fn set_normal_texture(&mut self, texture: Texture) {
+        self.normal_texture = texture;
+    }
+    /// Finite multiplier applied to the normal map's XY components; zero disables perturbation.
+    pub fn normal_strength(&self) -> f32 {
+        self.normal_strength
+    }
     /// Sets normal-map strength.
     pub fn set_normal_strength(&mut self, strength: f32) -> OxideResult<()> {
         if !strength.is_finite() {
@@ -62,7 +67,7 @@ impl Material {
         Ok(())
     }
 
-    /// Base-color multiplier.
+    /// RGBA multiplier applied to the base-color texture.
     pub fn base_color(&self) -> Color {
         self.base_color
     }
@@ -72,7 +77,7 @@ impl Material {
         self.base_color = color;
     }
 
-    /// Metallic factor from 0 to 1.
+    /// Metallic factor in `[0, 1]`: zero is dielectric and one is metallic.
     pub fn metallic(&self) -> f32 {
         self.metallic
     }
@@ -84,7 +89,7 @@ impl Material {
         Ok(())
     }
 
-    /// Perceptual roughness from 0 to 1.
+    /// Perceptual roughness in `[0, 1]`: zero is smooth and one is fully rough.
     pub fn roughness(&self) -> f32 {
         self.roughness
     }
@@ -96,7 +101,7 @@ impl Material {
         Ok(())
     }
 
-    /// Emissive color.
+    /// RGB color emitted by the surface, multiplied by emissive strength.
     pub fn emissive_color(&self) -> Color {
         self.emissive_color
     }
@@ -106,7 +111,7 @@ impl Material {
         self.emissive_color = color;
     }
 
-    /// Emissive multiplier.
+    /// Finite, non-negative multiplier applied to the emissive color.
     pub fn emissive_strength(&self) -> f32 {
         self.emissive_strength
     }
@@ -124,7 +129,7 @@ impl Material {
         Ok(())
     }
 
-    /// Creates a solid-color material.
+    /// Creates an untextured-looking material from a solid-color base texture.
     pub fn solid(color: Color) -> Self {
         let mut material = Self::new(Texture::solid(Color::WHITE));
         material.base_color = color;
@@ -144,21 +149,35 @@ fn validate_unit(argument: &'static str, value: f32) -> OxideResult<()> {
 }
 
 impl ContentAssetInternal for Material {
-    fn asset_type_name() -> &'static str { "Material" }
-    fn supports_extension(extension: &str) -> bool { matches!(extension, "gltf" | "glb") }
+    fn asset_type_name() -> &'static str {
+        "Material"
+    }
+    fn supports_extension(extension: &str) -> bool {
+        matches!(extension, "gltf" | "glb")
+    }
     fn import(path: &Path, subobject: &str) -> ContentResult<Self> {
         crate::content::import_gltf_material(path, subobject)
     }
-    fn compiled_asset_type() -> AssetType { AssetType::Material }
-    fn compiler_version() -> u32 { 3 }
+    fn compiled_asset_type() -> AssetType {
+        AssetType::Material
+    }
+    fn compiler_version() -> u32 {
+        3
+    }
 
     fn write_compiled(&self, writer: &mut impl Write) -> ContentResult<()> {
         for value in [
-            self.base_color.r, self.base_color.g, self.base_color.b, self.base_color.a,
+            self.base_color.r,
+            self.base_color.g,
+            self.base_color.b,
+            self.base_color.a,
             self.normal_strength,
-            self.metallic, self.roughness,
-            self.emissive_color.r, self.emissive_color.g,
-            self.emissive_color.b, self.emissive_color.a,
+            self.metallic,
+            self.roughness,
+            self.emissive_color.r,
+            self.emissive_color.g,
+            self.emissive_color.b,
+            self.emissive_color.a,
             self.emissive_strength,
         ] {
             writer.write_all(&value.to_le_bytes())?;
@@ -184,22 +203,25 @@ impl ContentAssetInternal for Material {
         }
 
         let base_color = Color::rgba(
-            read_f32(reader)?, read_f32(reader)?,
-            read_f32(reader)?, read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
         );
         let normal_strength = read_f32(reader)?;
         let metallic = read_f32(reader)?;
         let roughness = read_f32(reader)?;
         let emissive_color = Color::rgba(
-            read_f32(reader)?, read_f32(reader)?,
-            read_f32(reader)?, read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
         );
         let emissive_strength = read_f32(reader)?;
 
         let remaining = payload_size - PROPERTY_BYTES;
         let (base_texture, base_size) = read_embedded_texture(reader, remaining)?;
-        let (normal_texture, normal_size) =
-            read_embedded_texture(reader, remaining - base_size)?;
+        let (normal_texture, normal_size) = read_embedded_texture(reader, remaining - base_size)?;
 
         if base_size + normal_size != remaining {
             return Err(crate::content::ContentError::InvalidCache(
@@ -220,18 +242,16 @@ impl ContentAssetInternal for Material {
             crate::content::ContentError::InvalidCache("invalid roughness factor".into())
         })?;
         material.emissive_color = emissive_color;
-        material.set_emissive_strength(emissive_strength).map_err(|_| {
-            crate::content::ContentError::InvalidCache("invalid emissive strength".into())
-        })?;
+        material
+            .set_emissive_strength(emissive_strength)
+            .map_err(|_| {
+                crate::content::ContentError::InvalidCache("invalid emissive strength".into())
+            })?;
         Ok(material)
     }
 }
 
-
-fn write_embedded_texture(
-    texture: &Texture,
-    writer: &mut impl Write,
-) -> ContentResult<()> {
+fn write_embedded_texture(texture: &Texture, writer: &mut impl Write) -> ContentResult<()> {
     writer.write_all(&texture.width().to_le_bytes())?;
     writer.write_all(&texture.height().to_le_bytes())?;
     let pixels = texture.pixels();
@@ -243,10 +263,7 @@ fn write_embedded_texture(
     Ok(())
 }
 
-fn read_embedded_texture(
-    reader: &mut impl Read,
-    available: u64,
-) -> ContentResult<(Texture, u64)> {
+fn read_embedded_texture(reader: &mut impl Read, available: u64) -> ContentResult<(Texture, u64)> {
     const HEADER: u64 = 16;
     if available < HEADER {
         return Err(crate::content::ContentError::InvalidCache(
@@ -264,9 +281,11 @@ fn read_embedded_texture(
     let expected = u64::from(width)
         .checked_mul(u64::from(height))
         .and_then(|v| v.checked_mul(4))
-        .ok_or_else(|| crate::content::ContentError::InvalidCache(
-            "embedded texture dimensions overflow".into(),
-        ))?;
+        .ok_or_else(|| {
+            crate::content::ContentError::InvalidCache(
+                "embedded texture dimensions overflow".into(),
+            )
+        })?;
     if count != expected || HEADER + count > available {
         return Err(crate::content::ContentError::InvalidCache(
             "invalid embedded texture payload".into(),

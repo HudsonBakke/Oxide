@@ -6,7 +6,6 @@ use super::{Color, Texture};
 /// visible background textures are independent and both use equirectangular
 /// projection.
 #[derive(Debug, Clone)]
-/// Explicit ambient, image-based-lighting, and background settings for a scene.
 pub struct Environment {
     /// Constant ambient-light color.
     pub ambient_color: Color,
@@ -25,7 +24,7 @@ pub struct Environment {
 }
 
 impl Environment {
-    /// Public Oxide new API.
+    /// Creates explicit lighting and background settings; intensity multipliers must be finite and non-negative.
     pub fn new(
         ambient_color: Color,
         ambient_intensity: f32,

@@ -6,145 +6,69 @@ using Oxide.Graphics;
 using Oxide.Math;
 using Oxide.Collision;
 
-internal sealed class MyGame
-    : Game
+internal sealed class MyGame : Game
 {
     private bool? _previousCollision;
 
-    private readonly Camera _camera =
-        new();
+    private readonly Camera _camera = new();
 
-    private DirectionalLight _light =
-        new(
-            new Vec3(
-                1.0f,
-                -1.0f,
-                -1.0f
-            ),
-            Color.White,
-            1.0f
-        );
+    private DirectionalLight _light = new(new Vec3(1.0f, -1.0f, -1.0f), Color.White, 1.0f);
 
-    private readonly ContentManager
-        _content =
-            new();
+    private readonly ContentManager _content = new();
 
     private Mesh? _parentMesh;
     private Mesh? _childMesh;
 
     private Material? _material;
 
-    private Transform _parentTransform =
-        new();
+    private Transform _parentTransform = new();
 
-    private Transform _childTransform =
-        new();
+    private Transform _childTransform = new();
 
     protected override void Initialize()
     {
-        _camera.Position =
-            new Vec3(
-                0.0f,
-                0.0f,
-                5.0f
-            );
+        _camera.Position = new Vec3(0.0f, 0.0f, 5.0f);
 
-        Console.WriteLine(
-            $"Camera clips: " +
-            $"{_camera.NearPlane} - " +
-            $"{_camera.FarPlane}"
-        );
+        Console.WriteLine($"Camera clips: " + $"{_camera.NearPlane} - " + $"{_camera.FarPlane}");
 
-        _parentMesh =
-            _content.Load<Mesh>(
-                "../../../assets/blender_cube.glb"
-            );
+        _parentMesh = _content.Load<Mesh>("../../../assets/blender_cube.glb");
 
-        _childMesh =
-            _content.Load<Mesh>(
-                "../../../assets/blender_cube.glb"
-            );
+        _childMesh = _content.Load<Mesh>("../../../assets/blender_cube.glb");
 
-        _material =
-            _content.Load<Material>(
-                "../../../assets/textured_material_cube.glb"
-            );
+        _material = _content.Load<Material>("../../../assets/textured_material_cube.glb");
 
-        _parentTransform.Position =
-            new Vec3(
-                0.0f,
-                0.0f,
-                0.0f
-            );
+        _parentTransform.Position = new Vec3(0.0f, 0.0f, 0.0f);
 
-        _childTransform =
-            new Transform();
+        _childTransform = new Transform();
     }
 
-    protected override void Update(
-        GameTime time
-    )
+    protected override void Update(GameTime time)
     {
-        float x =
-            MathF.Sin(
-                (float)time.TotalSeconds
-            )
-            * 3.0f;
+        float x = MathF.Sin((float)time.TotalSeconds) * 3.0f;
 
-        _childTransform.Position =
-            new Vec3(
-                x,
-                0.0f,
-                0.0f
-            );
+        _childTransform.Position = new Vec3(x, 0.0f, 0.0f);
 
-        bool collision =
-            Collision.Collides(
-                _parentMesh!,
-                _parentTransform,
+        bool collision = Collision.Collides(_parentMesh!, _parentTransform,
 
-                _childMesh!,
-                _childTransform
-            );
+                                            _childMesh!, _childTransform);
 
-        if (_previousCollision
-            != collision)
+        if (_previousCollision != collision)
         {
-            Console.WriteLine(
-                collision
-                    ? "Cubes are colliding"
-                    : "Cubes are separated"
-            );
+            Console.WriteLine(collision ? "Cubes are colliding" : "Cubes are separated");
 
-            _previousCollision =
-                collision;
+            _previousCollision = collision;
         }
     }
 
-    protected override void Draw(
-        Graphics graphics
-    )
+    protected override void Draw(Graphics graphics)
     {
-        graphics.BindCamera(
-            _camera,
-            graphics.FullRect
-        );
+        graphics.BindCamera(_camera, graphics.FullRect);
 
-        graphics.AddLight(
-            _light
-        );
+        graphics.AddLight(_light);
 
-        graphics.DrawMesh(
-            _parentMesh!,
-            _material!,
-            _parentTransform
-        );
+        graphics.DrawMesh(_parentMesh!, _material!, _parentTransform);
 
-        graphics.DrawMesh(
-            _childMesh!,
-            _material!,
-            _childTransform
-        );
+        graphics.DrawMesh(_childMesh!, _material!, _childTransform);
     }
 }
 
@@ -152,20 +76,14 @@ internal static class Program
 {
     private static void Main()
     {
-        using var game =
-            new MyGame();
+        using var game = new MyGame();
 
-        game.Run(
-            new AppConfig {
-                Title =
-                    "Oxide.NET Graphics Test",
+        game.Run(new AppConfig {
+            Title = "Oxide.NET Graphics Test",
 
-                Width =
-                    1280,
+            Width = 1280,
 
-                Height =
-                    720,
-            }
-        );
+            Height = 720,
+        });
     }
 }

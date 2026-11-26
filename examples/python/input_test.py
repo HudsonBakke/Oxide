@@ -27,10 +27,7 @@ class InputGame(Game):
         if mouse.delta.x != 0.0 or mouse.delta.y != 0.0:
             print("Mouse delta:", mouse.delta)
 
-        if (
-            mouse.scroll_delta.x != 0.0
-            or mouse.scroll_delta.y != 0.0
-        ):
+        if mouse.scroll_delta.x != 0.0 or mouse.scroll_delta.y != 0.0:
             print("Scroll:", mouse.scroll_delta)
 
 

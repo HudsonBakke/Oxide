@@ -1,20 +1,21 @@
+//! Pixel rectangles for camera viewports.
+
 /// A rectangular region defined by its position and dimensions.
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-/// Rectangle expressed by position and size, commonly used for camera viewports.
 pub struct Rect {
-    /// Public Oxide x API.
+    /// Left edge in physical pixels.
     pub x: f32,
-    /// Public Oxide y API.
+    /// Top edge in physical pixels.
     pub y: f32,
-    /// Public Oxide width API.
+    /// Horizontal extent in physical pixels.
     pub width: f32,
-    /// Public Oxide height API.
+    /// Vertical extent in physical pixels.
     pub height: f32,
 }
 
 impl Rect {
-    /// Public Oxide fn API.
+    /// Creates a pixel rectangle from top-left coordinates and width/height extents.
     pub const fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
         Self {
             x,
@@ -24,7 +25,7 @@ impl Rect {
         }
     }
 
-    /// Returns this rectangle's width-to-height ratio.
+    /// Width divided by height; height must be nonzero for a finite result.
     pub fn aspect_ratio(&self) -> f32 {
         self.width / self.height
     }

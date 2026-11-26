@@ -1,30 +1,25 @@
 namespace Oxide.Graphics;
 
-/// <summary>Explicit ambient, image-based-lighting, and background settings for a scene.</summary>
+/// <summary>Independent ambient, image-based lighting, and equirectangular background settings.</summary>
 public sealed class Environment
 {
-    /// <summary>Color of the constant ambient-light contribution.</summary>
+    /// <summary>RGB color of constant ambient lighting.</summary>
     public Color AmbientColor { get; }
-    /// <summary>Non-negative multiplier for ambient lighting.</summary>
+    /// <summary>Finite, non-negative multiplier for constant ambient lighting.</summary>
     public float AmbientIntensity { get; }
-    /// <summary>Optional equirectangular texture used for image-based lighting.</summary>
+    /// <summary>Optional equirectangular texture used for diffuse and specular image-based lighting.</summary>
     public Texture? EnvironmentTexture { get; }
-    /// <summary>Non-negative multiplier for image-based lighting.</summary>
+    /// <summary>Finite, non-negative multiplier for image-based lighting.</summary>
     public float EnvironmentIntensity { get; }
-    /// <summary>Optional equirectangular texture rendered as the visible background.</summary>
+    /// <summary>Optional equirectangular texture displayed behind geometry, independent of lighting.</summary>
     public Texture? BackgroundTexture { get; }
-    /// <summary>Fallback clear color used when no background texture is supplied.</summary>
+    /// <summary>Clear color used when no background texture is displayed.</summary>
     public Color BackgroundColor { get; }
 
-    /// <summary>Initializes or accesses Environment.</summary>
-    public Environment(
-        Color ambientColor,
-        float ambientIntensity,
-        Texture? environmentTexture,
-        float environmentIntensity,
-        Texture? backgroundTexture,
-        Color backgroundColor
-    )
+    /// <summary>Creates explicit lighting and background settings; intensity multipliers must be finite and non-negative.</summary>
+    public Environment(Color ambientColor, float ambientIntensity, Texture? environmentTexture,
+                       float environmentIntensity, Texture? backgroundTexture,
+                       Color backgroundColor)
     {
         if (!float.IsFinite(ambientIntensity) || ambientIntensity < 0.0f)
             throw new ArgumentOutOfRangeException(nameof(ambientIntensity));

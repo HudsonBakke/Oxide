@@ -1,9 +1,10 @@
+//! Two-component vector arithmetic.
+
 use std::ops::{Add, Div, Mul, Sub};
 
 /// A 2-dimensional vector
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-/// Two-component floating-point vector.
 pub struct Vec2 {
     /// The X component of the vector
     pub x: f32,
@@ -13,17 +14,17 @@ pub struct Vec2 {
 }
 
 impl Vec2 {
-    /// Creates a new vector with the given components
+    /// Creates a vector from its X and Y components.
     pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
 
-    /// Returns the magnitude of this vector
+    /// Euclidean magnitude of the components.
     pub fn length(&self) -> f32 {
         (self.x * self.x + self.y * self.y).sqrt()
     }
 
-    /// Returns a new vector which is a normalized copy of this vector
+    /// Returns a unit-length copy; a zero-length vector remains zero.
     pub fn normalized(&self) -> Self {
         let length = self.length();
 
@@ -37,7 +38,7 @@ impl Vec2 {
         }
     }
 
-    /// Normalizes this vector in-place
+    /// Normalizes the vector in place; leaves a zero-length vector unchanged.
     pub fn normalize(&mut self) {
         let length = self.length();
 
@@ -49,7 +50,7 @@ impl Vec2 {
         self.y /= length;
     }
 
-    /// Returns the dot product of 2 vectors
+    /// Returns the scalar dot product with the other vector.
     pub fn dot(&self, other: &Self) -> f32 {
         self.x * other.x + self.y * other.y
     }

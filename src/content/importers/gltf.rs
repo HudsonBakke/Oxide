@@ -251,10 +251,12 @@ pub(crate) fn import_material(path: &Path, subobject: &str) -> ContentResult<Mat
 
     if let Some(normal_info) = material.normal_texture() {
         let source_index = normal_info.texture().source().index();
-        let image = images.get(source_index).ok_or_else(|| ContentError::ImportFailed {
-            path: path.to_path_buf(),
-            message: "glTF normal texture references missing image data".into(),
-        })?;
+        let image = images
+            .get(source_index)
+            .ok_or_else(|| ContentError::ImportFailed {
+                path: path.to_path_buf(),
+                message: "glTF normal texture references missing image data".into(),
+            })?;
         let pixels = convert_image_to_rgba(image, path)?;
         result.set_normal_texture(Texture::from_rgba(image.width, image.height, pixels));
         result
@@ -266,11 +268,7 @@ pub(crate) fn import_material(path: &Path, subobject: &str) -> ContentResult<Mat
     }
 
     let emissive = material.emissive_factor();
-    result.set_emissive_color(Color::rgb(
-        emissive[0],
-        emissive[1],
-        emissive[2],
-    ));
+    result.set_emissive_color(Color::rgb(emissive[0], emissive[1], emissive[2]));
 
     if emissive != [0.0, 0.0, 0.0] {
         result

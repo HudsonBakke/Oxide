@@ -1,0 +1,8 @@
+BasedOnStyle: Microsoft
+ColumnLimit: 100
+SortIncludes: Never
+ReflowComments: false
+SeparateDefinitionBlocks: Always
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false

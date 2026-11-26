@@ -10,7 +10,6 @@ const LIGHT_EPSILON: f32 = 1.0e-6;
 /// A light emitted outward in all directions from one point.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-/// Omnidirectional light emitted from a point in world space.
 pub struct PointLight {
     position: Vec3,
     color: Color,
@@ -18,7 +17,7 @@ pub struct PointLight {
 }
 
 impl PointLight {
-    /// Public Oxide new API.
+    /// Creates a point light; intensity must not be negative.
     pub fn new(position: Vec3, color: Color, intensity: f32) -> OxideResult<Self> {
         if intensity < 0.0 {
             return Err(OxideError::InvalidArgument {
@@ -44,7 +43,7 @@ impl PointLight {
         self.position = position;
     }
 
-    /// Light or material color.
+    /// RGB light color; alpha is not used for lighting.
     pub fn color(&self) -> Color {
         self.color
     }
@@ -77,7 +76,6 @@ impl PointLight {
 /// A light emitted from one point within a directional cone.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-/// Cone-shaped light with position, direction, angle, color, and intensity.
 pub struct SpotLight {
     position: Vec3,
     direction: Vec3,
@@ -88,7 +86,7 @@ pub struct SpotLight {
 }
 
 impl SpotLight {
-    /// Public Oxide new API.
+    /// Creates a cone light; requires a nonzero direction, non-negative intensity, and half-angle in (0, pi) radians.
     pub fn new(
         position: Vec3,
         direction: Vec3,
@@ -138,7 +136,7 @@ impl SpotLight {
         self.position = position;
     }
 
-    /// Normalized light or mesh direction.
+    /// Normalized world-space direction in which the light rays travel.
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
@@ -178,7 +176,7 @@ impl SpotLight {
         Ok(())
     }
 
-    /// Light or material color.
+    /// RGB light color; alpha is not used for lighting.
     pub fn color(&self) -> Color {
         self.color
     }
@@ -213,7 +211,6 @@ impl SpotLight {
 /// Directional lights have no position or distance attenuation.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-/// Infinitely distant light whose rays share one world-space direction.
 pub struct DirectionalLight {
     direction: Vec3,
     color: Color,
@@ -221,7 +218,7 @@ pub struct DirectionalLight {
 }
 
 impl DirectionalLight {
-    /// Public Oxide new API.
+    /// Creates a directional light; requires a nonzero direction and non-negative intensity.
     pub fn new(direction: Vec3, color: Color, intensity: f32) -> OxideResult<Self> {
         if direction.length() <= LIGHT_EPSILON {
             return Err(OxideError::InvalidArgument {
@@ -244,7 +241,7 @@ impl DirectionalLight {
         })
     }
 
-    /// Normalized light or mesh direction.
+    /// Normalized world-space direction in which the light rays travel.
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
@@ -263,7 +260,7 @@ impl DirectionalLight {
         Ok(())
     }
 
-    /// Light or material color.
+    /// RGB light color; alpha is not used for lighting.
     pub fn color(&self) -> Color {
         self.color
     }
@@ -297,14 +294,15 @@ impl DirectionalLight {
 // Sealed LightSource implementation
 // ---------------------------------------------------------
 
-/// Public Oxide LightSource API.
+/// Sealed trait implemented by point, spot, and directional lights accepted by Graphics.
 pub trait LightSource: private::LightSourceInternal + Copy {}
 
 pub(crate) use private::LightSourceInternal;
 
 mod private {
-    /// Public Oxide LightSourceInternal API.
+    /// Internal dispatch from a sealed light type into the graphics subsystem.
     pub trait LightSourceInternal: Copy {
+        /// Adds this concrete light to the active graphics lighting state.
         fn add_to_graphics(&self, graphics: &mut crate::graphics::Graphics);
     }
 }

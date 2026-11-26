@@ -6,19 +6,25 @@ use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDel
 
 use crate::math::Vec2;
 
+/// Physical mouse button, including OS-specific additional button indices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-/// Public Oxide MouseButton API.
 pub enum MouseButton {
+    /// Left mouse button.
     Left,
+    /// Right mouse button.
     Right,
+    /// Middle mouse button.
     Middle,
+    /// Back mouse button.
     Back,
+    /// Forward mouse button.
     Forward,
+    /// Additional OS button identified by its numeric index.
     Other(u16),
 }
 
-#[derive(Debug, Clone)]
 /// Snapshot of mouse buttons, cursor motion, and scroll motion for the current frame.
+#[derive(Debug, Clone)]
 pub struct MouseState {
     current: HashSet<MouseButton>,
     previous: HashSet<MouseButton>,
@@ -51,15 +57,11 @@ impl MouseState {
     }
 
     /// Returns whether the button transitioned from up to down this frame.
-
-
     pub fn is_button_pressed(&self, button: MouseButton) -> bool {
         self.current.contains(&button) && !self.previous.contains(&button)
     }
 
     /// Returns whether the button transitioned from down to up this frame.
-
-
     pub fn is_button_released(&self, button: MouseButton) -> bool {
         !self.current.contains(&button) && self.previous.contains(&button)
     }
@@ -127,8 +129,7 @@ pub(crate) fn handle_cursor_moved(position: PhysicalPosition<f64>) {
 pub(crate) fn handle_mouse_motion(delta: (f64, f64)) {
     let mut mouse = lock_mouse();
 
-    mouse.delta = mouse.delta
-        + Vec2::new(delta.0 as f32, delta.1 as f32);
+    mouse.delta = mouse.delta + Vec2::new(delta.0 as f32, delta.1 as f32);
 }
 
 pub(crate) fn handle_mouse_wheel(delta: MouseScrollDelta) {

@@ -1,40 +1,39 @@
 /// A linear RGBA color.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
-/// Linear RGBA color with floating-point channels.
 pub struct Color {
-    /// Public Oxide r API.
+    /// Red component.
     pub r: f32,
-    /// Public Oxide g API.
+    /// Green component.
     pub g: f32,
-    /// Public Oxide b API.
+    /// Blue component.
     pub b: f32,
-    /// Public Oxide a API.
+    /// Alpha component: zero is transparent and one is opaque.
     pub a: f32,
 }
 
 impl Color {
-    /// Public Oxide BLACK API.
+    /// Opaque black.
     pub const BLACK: Self = Self::rgb(0.0, 0.0, 0.0);
-    /// Public Oxide WHITE API.
+    /// Opaque white.
     pub const WHITE: Self = Self::rgb(1.0, 1.0, 1.0);
 
-    /// Public Oxide RED API.
+    /// Opaque red.
     pub const RED: Self = Self::rgb(1.0, 0.0, 0.0);
-    /// Public Oxide GREEN API.
+    /// Opaque green.
     pub const GREEN: Self = Self::rgb(0.0, 1.0, 0.0);
-    /// Public Oxide BLUE API.
+    /// Opaque blue.
     pub const BLUE: Self = Self::rgb(0.0, 0.0, 1.0);
 
-    /// Public Oxide YELLOW API.
+    /// Opaque yellow.
     pub const YELLOW: Self = Self::rgb(1.0, 1.0, 0.0);
 
-    /// Public Oxide fn API.
+    /// Creates an RGB color with alpha set to one.
     pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
         Self { r, g, b, a: 1.0 }
     }
 
-    /// Public Oxide fn API.
+    /// Creates a color from red, green, blue, and alpha components without clamping.
     pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }

@@ -5,7 +5,7 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-/// <summary>Infinitely distant light whose rays share one direction.</summary>
+/// <summary>Light whose rays travel in one world-space direction, with no distance attenuation.</summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct DirectionalLight
 {
@@ -13,67 +13,50 @@ public struct DirectionalLight
     private Color _color;
     private float _intensity;
 
-    /// <summary>Creates or accesses DirectionalLight.</summary>
-    public DirectionalLight(
-        Vec3 direction,
-        Color color,
-        float intensity
-    )
+    /// <summary>Creates a directional light; requires a nonzero direction and non-negative intensity.</summary>
+    public DirectionalLight(Vec3 direction, Color color, float intensity)
     {
-        if (direction.Length
-            <= 1.0e-6f)
+        if (direction.Length <= 1.0e-6f)
         {
-            throw new ArgumentException(
-                "Directional light direction cannot be zero.",
-                nameof(direction)
-            );
+            throw new ArgumentException("Directional light direction cannot be zero.",
+                                        nameof(direction));
         }
 
         if (intensity < 0.0f)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(intensity),
-                "Light intensity cannot be negative."
-            );
+            throw new ArgumentOutOfRangeException(nameof(intensity),
+                                                  "Light intensity cannot be negative.");
         }
 
-        _direction =
-            direction.Normalized();
+        _direction = direction.Normalized();
 
         _color = color;
         _intensity = intensity;
     }
 
-    /// <summary>Normalized direction in which the light travels.</summary>
+    /// <summary>Normalized world-space direction in which light rays travel.</summary>
     public Vec3 Direction
     {
-        readonly get =>
-            _direction;
+        readonly get => _direction;
 
         set
         {
-            if (value.Length
-                <= 1.0e-6f)
+            if (value.Length <= 1.0e-6f)
             {
-                throw new ArgumentException(
-                    "Directional light direction cannot be zero.",
-                    nameof(value)
-                );
+                throw new ArgumentException("Directional light direction cannot be zero.",
+                                            nameof(value));
             }
 
-            _direction =
-                value.Normalized();
+            _direction = value.Normalized();
         }
     }
-
-    /// <summary>Light color.</summary>
+    /// <summary>RGB light color; alpha is not used for lighting.</summary>
     public Color Color
     {
         readonly get => _color;
         set => _color = value;
     }
-
-    /// <summary>Non-negative light intensity.</summary>
+    /// <summary>Non-negative light intensity; point and spot lights attenuate with squared distance.</summary>
     public float Intensity
     {
         readonly get => _intensity;
@@ -82,10 +65,8 @@ public struct DirectionalLight
         {
             if (value < 0.0f)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    "Light intensity cannot be negative."
-                );
+                throw new ArgumentOutOfRangeException(nameof(value),
+                                                      "Light intensity cannot be negative.");
             }
 
             _intensity = value;

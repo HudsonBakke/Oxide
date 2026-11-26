@@ -1,3 +1,5 @@
+//! Physical keyboard and mouse snapshots with held-state and per-frame transition queries.
+
 mod keyboard;
 mod mouse;
 
