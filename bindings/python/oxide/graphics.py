@@ -140,6 +140,7 @@ class Environment:
         ambient_intensity: float,
         environment_texture: Texture | None,
         environment_intensity: float,
+        background_texture: Texture | None,
         background_color: Color,
     ) -> None:
         if not math.isfinite(ambient_intensity) or ambient_intensity < 0.0:
@@ -151,6 +152,7 @@ class Environment:
         self.ambient_intensity = float(ambient_intensity)
         self.environment_texture = environment_texture
         self.environment_intensity = float(environment_intensity)
+        self.background_texture = background_texture
         self.background_color = background_color
 
 
