@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::{
     content::{ContentError, ContentResult},
     graphics::{Color, Material, Mesh, Texture, Vertex},
+    math::Vec4,
     math::{Vec2, Vec3},
 };
 
@@ -247,6 +248,22 @@ pub(crate) fn import_material(path: &Path, subobject: &str) -> ContentResult<Mat
     result
         .set_roughness(pbr.roughness_factor())
         .expect("glTF roughness factor is defined in the unit interval");
+
+    if let Some(normal_info) = material.normal_texture() {
+        let source_index = normal_info.texture().source().index();
+        let image = images.get(source_index).ok_or_else(|| ContentError::ImportFailed {
+            path: path.to_path_buf(),
+            message: "glTF normal texture references missing image data".into(),
+        })?;
+        let pixels = convert_image_to_rgba(image, path)?;
+        result.set_normal_texture(Texture::from_rgba(image.width, image.height, pixels));
+        result
+            .set_normal_strength(normal_info.scale())
+            .map_err(|error| ContentError::ImportFailed {
+                path: path.to_path_buf(),
+                message: error.to_string(),
+            })?;
+    }
 
     let emissive = material.emissive_factor();
     result.set_emissive_color(Color::rgb(
@@ -628,6 +645,7 @@ fn import_primitive(
         .collect();
 
     let normals: Option<Vec<[f32; 3]>> = reader.read_normals().map(|normals| normals.collect());
+    let tangents: Option<Vec<[f32; 4]>> = reader.read_tangents().map(|values| values.collect());
 
     let tex_coords: Vec<[f32; 2]> = match reader.read_tex_coords(0) {
         Some(tex_coords) => tex_coords.into_f32().collect(),
@@ -641,6 +659,15 @@ fn import_primitive(
                 path: path.to_path_buf(),
 
                 message: "glTF NORMAL count does not match POSITION count".into(),
+            });
+        }
+    }
+
+    if let Some(tangents) = &tangents {
+        if tangents.len() != positions.len() {
+            return Err(ContentError::ImportFailed {
+                path: path.to_path_buf(),
+                message: "glTF TANGENT count does not match POSITION count".into(),
             });
         }
     }
@@ -676,11 +703,26 @@ fn import_primitive(
             None => Vec3::new(0.0, 0.0, 0.0),
         };
 
-        vertices.push(Vertex::new(
-            transformed_position,
-            transformed_normal,
-            Vec2::new(tex_coord[0], tex_coord[1]),
-        ));
+        let vertex = if let Some(tangents) = &tangents {
+            let tangent = transform_normal(
+                normal_transform,
+                [tangents[i][0], tangents[i][1], tangents[i][2]],
+            );
+            Vertex::with_tangent(
+                transformed_position,
+                transformed_normal,
+                Vec2::new(tex_coord[0], tex_coord[1]),
+                Vec4::new(tangent.x, tangent.y, tangent.z, tangents[i][3]),
+            )
+        } else {
+            Vertex::new(
+                transformed_position,
+                transformed_normal,
+                Vec2::new(tex_coord[0], tex_coord[1]),
+            )
+        };
+
+        vertices.push(vertex);
     }
 
     if let Some(primitive_indices) = reader.read_indices() {

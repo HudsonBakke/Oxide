@@ -623,5 +623,14 @@ internal static class NativeMethods
         float value
     );
 
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern unsafe OxideStatus oxide_texture_create_rgba(
+        uint width,
+        uint height,
+        byte* pixels,
+        nuint pixelCount,
+        out NativeTextureHandle result
+    );
+
 }
 

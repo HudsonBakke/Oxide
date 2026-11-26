@@ -15,6 +15,7 @@ cbuffer ViewConstants : register(b1)
 };
 
 Texture2D base_texture : register(t0);
+Texture2D normal_texture : register(t1);
 SamplerState base_sampler : register(s0);
 
 struct PointLight
@@ -53,6 +54,7 @@ struct VertexInput
     float3 position  : POSITION;
     float3 normal    : NORMAL;
     float2 tex_coord : TEXCOORD;
+    float4 tangent   : TANGENT;
 };
 
 struct VertexOutput
@@ -61,6 +63,8 @@ struct VertexOutput
     float3 world_position : POSITION0;
     float3 normal         : NORMAL;
     float2 tex_coord      : TEXCOORD;
+    float3 tangent        : TANGENT0;
+    float3 bitangent      : TANGENT1;
 };
 
 VertexOutput vs_main(VertexInput input)
@@ -96,8 +100,17 @@ VertexOutput vs_main(VertexInput input)
             view_position
         );
 
-    output.tex_coord =
-        input.tex_coord;
+    output.tex_coord = input.tex_coord;
+
+    float3 world_tangent = normalize(
+        mul(normal_matrix, float4(input.tangent.xyz, 0.0)).xyz
+    );
+    world_tangent = normalize(
+        world_tangent - output.normal * dot(output.normal, world_tangent)
+    );
+    output.tangent = world_tangent;
+    output.bitangent =
+        normalize(cross(output.normal, world_tangent)) * input.tangent.w;
 
     return output;
 }
@@ -148,7 +161,21 @@ float3 evaluate_brdf(
 
 float4 ps_main(VertexOutput input) : SV_TARGET
 {
-    float3 normal = normalize(input.normal);
+    float3 geometric_normal = normalize(input.normal);
+    float3 tangent = normalize(input.tangent);
+    float3 bitangent = normalize(input.bitangent);
+
+    float3 sampled_normal =
+        normal_texture.Sample(base_sampler, input.tex_coord).xyz * 2.0 - 1.0;
+    sampled_normal.xy *= material_factors.w;
+    sampled_normal = normalize(sampled_normal);
+
+    float3 normal = normalize(
+        tangent * sampled_normal.x
+        + bitangent * sampled_normal.y
+        + geometric_normal * sampled_normal.z
+    );
+
     float3 view_direction =
         normalize(camera_position.xyz - input.world_position);
 

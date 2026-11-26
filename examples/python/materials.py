@@ -1,7 +1,7 @@
 import math
 
 from oxide.app import AppConfig, Game
-from oxide.content import Material, Mesh, Vertex
+from oxide.content import Material, Mesh, Texture, Vertex
 from oxide.graphics import Camera, Color, DirectionalLight, Graphics, PointLight
 from oxide.math import Transform, Vec2, Vec3
 
@@ -38,6 +38,29 @@ def make_sphere(segments: int, rings: int) -> Mesh:
     return Mesh(vertices, indices)
 
 
+def procedural_normal_map() -> Texture:
+    size = 64
+    pixels = bytearray()
+
+    for y in range(size):
+        for x in range(size):
+            fx = x / size * math.tau * 4
+            fy = y / size * math.tau * 4
+            normal = Vec3(
+                -math.cos(fx) * 0.45,
+                -math.cos(fy) * 0.45,
+                1.0,
+            ).normalized()
+            pixels.extend((
+                int((normal.x * 0.5 + 0.5) * 255),
+                int((normal.y * 0.5 + 0.5) * 255),
+                int((normal.z * 0.5 + 0.5) * 255),
+                255,
+            ))
+
+    return Texture.from_rgba(size, size, pixels)
+
+
 class MaterialTest(Game):
     def __init__(self) -> None:
         super().__init__()
@@ -51,6 +74,11 @@ class MaterialTest(Game):
                 material.metallic = metallic / (STEPS - 1)
                 material.roughness = roughness / (STEPS - 1)
                 self.materials.append(material)
+
+        self.normal_mapped = Material.solid(Color.rgb(0.32,0.42,0.72))
+        self.normal_mapped.roughness = 0.55
+        self.normal_mapped.normal_texture = procedural_normal_map()
+        self.normal_mapped.normal_strength = 1.0
 
         self.emissive = Material.solid(Color.rgb(0.08,0.08,0.08))
         self.emissive.emissive_color = Color.rgb(0.1,0.65,1.0)
@@ -91,9 +119,18 @@ class MaterialTest(Game):
 
         graphics.draw_mesh(
             self.sphere,
+            self.normal_mapped,
+            Transform(
+                position=Vec3(-3,-7,0),
+                scale=Vec3(1.8,1.8,1.8),
+            ),
+        )
+
+        graphics.draw_mesh(
+            self.sphere,
             self.emissive,
             Transform(
-                position=Vec3(0,-7,0),
+                position=Vec3(3,-7,0),
                 scale=Vec3(1.8,1.8,1.8),
             ),
         )

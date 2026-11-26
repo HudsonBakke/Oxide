@@ -186,6 +186,44 @@ pub extern "C" fn oxide_material_base_texture(
 }
 
 
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_material_normal_texture(
+    material: OxideMaterialHandle,
+    result: *mut OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() {
+            set_last_error("result pointer cannot be null");
+            return OxideStatus::InvalidArgument;
+        }
+        let Some(texture) = with_material(material, |m| m.normal_texture().clone()) else {
+            set_last_error("material handle is invalid");
+            return OxideStatus::InvalidArgument;
+        };
+        unsafe { *result = insert_texture(texture); }
+        OxideStatus::Ok
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_material_set_normal_texture(
+    material: OxideMaterialHandle,
+    texture: OxideTextureHandle,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(texture) = with_texture(texture, |t| t.clone()) else {
+            set_last_error("texture handle is invalid");
+            return OxideStatus::InvalidArgument;
+        };
+        let Some(()) = with_material_mut(material, |m| m.set_normal_texture(texture)) else {
+            set_last_error("material handle is invalid");
+            return OxideStatus::InvalidArgument;
+        };
+        OxideStatus::Ok
+    })
+}
+
 macro_rules! material_color_property {
     ($get:ident, $set:ident, $getter:ident, $setter:ident) => {
         #[unsafe(no_mangle)]
@@ -265,6 +303,7 @@ macro_rules! material_float_property {
     };
 }
 
+material_float_property!(oxide_material_get_normal_strength, oxide_material_set_normal_strength, normal_strength, set_normal_strength);
 material_float_property!(oxide_material_get_metallic, oxide_material_set_metallic, metallic, set_metallic);
 material_float_property!(oxide_material_get_roughness, oxide_material_set_roughness, roughness, set_roughness);
 material_float_property!(
@@ -726,8 +765,8 @@ pub extern "C" fn oxide_mesh_set_vertices(
 
             if count > 0 {
                 let source = unsafe { std::slice::from_raw_parts(vertices, count) };
-
                 mesh.vertices_mut().copy_from_slice(source);
+                mesh.recalculate_tangents();
             }
 
             true
@@ -767,8 +806,8 @@ pub extern "C" fn oxide_mesh_set_indices(
 
             if count > 0 {
                 let source = unsafe { std::slice::from_raw_parts(indices, count) };
-
                 mesh.indices_mut().copy_from_slice(source);
+                mesh.recalculate_tangents();
             }
 
             true

@@ -310,6 +310,28 @@ class Texture(_OwnedResource):
     )
 
     @classmethod
+    def from_rgba(
+        cls,
+        width: int,
+        height: int,
+        pixels: bytes | bytearray,
+    ) -> Texture:
+        data = bytes(pixels)
+        array_type = ctypes.c_uint8 * len(data)
+        array = array_type.from_buffer_copy(data)
+        handle = _native.NativeTextureHandle()
+        _native.check(
+            _native.lib.oxide_texture_create_rgba(
+                width,
+                height,
+                array,
+                len(data),
+                ctypes.byref(handle),
+            )
+        )
+        return cls._from_handle(handle)
+
+    @classmethod
     def solid(cls, color) -> Texture:
         # Imported lazily to avoid graphics.py -> resources.py
         # import cycles during module initialization.

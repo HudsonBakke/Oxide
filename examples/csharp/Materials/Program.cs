@@ -8,6 +8,7 @@ internal sealed class MaterialTest : Game
     private readonly Camera _camera = new();
     private readonly Mesh _sphere = MakeSphere(24, 16);
     private readonly List<Material> _materials = new();
+    private readonly Material _normalMapped = Material.Solid(new Color(0.32f,0.42f,0.72f,1));
     private readonly Material _emissive = Material.Solid(new Color(0.08f,0.08f,0.08f,1));
     private readonly PointLight _light = new(new Vec3(-2.5f,5.5f,5), Color.White, 65);
     private readonly DirectionalLight _fill = new(
@@ -18,6 +19,9 @@ internal sealed class MaterialTest : Game
 
     public MaterialTest()
     {
+        _normalMapped.Roughness = 0.55f;
+        _normalMapped.NormalTexture = ProceduralNormalMap();
+        _normalMapped.NormalStrength = 1.0f;
         for (int roughness = 0; roughness < Steps; roughness++)
         for (int metallic = 0; metallic < Steps; metallic++)
         {
@@ -65,12 +69,48 @@ internal sealed class MaterialTest : Game
 
         graphics.DrawMesh(
             _sphere,
-            _emissive,
+            _normalMapped,
             new Transform {
-                Position = new Vec3(0,-7,0),
+                Position = new Vec3(-3,-7,0),
                 Scale = new Vec3(1.8f,1.8f,1.8f),
             }
         );
+
+        graphics.DrawMesh(
+            _sphere,
+            _emissive,
+            new Transform {
+                Position = new Vec3(3,-7,0),
+                Scale = new Vec3(1.8f,1.8f,1.8f),
+            }
+        );
+    }
+
+
+    private static Texture ProceduralNormalMap()
+    {
+        const int size = 64;
+        byte[] pixels = new byte[size * size * 4];
+
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            float fx = (float)x / size * MathF.Tau * 4;
+            float fy = (float)y / size * MathF.Tau * 4;
+            Vec3 normal = new Vec3(
+                -MathF.Cos(fx) * 0.45f,
+                -MathF.Cos(fy) * 0.45f,
+                1
+            ).Normalized();
+
+            int i = (y * size + x) * 4;
+            pixels[i] = (byte)((normal.X * 0.5f + 0.5f) * 255);
+            pixels[i+1] = (byte)((normal.Y * 0.5f + 0.5f) * 255);
+            pixels[i+2] = (byte)((normal.Z * 0.5f + 0.5f) * 255);
+            pixels[i+3] = 255;
+        }
+
+        return Texture.FromRgba(size, size, pixels);
     }
 
     private static Mesh MakeSphere(int segments, int rings)

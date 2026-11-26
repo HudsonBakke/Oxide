@@ -76,6 +76,48 @@ public sealed class Material
     }
 
 
+
+    public Texture NormalTexture
+    {
+        get
+        {
+            NativeMethods.Check(
+                NativeMethods.oxide_material_normal_texture(
+                    Handle,
+                    out NativeTextureHandle handle
+                )
+            );
+            return new Texture(handle);
+        }
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            NativeMethods.Check(
+                NativeMethods.oxide_material_set_normal_texture(
+                    Handle,
+                    value.Handle
+                )
+            );
+        }
+    }
+
+    public float NormalStrength
+    {
+        get
+        {
+            NativeMethods.Check(
+                NativeMethods.oxide_material_get_normal_strength(
+                    Handle,
+                    out float value
+                )
+            );
+            return value;
+        }
+        set => NativeMethods.Check(
+            NativeMethods.oxide_material_set_normal_strength(Handle, value)
+        );
+    }
+
     public Color BaseColor
     {
         get

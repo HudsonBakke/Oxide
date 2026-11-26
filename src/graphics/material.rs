@@ -15,6 +15,8 @@ use super::{Color, Texture};
 pub struct Material {
     base_texture: Texture,
     base_color: Color,
+    normal_texture: Texture,
+    normal_strength: f32,
     metallic: f32,
     roughness: f32,
     emissive_color: Color,
@@ -27,6 +29,8 @@ impl Material {
         Self {
             base_texture,
             base_color: Color::WHITE,
+            normal_texture: Texture::solid(Color::rgba(0.5, 0.5, 1.0, 1.0)),
+            normal_strength: 1.0,
             metallic: 0.0,
             roughness: 1.0,
             emissive_color: Color::BLACK,
@@ -36,6 +40,20 @@ impl Material {
 
     pub fn base_texture(&self) -> &Texture {
         &self.base_texture
+    }
+
+    pub fn normal_texture(&self) -> &Texture { &self.normal_texture }
+    pub fn set_normal_texture(&mut self, texture: Texture) { self.normal_texture = texture; }
+    pub fn normal_strength(&self) -> f32 { self.normal_strength }
+    pub fn set_normal_strength(&mut self, strength: f32) -> OxideResult<()> {
+        if !strength.is_finite() {
+            return Err(OxideError::InvalidArgument {
+                argument: "normal_strength",
+                message: "normal strength must be finite",
+            });
+        }
+        self.normal_strength = strength;
+        Ok(())
     }
 
     pub fn base_color(&self) -> Color {
@@ -116,11 +134,12 @@ impl ContentAssetInternal for Material {
         crate::content::import_gltf_material(path, subobject)
     }
     fn compiled_asset_type() -> AssetType { AssetType::Material }
-    fn compiler_version() -> u32 { 2 }
+    fn compiler_version() -> u32 { 3 }
 
     fn write_compiled(&self, writer: &mut impl Write) -> ContentResult<()> {
         for value in [
             self.base_color.r, self.base_color.g, self.base_color.b, self.base_color.a,
+            self.normal_strength,
             self.metallic, self.roughness,
             self.emissive_color.r, self.emissive_color.g,
             self.emissive_color.b, self.emissive_color.a,
@@ -129,11 +148,12 @@ impl ContentAssetInternal for Material {
             writer.write_all(&value.to_le_bytes())?;
         }
 
-        <Texture as ContentAssetInternal>::write_compiled(&self.base_texture, writer)
+        write_embedded_texture(&self.base_texture, writer)?;
+        write_embedded_texture(&self.normal_texture, writer)
     }
 
     fn read_compiled(reader: &mut impl Read, payload_size: u64) -> ContentResult<Self> {
-        const PROPERTY_BYTES: u64 = 11 * 4;
+        const PROPERTY_BYTES: u64 = 12 * 4;
 
         if payload_size < PROPERTY_BYTES {
             return Err(crate::content::ContentError::InvalidCache(
@@ -151,6 +171,7 @@ impl ContentAssetInternal for Material {
             read_f32(reader)?, read_f32(reader)?,
             read_f32(reader)?, read_f32(reader)?,
         );
+        let normal_strength = read_f32(reader)?;
         let metallic = read_f32(reader)?;
         let roughness = read_f32(reader)?;
         let emissive_color = Color::rgba(
@@ -159,13 +180,23 @@ impl ContentAssetInternal for Material {
         );
         let emissive_strength = read_f32(reader)?;
 
-        let texture = <Texture as ContentAssetInternal>::read_compiled(
-            reader,
-            payload_size - PROPERTY_BYTES,
-        )?;
+        let remaining = payload_size - PROPERTY_BYTES;
+        let (base_texture, base_size) = read_embedded_texture(reader, remaining)?;
+        let (normal_texture, normal_size) =
+            read_embedded_texture(reader, remaining - base_size)?;
 
-        let mut material = Self::new(texture);
+        if base_size + normal_size != remaining {
+            return Err(crate::content::ContentError::InvalidCache(
+                "material texture payload size mismatch".into(),
+            ));
+        }
+
+        let mut material = Self::new(base_texture);
+        material.normal_texture = normal_texture;
         material.base_color = base_color;
+        material.set_normal_strength(normal_strength).map_err(|_| {
+            crate::content::ContentError::InvalidCache("invalid normal strength".into())
+        })?;
         material.set_metallic(metallic).map_err(|_| {
             crate::content::ContentError::InvalidCache("invalid metallic factor".into())
         })?;
@@ -178,6 +209,56 @@ impl ContentAssetInternal for Material {
         })?;
         Ok(material)
     }
+}
+
+
+fn write_embedded_texture(
+    texture: &Texture,
+    writer: &mut impl Write,
+) -> ContentResult<()> {
+    writer.write_all(&texture.width().to_le_bytes())?;
+    writer.write_all(&texture.height().to_le_bytes())?;
+    let pixels = texture.pixels();
+    let count = u64::try_from(pixels.len()).map_err(|_| {
+        crate::content::ContentError::InvalidCache("embedded texture is too large".into())
+    })?;
+    writer.write_all(&count.to_le_bytes())?;
+    writer.write_all(pixels)?;
+    Ok(())
+}
+
+fn read_embedded_texture(
+    reader: &mut impl Read,
+    available: u64,
+) -> ContentResult<(Texture, u64)> {
+    const HEADER: u64 = 16;
+    if available < HEADER {
+        return Err(crate::content::ContentError::InvalidCache(
+            "embedded texture payload is too small".into(),
+        ));
+    }
+    let mut u32_bytes = [0_u8; 4];
+    reader.read_exact(&mut u32_bytes)?;
+    let width = u32::from_le_bytes(u32_bytes);
+    reader.read_exact(&mut u32_bytes)?;
+    let height = u32::from_le_bytes(u32_bytes);
+    let mut u64_bytes = [0_u8; 8];
+    reader.read_exact(&mut u64_bytes)?;
+    let count = u64::from_le_bytes(u64_bytes);
+    let expected = u64::from(width)
+        .checked_mul(u64::from(height))
+        .and_then(|v| v.checked_mul(4))
+        .ok_or_else(|| crate::content::ContentError::InvalidCache(
+            "embedded texture dimensions overflow".into(),
+        ))?;
+    if count != expected || HEADER + count > available {
+        return Err(crate::content::ContentError::InvalidCache(
+            "invalid embedded texture payload".into(),
+        ));
+    }
+    let mut pixels = vec![0_u8; count as usize];
+    reader.read_exact(&mut pixels)?;
+    Ok((Texture::from_rgba(width, height, pixels), HEADER + count))
 }
 
 impl ContentAsset for Material {}

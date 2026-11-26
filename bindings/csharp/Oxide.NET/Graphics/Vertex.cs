@@ -11,6 +11,7 @@ public struct Vertex
     public Vec3 Position;
     public Vec3 Normal;
     public Vec2 TexCoord;
+    public Vec4 Tangent;
 
     public Vertex(
         Vec3 position,
@@ -21,6 +22,15 @@ public struct Vertex
         Position = position;
         Normal = normal;
         TexCoord = texCoord;
+        Tangent = new Vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+
+    public Vertex(Vec3 position, Vec3 normal, Vec2 texCoord, Vec4 tangent)
+    {
+        Position = position;
+        Normal = normal;
+        TexCoord = texCoord;
+        Tangent = tangent;
     }
 
     public readonly bool Equals(
@@ -32,7 +42,9 @@ public struct Vertex
             && Normal
                 == other.Normal
             && TexCoord
-                == other.TexCoord;
+                == other.TexCoord
+            && Tangent
+                == other.Tangent;
     }
 
     public override readonly bool Equals(
@@ -49,7 +61,8 @@ public struct Vertex
         return HashCode.Combine(
             Position,
             Normal,
-            TexCoord
+            TexCoord,
+            Tangent
         );
     }
 

@@ -205,6 +205,7 @@ pub(crate) struct D3D12Renderer {
 
     active_lights: Vec<ActiveLight>,
     texture_cache: HashMap<TextureId, D3D12Texture>,
+    material_descriptor_cache: HashMap<(TextureId, TextureId), u32>,
     texture_heap: ID3D12DescriptorHeap,
     texture_descriptor_size: u32,
     next_texture_descriptor: u32,
@@ -283,6 +284,7 @@ impl D3D12Renderer {
 
             active_lights: Vec::new(),
             texture_cache: HashMap::new(),
+            material_descriptor_cache: HashMap::new(),
             texture_heap,
             texture_descriptor_size,
             next_texture_descriptor: 0,
@@ -384,11 +386,58 @@ impl D3D12Renderer {
             .get(&texture_id)
             .expect("texture should be cached after upload");
 
+        let normal_texture = material.normal_texture();
+        let normal_texture_id = normal_texture.id();
+
+        if !self.texture_cache.contains_key(&normal_texture_id) {
+            assert!(
+                self.next_texture_descriptor < MAX_TEXTURES,
+                "Oxide exceeded the temporary GPU texture limit"
+            );
+            let descriptor_index = self.next_texture_descriptor;
+            self.next_texture_descriptor += 1;
+            let gpu_normal =
+                D3D12Texture::new(device, &self.command_list, normal_texture, descriptor_index)?;
+            self.create_texture_srv(device, &gpu_normal);
+            self.texture_cache.insert(normal_texture_id, gpu_normal);
+        }
+
+        let gpu_normal = self
+            .texture_cache
+            .get(&normal_texture_id)
+            .expect("normal texture should be cached after upload");
+
+        // t0 and t1 must be consecutive in the descriptor table. Cache one
+        // stable descriptor pair for each base/normal texture combination.
+        let pair_key = (texture_id, normal_texture_id);
+        let descriptor_index = if let Some(&index) =
+            self.material_descriptor_cache.get(&pair_key)
+        {
+            index
+        } else {
+            let index = self.next_texture_descriptor;
+            assert!(
+                index + 1 < MAX_TEXTURES,
+                "Oxide exceeded the temporary GPU texture limit"
+            );
+            self.next_texture_descriptor += 2;
+            self.copy_texture_descriptor(
+                device,
+                gpu_texture.descriptor_index(),
+                index,
+            );
+            self.copy_texture_descriptor(
+                device,
+                gpu_normal.descriptor_index(),
+                index + 1,
+            );
+            self.material_descriptor_cache.insert(pair_key, index);
+            index
+        };
+
         let mut gpu_handle: D3D12_GPU_DESCRIPTOR_HANDLE =
             unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
-
-        gpu_handle.ptr +=
-            gpu_texture.descriptor_index() as u64 * self.texture_descriptor_size as u64;
+        gpu_handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
 
         let base_color = material.base_color();
         let emissive = material.emissive_color();
@@ -404,7 +453,7 @@ impl D3D12Renderer {
                 material.metallic(),
                 material.roughness(),
                 material.emissive_strength(),
-                0.0,
+                material.normal_strength(),
             ],
             emissive: [
                 emissive.r, emissive.g,
@@ -674,6 +723,31 @@ impl D3D12Renderer {
 
     pub(crate) fn clear_lights(&mut self) {
         self.active_lights.clear();
+    }
+
+
+    fn copy_texture_descriptor(
+        &self,
+        device: &D3D12Device,
+        source_index: u32,
+        destination_index: u32,
+    ) {
+        use windows::Win32::Graphics::Direct3D12::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
+        let mut source = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        source.ptr += source_index as usize * self.texture_descriptor_size as usize;
+
+        let mut destination = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        destination.ptr += destination_index as usize * self.texture_descriptor_size as usize;
+
+        unsafe {
+            device.device().CopyDescriptorsSimple(
+                1,
+                destination,
+                source,
+                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            );
+        }
     }
 
     fn create_texture_srv(&self, device: &D3D12Device, texture: &D3D12Texture) {

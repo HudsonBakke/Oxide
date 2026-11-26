@@ -67,6 +67,31 @@ public sealed class Texture
         }
     }
 
+
+    public static unsafe Texture FromRgba(
+        uint width,
+        uint height,
+        byte[] pixels
+    )
+    {
+        ArgumentNullException.ThrowIfNull(pixels);
+
+        fixed (byte* pointer = pixels)
+        {
+            NativeMethods.Check(
+                NativeMethods.oxide_texture_create_rgba(
+                    width,
+                    height,
+                    pointer,
+                    (nuint)pixels.Length,
+                    out NativeTextureHandle handle
+                )
+            );
+
+            return new Texture(handle);
+        }
+    }
+
     public static Texture Solid(
         Color color
     )

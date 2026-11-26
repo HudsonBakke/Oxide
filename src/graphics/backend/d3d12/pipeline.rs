@@ -42,7 +42,7 @@ impl D3D12Pipeline {
         let texture_range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 
-            NumDescriptors: 1,
+            NumDescriptors: 2,
 
             BaseShaderRegister: 0,
             RegisterSpace: 0,

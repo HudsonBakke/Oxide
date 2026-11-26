@@ -483,6 +483,15 @@ for _name, _type in (
         _set.argtypes = [NativeMaterialHandle, _type]
         _set.restype = ctypes.c_int
 
+lib.oxide_texture_create_rgba.argtypes = [
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_size_t,
+    ctypes.POINTER(NativeTextureHandle),
+]
+lib.oxide_texture_create_rgba.restype = ctypes.c_int
+
 
 def last_error_message() -> str:
     message = (

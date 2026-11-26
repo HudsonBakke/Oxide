@@ -1,6 +1,6 @@
 use oxide::{
     app::{AppConfig, Game},
-    graphics::{Camera, Color, DirectionalLight, Graphics, Material, Mesh, PointLight, Vertex},
+    graphics::{Camera, Color, DirectionalLight, Graphics, Material, Mesh, PointLight, Texture, Vertex},
     math::{Transform, Vec2, Vec3},
 };
 
@@ -11,6 +11,7 @@ struct MaterialTest {
     sphere: Mesh,
     materials: Vec<Material>,
     emissive: Material,
+    normal_mapped: Material,
     light: PointLight,
     fill: DirectionalLight,
 }
@@ -32,6 +33,11 @@ impl MaterialTest {
             }
         }
 
+        let mut normal_mapped = Material::solid(Color::rgb(0.32, 0.42, 0.72));
+        normal_mapped.set_roughness(0.55).unwrap();
+        normal_mapped.set_normal_texture(procedural_normal_map());
+        normal_mapped.set_normal_strength(1.0).unwrap();
+
         let mut emissive = Material::solid(Color::rgb(0.08, 0.08, 0.08));
         emissive.set_emissive_color(Color::rgb(0.1, 0.65, 1.0));
         emissive.set_emissive_strength(4.0).unwrap();
@@ -41,6 +47,7 @@ impl MaterialTest {
             sphere: sphere(24, 16),
             materials,
             emissive,
+            normal_mapped,
             light: PointLight::new(
                 Vec3::new(-2.5, 5.5, 5.0),
                 Color::WHITE,
@@ -90,13 +97,45 @@ impl Game for MaterialTest {
             }
         }
 
+        let mut normal_transform = Transform::new();
+        normal_transform.set_position(Vec3::new(-3.0, -7.0, 0.0));
+        normal_transform.set_scale(Vec3::new(1.8, 1.8, 1.8));
+        graphics
+            .draw_mesh(&self.sphere, &self.normal_mapped, &normal_transform)
+            .unwrap();
+
         let mut transform = Transform::new();
-        transform.set_position(Vec3::new(0.0, -7.0, 0.0));
+        transform.set_position(Vec3::new(3.0, -7.0, 0.0));
         transform.set_scale(Vec3::new(1.8, 1.8, 1.8));
         graphics
             .draw_mesh(&self.sphere, &self.emissive, &transform)
             .unwrap();
     }
+}
+
+
+fn procedural_normal_map() -> Texture {
+    let size = 64_u32;
+    let mut pixels = Vec::with_capacity((size * size * 4) as usize);
+
+    for y in 0..size {
+        for x in 0..size {
+            let fx = x as f32 / size as f32 * std::f32::consts::TAU * 4.0;
+            let fy = y as f32 / size as f32 * std::f32::consts::TAU * 4.0;
+            let dx = fx.cos() * 0.45;
+            let dy = fy.cos() * 0.45;
+            let normal = Vec3::new(-dx, -dy, 1.0).normalized();
+
+            pixels.extend_from_slice(&[
+                ((normal.x * 0.5 + 0.5) * 255.0) as u8,
+                ((normal.y * 0.5 + 0.5) * 255.0) as u8,
+                ((normal.z * 0.5 + 0.5) * 255.0) as u8,
+                255,
+            ]);
+        }
+    }
+
+    Texture::rgba(size, size, pixels).unwrap()
 }
 
 fn sphere(segments: u32, rings: u32) -> Mesh {

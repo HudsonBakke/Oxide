@@ -103,6 +103,7 @@ typedef struct OxideVertex
     OxideVec3 position;
     OxideVec3 normal;
     OxideVec2 tex_coord;
+    OxideVec4 tangent;
 } OxideVertex;
 
 typedef struct OxidePointLight
@@ -596,6 +597,14 @@ oxide_texture_destroy(
     OxideTextureHandle texture
 );
 
+OXIDE_API OxideStatus oxide_texture_create_rgba(
+    uint32_t width,
+    uint32_t height,
+    const uint8_t* pixels,
+    size_t pixel_count,
+    OxideTextureHandle* result
+);
+
 OXIDE_API OxideStatus
 oxide_texture_solid(
     OxideColor color,
@@ -620,6 +629,10 @@ oxide_texture_height(
  * ============================================================ */
 
 
+OXIDE_API OxideStatus oxide_material_normal_texture(OxideMaterialHandle material, OxideTextureHandle* result);
+OXIDE_API OxideStatus oxide_material_set_normal_texture(OxideMaterialHandle material, OxideTextureHandle texture);
+OXIDE_API OxideStatus oxide_material_get_normal_strength(OxideMaterialHandle material, float* result);
+OXIDE_API OxideStatus oxide_material_set_normal_strength(OxideMaterialHandle material, float value);
 OXIDE_API OxideStatus oxide_material_get_base_color(OxideMaterialHandle material, OxideColor* result);
 OXIDE_API OxideStatus oxide_material_set_base_color(OxideMaterialHandle material, OxideColor value);
 OXIDE_API OxideStatus oxide_material_get_metallic(OxideMaterialHandle material, float* result);

@@ -8,7 +8,7 @@ use super::Vertex;
 
 use crate::{
     content::{AssetType, ContentAsset, ContentAssetInternal, ContentError, ContentResult},
-    math::{Vec2, Vec3},
+    math::{Vec2, Vec3, Vec4},
 };
 
 static NEXT_MESH_ID: AtomicU64 = AtomicU64::new(1);
@@ -39,6 +39,73 @@ pub struct Mesh {
 
     direction: Vec3,
     reference: Vec3,
+}
+
+
+fn generate_tangents(vertices: &mut [Vertex], indices: &[u32]) {
+    if vertices.is_empty() || indices.len() < 3 {
+        return;
+    }
+
+    let mut tangents = vec![Vec3::default(); vertices.len()];
+    let mut bitangents = vec![Vec3::default(); vertices.len()];
+
+    for triangle in indices.chunks_exact(3) {
+        let [i0, i1, i2] = [triangle[0] as usize, triangle[1] as usize, triangle[2] as usize];
+        if i0 >= vertices.len() || i1 >= vertices.len() || i2 >= vertices.len() {
+            continue;
+        }
+
+        let v0 = vertices[i0];
+        let v1 = vertices[i1];
+        let v2 = vertices[i2];
+        let edge1 = v1.position - v0.position;
+        let edge2 = v2.position - v0.position;
+        let duv1 = v1.tex_coord - v0.tex_coord;
+        let duv2 = v2.tex_coord - v0.tex_coord;
+        let determinant = duv1.x * duv2.y - duv1.y * duv2.x;
+
+        if determinant.abs() <= 1.0e-8 {
+            continue;
+        }
+
+        let inverse = 1.0 / determinant;
+        let tangent = (edge1 * duv2.y - edge2 * duv1.y) * inverse;
+        let bitangent = (edge2 * duv1.x - edge1 * duv2.x) * inverse;
+
+        for index in [i0, i1, i2] {
+            tangents[index] = tangents[index] + tangent;
+            bitangents[index] = bitangents[index] + bitangent;
+        }
+    }
+
+    for (index, vertex) in vertices.iter_mut().enumerate() {
+        // Preserve explicitly supplied tangents, such as glTF tangents.
+        if Vec3::new(vertex.tangent.x, vertex.tangent.y, vertex.tangent.z).length() > 1.0e-6 {
+            continue;
+        }
+
+        let normal = vertex.normal.normalized();
+        let projected = tangents[index] - normal * normal.dot(&tangents[index]);
+        let tangent = if projected.length() > 1.0e-6 {
+            projected.normalized()
+        } else {
+            let axis = if normal.y.abs() < 0.999 {
+                Vec3::new(0.0, 1.0, 0.0)
+            } else {
+                Vec3::new(1.0, 0.0, 0.0)
+            };
+            axis.cross(&normal).normalized()
+        };
+
+        let handedness = if normal.cross(&tangent).dot(&bitangents[index]) < 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
+
+        vertex.tangent = Vec4::new(tangent.x, tangent.y, tangent.z, handedness);
+    }
 }
 
 fn calculate_vertex_average(vertices: &[Vertex]) -> Vec3 {
@@ -73,7 +140,8 @@ fn orthogonalize_reference(direction: Vec3, reference: Vec3) -> crate::OxideResu
 
 impl Mesh {
     /// Creates a mesh from vertex and index data.
-    pub fn new(vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
+    pub fn new(mut vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
+        generate_tangents(&mut vertices, &indices);
         let pivot = calculate_vertex_average(&vertices);
 
         Self {
@@ -123,6 +191,16 @@ impl Mesh {
     /// Recalculates the pivot using the average position of all vertices.
     pub fn recalculate_pivot(&mut self) {
         self.pivot = calculate_vertex_average(&self.vertices);
+    }
+
+    /// Rebuilds tangent vectors from the current positions, normals, UVs,
+    /// and triangle indices.
+    pub fn recalculate_tangents(&mut self) {
+        for vertex in &mut self.vertices {
+            vertex.tangent = Vec4::new(0.0, 0.0, 0.0, 1.0);
+        }
+        generate_tangents(&mut self.vertices, &self.indices);
+        self.vertex_generation = self.vertex_generation.wrapping_add(1);
     }
 
     /// Returns the mesh's vertices.
@@ -295,7 +373,7 @@ impl Clone for Mesh {
 
 impl ContentAssetInternal for Mesh {
     fn compiler_version() -> u32 {
-        3
+        4
     }
 
     fn asset_type_name() -> &'static str {
@@ -368,6 +446,10 @@ fn write_mesh(mesh: &Mesh, writer: &mut impl Write) -> ContentResult<()> {
         write_vec3(writer, vertex.normal)?;
 
         write_vec2(writer, vertex.tex_coord)?;
+        write_f32(writer, vertex.tangent.x)?;
+        write_f32(writer, vertex.tangent.y)?;
+        write_f32(writer, vertex.tangent.z)?;
+        write_f32(writer, vertex.tangent.w)?;
     }
 
     for index in &mesh.indices {
@@ -410,7 +492,7 @@ fn read_mesh(reader: &mut impl Read, payload_size: u64) -> ContentResult<Mesh> {
     // + pivot + direction + reference
     const FIXED_SIZE: u64 = 4 + 4 + 12 + 12 + 12;
 
-    const VERTEX_SIZE: u64 = 32;
+    const VERTEX_SIZE: u64 = 48;
 
     const INDEX_SIZE: u64 = 4;
 
@@ -467,8 +549,14 @@ fn read_mesh(reader: &mut impl Read, payload_size: u64) -> ContentResult<Mesh> {
         let normal = read_vec3(reader)?;
 
         let tex_coord = read_vec2(reader)?;
+        let tangent = Vec4::new(
+            read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
+            read_f32(reader)?,
+        );
 
-        vertices.push(Vertex::new(position, normal, tex_coord));
+        vertices.push(Vertex::with_tangent(position, normal, tex_coord, tangent));
     }
 
     let mut indices = Vec::with_capacity(index_count);
