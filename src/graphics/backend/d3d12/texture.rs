@@ -13,7 +13,7 @@ use windows::{
             D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             D3D12_TEXTURE_LAYOUT_UNKNOWN, ID3D12GraphicsCommandList, ID3D12Resource,
         },
-        Dxgi::Common::{DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
+        Dxgi::Common::{DXGI_FORMAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
     },
     core::Result,
 };
@@ -27,11 +27,16 @@ pub(crate) struct D3D12Texture {
     _upload_resource: ID3D12Resource,
 
     descriptor_index: u32,
+    format: DXGI_FORMAT,
 }
 
 impl D3D12Texture {
     pub(crate) fn resource(&self) -> &ID3D12Resource {
         &self.resource
+    }
+
+    pub(crate) fn format(&self) -> DXGI_FORMAT {
+        self.format
     }
 }
 
@@ -44,7 +49,7 @@ impl D3D12Texture {
     ) -> Result<Self> {
         if let Some(pixels) = texture.hdr_pixels() {
             let levels = vec![(texture.width(), texture.height(), pixels.to_vec())];
-            return Self::new_float_levels_inner(
+            return Self::new_float_levels(
                 device,
                 command_list,
                 &levels,
@@ -236,37 +241,18 @@ impl D3D12Texture {
             resource,
             _upload_resource: upload_resource,
             descriptor_index,
+            format: DXGI_FORMAT_R8G8B8A8_UNORM,
         })
     }
 
-    pub(crate) fn new_rgba_levels(
+    pub(crate) fn new_float_levels(
         device: &D3D12Device,
         command_list: &ID3D12GraphicsCommandList,
-        levels: &[(u32, u32, Vec<u8>)],
+        levels: &[(u32, u32, Vec<f32>)],
         descriptor_index: u32,
     ) -> Result<Self> {
         assert!(!levels.is_empty());
-        let texture = Texture::rgba(
-            levels[0].0,
-            levels[0].1,
-            levels[0].2.clone(),
-        ).expect("derived environment pixels have valid dimensions");
 
-        if levels.len() == 1 {
-            return Self::new(device, command_list, &texture, descriptor_index);
-        }
-
-        // Reuse the multi-subresource uploader by constructing the derived
-        // resource directly from the supplied levels.
-        Self::new_levels(device, command_list, levels, descriptor_index)
-    }
-
-    fn new_levels(
-        device: &D3D12Device,
-        command_list: &ID3D12GraphicsCommandList,
-        levels: &[(u32, u32, Vec<u8>)],
-        descriptor_index: u32,
-    ) -> Result<Self> {
         let texture_desc = D3D12_RESOURCE_DESC {
             Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D,
             Alignment: 0,
@@ -274,31 +260,48 @@ impl D3D12Texture {
             Height: levels[0].1,
             DepthOrArraySize: 1,
             MipLevels: levels.len() as u16,
-            Format: DXGI_FORMAT_R8G8B8A8_UNORM,
+            Format: DXGI_FORMAT_R32G32B32A32_FLOAT,
             SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
             Layout: D3D12_TEXTURE_LAYOUT_UNKNOWN,
             Flags: D3D12_RESOURCE_FLAG_NONE,
         };
-        let heap = D3D12_HEAP_PROPERTIES { Type: D3D12_HEAP_TYPE_DEFAULT, ..Default::default() };
+
+        let default_heap = D3D12_HEAP_PROPERTIES {
+            Type: D3D12_HEAP_TYPE_DEFAULT,
+            ..Default::default()
+        };
         let mut resource: Option<ID3D12Resource> = None;
         unsafe {
             device.device().CreateCommittedResource(
-                &heap, Default::default(), &texture_desc,
-                D3D12_RESOURCE_STATE_COPY_DEST, None, &mut resource,
+                &default_heap,
+                Default::default(),
+                &texture_desc,
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                None,
+                &mut resource,
             )?;
         }
-        let resource = resource.unwrap();
-        let mut footprints = vec![D3D12_PLACED_SUBRESOURCE_FOOTPRINT::default(); levels.len()];
+        let resource =
+            resource.expect("CreateCommittedResource succeeded but returned no float texture");
+
+        let mut footprints =
+            vec![D3D12_PLACED_SUBRESOURCE_FOOTPRINT::default(); levels.len()];
         let mut rows = vec![0_u32; levels.len()];
         let mut row_sizes = vec![0_u64; levels.len()];
-        let mut upload_size = 0;
+        let mut upload_size = 0_u64;
         unsafe {
             device.device().GetCopyableFootprints(
-                &texture_desc, 0, levels.len() as u32, 0,
-                Some(footprints.as_mut_ptr()), Some(rows.as_mut_ptr()),
-                Some(row_sizes.as_mut_ptr()), Some(&mut upload_size),
+                &texture_desc,
+                0,
+                levels.len() as u32,
+                0,
+                Some(footprints.as_mut_ptr()),
+                Some(rows.as_mut_ptr()),
+                Some(row_sizes.as_mut_ptr()),
+                Some(&mut upload_size),
             );
         }
+
         let upload_desc = D3D12_RESOURCE_DESC {
             Dimension: D3D12_RESOURCE_DIMENSION_BUFFER,
             Width: upload_size,
@@ -310,57 +313,91 @@ impl D3D12Texture {
             Layout: D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             ..Default::default()
         };
-        let upload_heap = D3D12_HEAP_PROPERTIES { Type: D3D12_HEAP_TYPE_UPLOAD, ..Default::default() };
+        let upload_heap = D3D12_HEAP_PROPERTIES {
+            Type: D3D12_HEAP_TYPE_UPLOAD,
+            ..Default::default()
+        };
         let mut upload: Option<ID3D12Resource> = None;
         unsafe {
             device.device().CreateCommittedResource(
-                &upload_heap, Default::default(), &upload_desc,
-                D3D12_RESOURCE_STATE_GENERIC_READ, None, &mut upload,
+                &upload_heap,
+                Default::default(),
+                &upload_desc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                None,
+                &mut upload,
             )?;
         }
-        let upload = upload.unwrap();
+        let upload =
+            upload.expect("CreateCommittedResource succeeded but returned no float upload buffer");
+
         let mut mapped = std::ptr::null_mut();
         unsafe { upload.Map(0, None, Some(&mut mapped))?; }
         let mapped = mapped as *mut u8;
+
         for (level, (width, height, pixels)) in levels.iter().enumerate() {
-            let source_pitch = *width as usize * 4;
+            let source_pitch = *width as usize * 4 * std::mem::size_of::<f32>();
             let destination_pitch = footprints[level].Footprint.RowPitch as usize;
+
             for row in 0..*height as usize {
+                let source_offset = row * *width as usize * 4;
                 unsafe {
                     std::ptr::copy_nonoverlapping(
-                        pixels.as_ptr().add(row * source_pitch),
-                        mapped.add(footprints[level].Offset as usize + row * destination_pitch),
+                        pixels.as_ptr().add(source_offset) as *const u8,
+                        mapped.add(
+                            footprints[level].Offset as usize
+                                + row * destination_pitch
+                        ),
                         source_pitch,
                     );
                 }
             }
+
             let source = D3D12_TEXTURE_COPY_LOCATION {
                 pResource: std::mem::ManuallyDrop::new(Some(upload.clone())),
                 Type: D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-                Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 { PlacedFootprint: footprints[level] },
+                Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
+                    PlacedFootprint: footprints[level],
+                },
             };
             let destination = D3D12_TEXTURE_COPY_LOCATION {
                 pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
                 Type: D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-                Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 { SubresourceIndex: level as u32 },
+                Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
+                    SubresourceIndex: level as u32,
+                },
             };
-            unsafe { command_list.CopyTextureRegion(&destination, 0, 0, 0, &source, None); }
+            unsafe {
+                command_list.CopyTextureRegion(
+                    &destination, 0, 0, 0, &source, None
+                );
+            }
         }
+
         unsafe { upload.Unmap(0, None); }
+
         let barrier = D3D12_RESOURCE_BARRIER {
             Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
             Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
             Anonymous: D3D12_RESOURCE_BARRIER_0 {
-                Transition: std::mem::ManuallyDrop::new(D3D12_RESOURCE_TRANSITION_BARRIER {
-                    pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
-                    Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                    StateBefore: D3D12_RESOURCE_STATE_COPY_DEST,
-                    StateAfter: D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-                }),
+                Transition: std::mem::ManuallyDrop::new(
+                    D3D12_RESOURCE_TRANSITION_BARRIER {
+                        pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
+                        Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                        StateBefore: D3D12_RESOURCE_STATE_COPY_DEST,
+                        StateAfter: D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                    },
+                ),
             },
         };
         unsafe { command_list.ResourceBarrier(&[barrier]); }
-        Ok(Self { resource, _upload_resource: upload, descriptor_index })
+
+        Ok(Self {
+            resource,
+            _upload_resource: upload,
+            descriptor_index,
+            format: DXGI_FORMAT_R32G32B32A32_FLOAT,
+        })
     }
 
     pub(crate) fn descriptor_index(&self) -> u32 {

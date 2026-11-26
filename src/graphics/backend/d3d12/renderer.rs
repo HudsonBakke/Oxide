@@ -12,7 +12,6 @@ use windows::{
             D3D12_SRV_DIMENSION_TEXTURE2D, D3D12_TEX2D_SRV, ID3D12CommandAllocator,
             ID3D12CommandList, ID3D12DescriptorHeap, ID3D12GraphicsCommandList, ID3D12Resource,
         },
-        Dxgi::Common::DXGI_FORMAT_R8G8B8A8_UNORM,
     },
     Win32::{
         Foundation::{CloseHandle, HANDLE, RECT},
