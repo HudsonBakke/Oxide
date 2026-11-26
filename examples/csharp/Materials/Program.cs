@@ -11,6 +11,7 @@ internal sealed class MaterialTest : Game
     private readonly Material _normalMapped = Material.Solid(new Color(0.32f,0.42f,0.72f,1));
     private readonly Material _emissive = Material.Solid(new Color(0.08f,0.08f,0.08f,1));
     private readonly PointLight _light = new(new Vec3(-2.5f,5.5f,5), Color.White, 65);
+    private readonly Oxide.Graphics.Environment _environment;
     private readonly DirectionalLight _fill = new(
         new Vec3(0.4f,-1,-0.3f),
         new Color(0.35f,0.42f,0.55f,1),
@@ -19,6 +20,13 @@ internal sealed class MaterialTest : Game
 
     public MaterialTest()
     {
+        _environment = new Oxide.Graphics.Environment(
+            Color.White,
+            0.08f,
+            EnvironmentTexture(),
+            0.65f,
+            new Color(0.10f,0.15f,0.25f,1)
+        );
         _normalMapped.Roughness = 0.55f;
         _normalMapped.NormalTexture = ProceduralNormalMap();
         _normalMapped.NormalStrength = 1.0f;
@@ -43,15 +51,7 @@ internal sealed class MaterialTest : Game
     protected override void Draw(Graphics graphics)
     {
         graphics.BindCamera(_camera, graphics.FullRect);
-        graphics.SetEnvironment(
-            new Oxide.Graphics.Environment(
-                Color.White,
-                0.08f,
-                EnvironmentTexture(),
-                0.65f,
-                new Color(0.10f,0.15f,0.25f,1)
-            )
-        );
+        graphics.SetEnvironment(_environment);
         graphics.AddLight(_light);
         graphics.AddLight(_fill);
 

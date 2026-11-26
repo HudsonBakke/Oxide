@@ -109,8 +109,8 @@ impl Graphics {
     }
 
     /// Sets the environment used for ambient diffuse and specular IBL.
-    pub fn set_environment(&mut self, environment: Environment) {
-        self.renderer.set_environment(environment);
+    pub fn set_environment(&mut self, environment: &Environment) {
+        self.renderer.set_environment(environment.clone());
     }
 
     /// Removes environment lighting.

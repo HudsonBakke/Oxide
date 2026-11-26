@@ -117,12 +117,12 @@ impl Texture {
 
 impl Clone for Texture {
     fn clone(&self) -> Self {
+        // A clone is another handle to the same immutable texture contents,
+        // so it must preserve resource identity for GPU caching.
         Self {
-            id: next_texture_id(),
-
+            id: self.id,
             width: self.width,
             height: self.height,
-
             pixels: self.pixels.clone(),
         }
     }

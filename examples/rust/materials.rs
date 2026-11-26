@@ -14,6 +14,7 @@ struct MaterialTest {
     normal_mapped: Material,
     light: PointLight,
     fill: DirectionalLight,
+    environment: Environment,
 }
 
 impl MaterialTest {
@@ -42,6 +43,15 @@ impl MaterialTest {
         emissive.set_emissive_color(Color::rgb(0.1, 0.65, 1.0));
         emissive.set_emissive_strength(4.0).unwrap();
 
+        let environment = Environment::new(
+            Color::WHITE,
+            0.08,
+            Some(environment_texture()),
+            0.65,
+            Color::rgb(0.10, 0.15, 0.25),
+        )
+        .unwrap();
+
         Self {
             camera: Camera::new(),
             sphere: sphere(24, 16),
@@ -60,6 +70,7 @@ impl MaterialTest {
                 0.18,
             )
             .unwrap(),
+            environment,
         }
     }
 }
@@ -71,16 +82,7 @@ impl Game for MaterialTest {
 
     fn draw(&mut self, graphics: &mut Graphics) {
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
-        graphics.set_environment(
-            Environment::new(
-                Color::WHITE,
-                0.08,
-                Some(environment_texture()),
-                0.65,
-                Color::rgb(0.10, 0.15, 0.25),
-            )
-            .unwrap(),
-        );
+        graphics.set_environment(&self.environment);
         graphics.add_light(&self.light);
         graphics.add_light(&self.fill);
 

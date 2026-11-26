@@ -107,6 +107,14 @@ class MaterialTest(Game):
         self.emissive.emissive_color = Color.rgb(0.1,0.65,1.0)
         self.emissive.emissive_strength = 4.0
 
+        self.environment = Environment(
+            Color.WHITE,
+            0.08,
+            environment_texture(),
+            0.65,
+            Color.rgb(0.10,0.15,0.25),
+        )
+
         self.light = PointLight(Vec3(-2.5,5.5,5), Color.WHITE, 65.0)
         self.fill = DirectionalLight(
             Vec3(0.4,-1,-0.3),
@@ -119,15 +127,7 @@ class MaterialTest(Game):
 
     def draw(self, graphics: Graphics) -> None:
         graphics.bind_camera(self.camera, graphics.full_rect)
-        graphics.set_environment(
-            Environment(
-                Color.WHITE,
-                0.08,
-                environment_texture(),
-                0.65,
-                Color.rgb(0.10,0.15,0.25),
-            )
-        )
+        graphics.set_environment(self.environment)
         graphics.add_light(self.light)
         graphics.add_light(self.fill)
 
