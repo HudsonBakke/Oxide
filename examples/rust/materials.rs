@@ -1,7 +1,10 @@
 use oxide::{
     app::{AppConfig, Game},
     content::ContentManager,
-    graphics::{Camera, Color, DirectionalLight, Environment, Graphics, Material, Mesh, PointLight, Texture, Vertex},
+    graphics::{
+        Camera, Color, DirectionalLight, Environment, Graphics, Material, Mesh, PointLight,
+        Texture, Vertex,
+    },
     math::{Transform, Vec2, Vec3},
 };
 
@@ -65,12 +68,7 @@ impl MaterialTest {
             materials,
             emissive,
             normal_mapped,
-            light: PointLight::new(
-                Vec3::new(-2.5, 5.5, 5.0),
-                Color::WHITE,
-                65.0,
-            )
-            .unwrap(),
+            light: PointLight::new(Vec3::new(-2.5, 5.5, 5.0), Color::WHITE, 65.0).unwrap(),
             fill: DirectionalLight::new(
                 Vec3::new(0.4, -1.0, -0.3),
                 Color::rgb(0.35, 0.42, 0.55),
@@ -88,7 +86,9 @@ impl Game for MaterialTest {
     }
 
     fn draw(&mut self, graphics: &mut Graphics) {
-        graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
+        graphics
+            .bind_camera(&self.camera, graphics.full_rect())
+            .unwrap();
         graphics.set_environment(&self.environment);
         graphics.add_light(&self.light);
         graphics.add_light(&self.fill);
@@ -132,8 +132,6 @@ impl Game for MaterialTest {
     }
 }
 
-
-
 fn environment_texture() -> Texture {
     let width = 256_u32;
     let height = 128_u32;
@@ -144,18 +142,29 @@ fn environment_texture() -> Texture {
         for x in 0..width {
             let u = x as f32 / (width - 1) as f32;
             let horizon = (1.0 - ((v - 0.5).abs() * 2.0)).powf(3.0);
-            let sun = (
-                -((u - 0.72).powi(2) + (v - 0.32).powi(2)) / 0.0015
-            ).exp();
+            let sun = (-((u - 0.72).powi(2) + (v - 0.32).powi(2)) / 0.0015).exp();
             let sky = if v < 0.5 {
-                Color::rgb(0.12 + 0.28 * horizon, 0.28 + 0.38 * horizon, 0.62 + 0.28 * horizon)
+                Color::rgb(
+                    0.12 + 0.28 * horizon,
+                    0.28 + 0.38 * horizon,
+                    0.62 + 0.28 * horizon,
+                )
             } else {
-                Color::rgb(0.12 + 0.20 * horizon, 0.10 + 0.18 * horizon, 0.08 + 0.18 * horizon)
+                Color::rgb(
+                    0.12 + 0.20 * horizon,
+                    0.10 + 0.18 * horizon,
+                    0.08 + 0.18 * horizon,
+                )
             };
             let r = (sky.r + sun * 0.85).clamp(0.0, 1.0);
             let g = (sky.g + sun * 0.72).clamp(0.0, 1.0);
             let b = (sky.b + sun * 0.38).clamp(0.0, 1.0);
-            pixels.extend_from_slice(&[(r*255.0) as u8,(g*255.0) as u8,(b*255.0) as u8,255]);
+            pixels.extend_from_slice(&[
+                (r * 255.0) as u8,
+                (g * 255.0) as u8,
+                (b * 255.0) as u8,
+                255,
+            ]);
         }
     }
     Texture::rgba(width, height, pixels).unwrap()
@@ -198,17 +207,9 @@ fn sphere(segments: u32, rings: u32) -> Mesh {
         for segment in 0..=segments {
             let u = segment as f32 / segments as f32;
             let theta = u * std::f32::consts::TAU;
-            let normal = Vec3::new(
-                radius * theta.cos(),
-                y,
-                radius * theta.sin(),
-            );
+            let normal = Vec3::new(radius * theta.cos(), y, radius * theta.sin());
 
-            vertices.push(Vertex::new(
-                normal * 0.5,
-                normal,
-                Vec2::new(u, v),
-            ));
+            vertices.push(Vertex::new(normal * 0.5, normal, Vec2::new(u, v)));
         }
     }
 
@@ -217,10 +218,7 @@ fn sphere(segments: u32, rings: u32) -> Mesh {
         for segment in 0..segments {
             let a = ring * stride + segment;
             let b = a + stride;
-            indices.extend_from_slice(&[
-                a, b + 1, a + 1,
-                a, b, b + 1,
-            ]);
+            indices.extend_from_slice(&[a, b + 1, a + 1, a, b, b + 1]);
         }
     }
 

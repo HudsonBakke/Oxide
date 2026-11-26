@@ -1,23 +1,7 @@
 use oxide::{
-    app::{
-        run,
-        AppConfig,
-        Game,
-        GameTime,
-    },
-    graphics::{
-        Graphics,
-        Mesh,
-        Vertex,
-        Camera,
-        Material,
-        Color,
-    },
-    math::{
-        Vec2,
-        Vec3,
-        Transform,
-    },
+    app::{run, AppConfig, Game, GameTime},
+    graphics::{Graphics, Mesh, Vertex, Camera, Material, Color},
+    math::{Vec2, Vec3, Transform},
 };
 
 struct HelloGame {
@@ -58,18 +42,11 @@ impl Game for HelloGame {
         let destination = graphics.full_rect();
 
         graphics
-            .bind_camera(
-                &self.camera,
-                destination,
-            )
+            .bind_camera(&self.camera, destination)
             .expect("failed to bind camera");
 
         graphics
-            .draw_mesh(
-                &self.triangle,
-                &self.material,
-                &self.transform
-            )
+            .draw_mesh(&self.triangle, &self.material, &self.transform)
             .expect("failed to draw triangle");
     }
 }
@@ -77,14 +54,11 @@ impl Game for HelloGame {
 fn main() {
     let mut transform = Transform::new();
 
-    transform.set_position(
-        Vec3::new(0.0, 0.0, -3.0)
-    );
+    transform.set_position(Vec3::new(0.0, 0.0, -3.0));
 
     let camera = Camera::new();
 
-    let material =
-        Material::solid(Color::WHITE);
+    let material = Material::solid(Color::WHITE);
 
     let game = HelloGame {
         triangle: Mesh::new(

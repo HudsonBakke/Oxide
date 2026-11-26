@@ -16,6 +16,7 @@ class AppConfig:
         title: Initial window title; defaults to Oxide.
         width: Initial client width in logical pixels; must be positive.
         height: Initial client height in logical pixels; must be positive."""
+
     title: str = "Oxide"
     width: int = 1280
     height: int = 720
@@ -28,12 +29,14 @@ class GameTime:
     Attributes:
         delta_seconds: Seconds elapsed since the previous frame's update.
         total_seconds: Seconds elapsed since the application clock started."""
+
     delta_seconds: float
     total_seconds: float
 
 
 class Game:
     """Application lifecycle implemented by initialize, update, and draw callbacks."""
+
     def __init__(self) -> None:
         """Creates an application instance whose lifecycle callbacks may be overridden."""
         self._has_run = False
@@ -79,17 +82,11 @@ class Game:
     @is_fullscreen.setter
     def is_fullscreen(self, value: bool) -> None:
         """Whether borderless fullscreen is enabled or has been requested."""
-        _native.check(
-            _native.lib.oxide_app_set_fullscreen(
-                1 if value else 0
-            )
-        )
+        _native.check(_native.lib.oxide_app_set_fullscreen(1 if value else 0))
 
     def exit(self) -> None:
         """Queues a request to leave the application event loop."""
-        _native.check(
-            _native.lib.oxide_app_exit()
-        )
+        _native.check(_native.lib.oxide_app_exit())
 
     def set_window_name(
         self,
@@ -99,11 +96,7 @@ class Game:
         if not isinstance(name, str):
             raise TypeError("name must be a string")
 
-        _native.check(
-            _native.lib.oxide_app_set_window_name(
-                name.encode("utf-8")
-            )
-        )
+        _native.check(_native.lib.oxide_app_set_window_name(name.encode("utf-8")))
 
     def set_window_logo(
         self,
@@ -115,11 +108,7 @@ class Game:
         if not isinstance(texture, Texture):
             raise TypeError("texture must be a Texture")
 
-        _native.check(
-            _native.lib.oxide_app_set_window_logo(
-                texture._handle
-            )
-        )
+        _native.check(_native.lib.oxide_app_set_window_logo(texture._handle))
 
     def set_preferred_backbuffer_size(
         self,
@@ -128,9 +117,7 @@ class Game:
     ) -> None:
         """Requests a client/backbuffer size in physical pixels; both dimensions must be positive."""
         if width <= 0 or height <= 0:
-            raise ValueError(
-                "backbuffer dimensions must be greater than zero"
-            )
+            raise ValueError("backbuffer dimensions must be greater than zero")
 
         _native.check(
             _native.lib.oxide_app_set_preferred_backbuffer_size(
@@ -164,22 +151,14 @@ class Game:
         visible: bool,
     ) -> None:
         """Queues a change to the visibility of the OS cursor over the game window."""
-        _native.check(
-            _native.lib.oxide_app_set_cursor_visible(
-                1 if visible else 0
-            )
-        )
+        _native.check(_native.lib.oxide_app_set_cursor_visible(1 if visible else 0))
 
     def set_cursor_grabbed(
         self,
         grabbed: bool,
     ) -> None:
         """Requests cursor locking, falling back to confinement when locking is unavailable."""
-        _native.check(
-            _native.lib.oxide_app_set_cursor_grabbed(
-                1 if grabbed else 0
-            )
-        )
+        _native.check(_native.lib.oxide_app_set_cursor_grabbed(1 if grabbed else 0))
 
     def run(
         self,
@@ -187,9 +166,7 @@ class Game:
     ) -> None:
         """Runs the blocking application event loop on the calling thread until the window closes or exit is requested."""
         if self._has_run:
-            raise RuntimeError(
-                "An Oxide Game instance can only be run once."
-            )
+            raise RuntimeError("An Oxide Game instance can only be run once.")
 
         self._has_run = True
 
@@ -197,27 +174,17 @@ class Game:
             config = AppConfig()
 
         if not isinstance(config.title, str):
-            raise TypeError(
-                "title must be a string"
-            )
+            raise TypeError("title must be a string")
 
         if not 1 <= config.width <= 0xFFFFFFFF:
-            raise ValueError(
-                "width must be between 1 and 4294967295"
-            )
+            raise ValueError("width must be between 1 and 4294967295")
 
         if not 1 <= config.height <= 0xFFFFFFFF:
-            raise ValueError(
-                "height must be between 1 and 4294967295"
-            )
+            raise ValueError("height must be between 1 and 4294967295")
 
-        title = config.title.encode(
-            "utf-8"
-        )
+        title = config.title.encode("utf-8")
 
-        callback_exception: BaseException | None = (
-            None
-        )
+        callback_exception: BaseException | None = None
 
         def capture_exception(
             exception: BaseException,
@@ -239,9 +206,7 @@ class Game:
             try:
                 self.initialize()
             except BaseException as exception:
-                capture_exception(
-                    exception
-                )
+                capture_exception(exception)
 
         @_native.UpdateCallback
         def on_update(
@@ -255,20 +220,12 @@ class Game:
             try:
                 self.update(
                     GameTime(
-                        delta_seconds=(
-                            native_time
-                            .delta_seconds
-                        ),
-                        total_seconds=(
-                            native_time
-                            .total_seconds
-                        ),
+                        delta_seconds=(native_time.delta_seconds),
+                        total_seconds=(native_time.total_seconds),
                     )
                 )
             except BaseException as exception:
-                capture_exception(
-                    exception
-                )
+                capture_exception(exception)
 
         @_native.DrawCallback
         def on_draw(
@@ -279,36 +236,26 @@ class Game:
             if callback_exception is not None:
                 return
 
-            graphics = Graphics(
-                graphics_handle
-            )
+            graphics = Graphics(graphics_handle)
 
             try:
-                self.draw(
-                    graphics
-                )
+                self.draw(graphics)
             except BaseException as exception:
-                capture_exception(
-                    exception
-                )
+                capture_exception(exception)
             finally:
                 graphics._invalidate()
 
-        native_config = (
-            _native.NativeAppConfig(
-                title=title,
-                width=config.width,
-                height=config.height,
-            )
+        native_config = _native.NativeAppConfig(
+            title=title,
+            width=config.width,
+            height=config.height,
         )
 
-        callbacks = (
-            _native.NativeGameCallbacks(
-                user_data=None,
-                initialize=on_initialize,
-                update=on_update,
-                draw=on_draw,
-            )
+        callbacks = _native.NativeGameCallbacks(
+            user_data=None,
+            initialize=on_initialize,
+            update=on_update,
+            draw=on_draw,
         )
 
         status = _native.lib.oxide_run(
@@ -328,6 +275,4 @@ class Game:
         if callback_exception is not None:
             raise callback_exception
 
-        _native.check(
-            status
-        )
+        _native.check(status)

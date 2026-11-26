@@ -4,44 +4,35 @@ using Oxide.Native;
 using Oxide.Math;
 
 namespace Oxide.Graphics;
+
 /// <summary>Rendering interface supplied to the draw callback; bind a camera before drawing geometry.</summary>
 /// <remarks>Valid only during Game.Draw; do not retain it for later frames.</remarks>
 public sealed class Graphics
 {
-    private NativeGraphicsHandle
-        _handle;
+    private NativeGraphicsHandle _handle;
 
-    private bool
-        _valid;
+    private bool _valid;
 
-    internal Graphics(
-        NativeGraphicsHandle handle
-    )
+    internal Graphics(NativeGraphicsHandle handle)
     {
         _handle = handle;
         _valid = true;
     }
+
     /// <summary>Current client width in physical pixels; assignment requests a resize.</summary>
     public uint PreferredBackbufferWidth
     {
         get => NativeMethods.oxide_app_window_width();
 
-        set
-        {
+        set {
             if (value == 0)
             {
                 throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    "Backbuffer width must be greater than zero."
-                );
+                    nameof(value), "Backbuffer width must be greater than zero.");
             }
 
-            NativeMethods.Check(
-                NativeMethods.oxide_app_set_preferred_backbuffer_size(
-                    value,
-                    NativeMethods.oxide_app_window_height()
-                )
-            );
+            NativeMethods.Check(NativeMethods.oxide_app_set_preferred_backbuffer_size(
+                value, NativeMethods.oxide_app_window_height()));
         }
     }
     /// <summary>Current client height in physical pixels; assignment requests a resize.</summary>
@@ -49,81 +40,52 @@ public sealed class Graphics
     {
         get => NativeMethods.oxide_app_window_height();
 
-        set
-        {
+        set {
             if (value == 0)
             {
                 throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    "Backbuffer height must be greater than zero."
-                );
+                    nameof(value), "Backbuffer height must be greater than zero.");
             }
 
-            NativeMethods.Check(
-                NativeMethods.oxide_app_set_preferred_backbuffer_size(
-                    NativeMethods.oxide_app_window_width(),
-                    value
-                )
-            );
+            NativeMethods.Check(NativeMethods.oxide_app_set_preferred_backbuffer_size(
+                NativeMethods.oxide_app_window_width(), value));
         }
     }
     /// <summary>Rectangle covering the entire render surface in physical pixels.</summary>
     public Rect FullRect
     {
-        get
-        {
+        get {
             EnsureValid();
 
-            NativeMethods.Check(
-                NativeMethods
-                    .oxide_graphics_full_rect(
-                        _handle,
-                        out Rect result
-                    )
-            );
+            NativeMethods.Check(NativeMethods.oxide_graphics_full_rect(_handle, out Rect result));
 
             return result;
         }
     }
+
     /// <summary>Sets ambient lighting, image-based lighting, and the independent visible background.</summary>
-public void SetEnvironment(
-        Environment environment
-    )
+    public void SetEnvironment(Environment environment)
     {
-        NativeMethods.Check(
-            NativeMethods.oxide_graphics_set_environment_explicit(
-                _handle,
-                environment.AmbientColor,
-                environment.AmbientIntensity,
-                environment.EnvironmentTexture?.Handle ?? default,
-                environment.EnvironmentTexture is not null,
-                environment.EnvironmentIntensity,
-                environment.BackgroundTexture?.Handle ?? default,
-                environment.BackgroundTexture is not null,
-                environment.BackgroundColor
-            )
-        );
+        NativeMethods.Check(NativeMethods.oxide_graphics_set_environment_explicit(
+            _handle, environment.AmbientColor, environment.AmbientIntensity,
+            environment.EnvironmentTexture?.Handle ?? default,
+            environment.EnvironmentTexture is not null, environment.EnvironmentIntensity,
+            environment.BackgroundTexture?.Handle ?? default,
+            environment.BackgroundTexture is not null, environment.BackgroundColor));
     }
+
     /// <summary>Removes environment lighting and its background settings.</summary>
-public void ClearEnvironment()
+    public void ClearEnvironment()
     {
-        NativeMethods.Check(
-            NativeMethods.oxide_graphics_clear_environment(
-                _handle
-            )
-        );
+        NativeMethods.Check(NativeMethods.oxide_graphics_clear_environment(_handle));
     }
+
     /// <summary>Removes lights added so far in the current frame.</summary>
-public void ClearLights()
+    public void ClearLights()
     {
         EnsureValid();
 
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_graphics_clear_lights(
-                    _handle
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_graphics_clear_lights(_handle));
     }
 
     internal void Invalidate()
@@ -137,101 +99,55 @@ public void ClearLights()
         if (!_valid)
         {
             throw new InvalidOperationException(
-                "Graphics is only valid during the current Draw callback."
-            );
+                "Graphics is only valid during the current Draw callback.");
         }
     }
+
     /// <summary>Binds a camera and a positive-size pixel viewport for subsequent draw calls.</summary>
-public void BindCamera(
-        Camera camera,
-        Rect destination
-    )
+    public void BindCamera(Camera camera, Rect destination)
     {
-        ArgumentNullException.ThrowIfNull(
-            camera
-        );
+        ArgumentNullException.ThrowIfNull(camera);
 
         EnsureValid();
 
         NativeMethods.Check(
-            NativeMethods
-                .oxide_graphics_bind_camera(
-                    _handle,
-                    camera.Handle,
-                    destination
-                )
-        );
+            NativeMethods.oxide_graphics_bind_camera(_handle, camera.Handle, destination));
     }
+
     /// <summary>Adds a point, spot, or directional light for subsequent draws; lights reset at frame start.</summary>
-    public void AddLight(
-        PointLight light
-    )
+    public void AddLight(PointLight light)
     {
         EnsureValid();
 
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_graphics_add_point_light(
-                    _handle,
-                    light
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_graphics_add_point_light(_handle, light));
     }
+
     /// <summary>Adds a point, spot, or directional light for subsequent draws; lights reset at frame start.</summary>
-    public void AddLight(
-        SpotLight light
-    )
+    public void AddLight(SpotLight light)
     {
         EnsureValid();
 
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_graphics_add_spot_light(
-                    _handle,
-                    light
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_graphics_add_spot_light(_handle, light));
     }
+
     /// <summary>Adds a point, spot, or directional light for subsequent draws; lights reset at frame start.</summary>
-    public void AddLight(
-        DirectionalLight light
-    )
+    public void AddLight(DirectionalLight light)
     {
         EnsureValid();
 
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_graphics_add_directional_light(
-                    _handle,
-                    light
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_graphics_add_directional_light(_handle, light));
     }
+
     /// <summary>Draws a mesh with a material and world transform in the currently bound camera viewport.</summary>
-public void DrawMesh(
-        Mesh mesh,
-        Material material,
-        Transform transform
-    )
+    public void DrawMesh(Mesh mesh, Material material, Transform transform)
     {
-        ArgumentNullException.ThrowIfNull(
-            mesh
-        );
+        ArgumentNullException.ThrowIfNull(mesh);
 
-        ArgumentNullException.ThrowIfNull(
-            material
-        );
+        ArgumentNullException.ThrowIfNull(material);
 
         EnsureValid();
 
-        NativeMethods.Check(
-            NativeMethods
-                .oxide_graphics_draw_mesh(
-                    _handle,
-                    mesh.Handle,
-                    material.Handle,
-                    transform
-                )
-        );
+        NativeMethods.Check(NativeMethods.oxide_graphics_draw_mesh(_handle, mesh.Handle,
+                                                                   material.Handle, transform));
     }
 }

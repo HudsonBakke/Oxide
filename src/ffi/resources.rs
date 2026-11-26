@@ -36,7 +36,6 @@ pub(crate) fn with_texture<R>(
     registry.get(handle.0).map(operation)
 }
 
-
 #[unsafe(no_mangle)]
 pub extern "C" fn oxide_texture_create_rgba(
     width: u32,
@@ -227,8 +226,6 @@ pub extern "C" fn oxide_material_base_texture(
     })
 }
 
-
-
 #[unsafe(no_mangle)]
 pub extern "C" fn oxide_material_normal_texture(
     material: OxideMaterialHandle,
@@ -243,7 +240,9 @@ pub extern "C" fn oxide_material_normal_texture(
             set_last_error("material handle is invalid");
             return OxideStatus::InvalidArgument;
         };
-        unsafe { *result = insert_texture(texture); }
+        unsafe {
+            *result = insert_texture(texture);
+        }
         OxideStatus::Ok
     })
 }
@@ -279,7 +278,9 @@ macro_rules! material_color_property {
                     set_last_error("material handle is invalid");
                     return OxideStatus::InvalidArgument;
                 };
-                unsafe { *result = value; }
+                unsafe {
+                    *result = value;
+                }
                 OxideStatus::Ok
             })
         }
@@ -323,7 +324,9 @@ macro_rules! material_float_property {
                     set_last_error("material handle is invalid");
                     return OxideStatus::InvalidArgument;
                 };
-                unsafe { *result = value; }
+                unsafe {
+                    *result = value;
+                }
                 OxideStatus::Ok
             })
         }
@@ -345,9 +348,24 @@ macro_rules! material_float_property {
     };
 }
 
-material_float_property!(oxide_material_get_normal_strength, oxide_material_set_normal_strength, normal_strength, set_normal_strength);
-material_float_property!(oxide_material_get_metallic, oxide_material_set_metallic, metallic, set_metallic);
-material_float_property!(oxide_material_get_roughness, oxide_material_set_roughness, roughness, set_roughness);
+material_float_property!(
+    oxide_material_get_normal_strength,
+    oxide_material_set_normal_strength,
+    normal_strength,
+    set_normal_strength
+);
+material_float_property!(
+    oxide_material_get_metallic,
+    oxide_material_set_metallic,
+    metallic,
+    set_metallic
+);
+material_float_property!(
+    oxide_material_get_roughness,
+    oxide_material_set_roughness,
+    roughness,
+    set_roughness
+);
 material_float_property!(
     oxide_material_get_emissive_strength,
     oxide_material_set_emissive_strength,

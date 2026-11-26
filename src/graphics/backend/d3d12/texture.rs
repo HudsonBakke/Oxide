@@ -13,7 +13,10 @@ use windows::{
             D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             D3D12_TEXTURE_LAYOUT_UNKNOWN, ID3D12GraphicsCommandList, ID3D12Resource,
         },
-        Dxgi::Common::{DXGI_FORMAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
+        Dxgi::Common::{
+            DXGI_FORMAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32B32A32_FLOAT,
+            DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC,
+        },
     },
     core::Result,
 };
@@ -49,12 +52,7 @@ impl D3D12Texture {
     ) -> Result<Self> {
         if let Some(pixels) = texture.hdr_pixels() {
             let levels = vec![(texture.width(), texture.height(), pixels.to_vec())];
-            return Self::new_float_levels(
-                device,
-                command_list,
-                &levels,
-                descriptor_index,
-            );
+            return Self::new_float_levels(device, command_list, &levels, descriptor_index);
         }
 
         let texture_desc = D3D12_RESOURCE_DESC {
@@ -261,7 +259,10 @@ impl D3D12Texture {
             DepthOrArraySize: 1,
             MipLevels: levels.len() as u16,
             Format: DXGI_FORMAT_R32G32B32A32_FLOAT,
-            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
             Layout: D3D12_TEXTURE_LAYOUT_UNKNOWN,
             Flags: D3D12_RESOURCE_FLAG_NONE,
         };
@@ -284,8 +285,7 @@ impl D3D12Texture {
         let resource =
             resource.expect("CreateCommittedResource succeeded but returned no float texture");
 
-        let mut footprints =
-            vec![D3D12_PLACED_SUBRESOURCE_FOOTPRINT::default(); levels.len()];
+        let mut footprints = vec![D3D12_PLACED_SUBRESOURCE_FOOTPRINT::default(); levels.len()];
         let mut rows = vec![0_u32; levels.len()];
         let mut row_sizes = vec![0_u64; levels.len()];
         let mut upload_size = 0_u64;
@@ -309,7 +309,10 @@ impl D3D12Texture {
             DepthOrArraySize: 1,
             MipLevels: 1,
             Format: DXGI_FORMAT_UNKNOWN,
-            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
             Layout: D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             ..Default::default()
         };
@@ -332,7 +335,9 @@ impl D3D12Texture {
             upload.expect("CreateCommittedResource succeeded but returned no float upload buffer");
 
         let mut mapped = std::ptr::null_mut();
-        unsafe { upload.Map(0, None, Some(&mut mapped))?; }
+        unsafe {
+            upload.Map(0, None, Some(&mut mapped))?;
+        }
         let mapped = mapped as *mut u8;
 
         for (level, (width, height, pixels)) in levels.iter().enumerate() {
@@ -344,10 +349,7 @@ impl D3D12Texture {
                 unsafe {
                     std::ptr::copy_nonoverlapping(
                         pixels.as_ptr().add(source_offset) as *const u8,
-                        mapped.add(
-                            footprints[level].Offset as usize
-                                + row * destination_pitch
-                        ),
+                        mapped.add(footprints[level].Offset as usize + row * destination_pitch),
                         source_pitch,
                     );
                 }
@@ -368,29 +370,29 @@ impl D3D12Texture {
                 },
             };
             unsafe {
-                command_list.CopyTextureRegion(
-                    &destination, 0, 0, 0, &source, None
-                );
+                command_list.CopyTextureRegion(&destination, 0, 0, 0, &source, None);
             }
         }
 
-        unsafe { upload.Unmap(0, None); }
+        unsafe {
+            upload.Unmap(0, None);
+        }
 
         let barrier = D3D12_RESOURCE_BARRIER {
             Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
             Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
             Anonymous: D3D12_RESOURCE_BARRIER_0 {
-                Transition: std::mem::ManuallyDrop::new(
-                    D3D12_RESOURCE_TRANSITION_BARRIER {
-                        pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
-                        Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-                        StateBefore: D3D12_RESOURCE_STATE_COPY_DEST,
-                        StateAfter: D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-                    },
-                ),
+                Transition: std::mem::ManuallyDrop::new(D3D12_RESOURCE_TRANSITION_BARRIER {
+                    pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
+                    Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                    StateBefore: D3D12_RESOURCE_STATE_COPY_DEST,
+                    StateAfter: D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                }),
             },
         };
-        unsafe { command_list.ResourceBarrier(&[barrier]); }
+        unsafe {
+            command_list.ResourceBarrier(&[barrier]);
+        }
 
         Ok(Self {
             resource,

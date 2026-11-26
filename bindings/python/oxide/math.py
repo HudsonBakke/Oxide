@@ -11,6 +11,7 @@ class Angle(ctypes.Structure):
 
     Attributes:
         radians: Creates an angle from a value measured in radians."""
+
     _fields_ = [
         ("radians", ctypes.c_float),
     ]
@@ -20,9 +21,7 @@ class Angle(ctypes.Structure):
         radians: float = 0.0,
     ) -> None:
         """Creates an angle from a value measured in radians."""
-        super().__init__(
-            float(radians)
-        )
+        super().__init__(float(radians))
 
     @classmethod
     def zero(cls) -> Angle:
@@ -43,9 +42,7 @@ class Angle(ctypes.Structure):
         degrees: float,
     ) -> Angle:
         """Creates an angle from a value measured in degrees."""
-        return cls(
-            _math.radians(degrees)
-        )
+        return cls(_math.radians(degrees))
 
     @property
     def as_radians(self) -> float:
@@ -55,9 +52,7 @@ class Angle(ctypes.Structure):
     @property
     def as_degrees(self) -> float:
         """The angle measured in degrees."""
-        return _math.degrees(
-            self.radians
-        )
+        return _math.degrees(self.radians)
 
     def __eq__(
         self,
@@ -74,9 +69,7 @@ class Angle(ctypes.Structure):
 
     def __repr__(self) -> str:
         """Returns a representation containing the component values."""
-        return (
-            f"Angle({self.as_degrees:.3f}°)"
-        )
+        return f"Angle({self.as_degrees:.3f}°)"
 
 
 class Vec2(ctypes.Structure):
@@ -85,6 +78,7 @@ class Vec2(ctypes.Structure):
     Attributes:
         x: X component.
         y: Y component."""
+
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -104,10 +98,7 @@ class Vec2(ctypes.Structure):
     @property
     def length(self) -> float:
         """Euclidean magnitude of the components."""
-        return _math.sqrt(
-            self.x * self.x
-            + self.y * self.y
-        )
+        return _math.sqrt(self.x * self.x + self.y * self.y)
 
     def normalized(self) -> Vec2:
         """Returns a unit-length copy; a zero-length vector remains zero."""
@@ -136,10 +127,7 @@ class Vec2(ctypes.Structure):
         other: Vec2,
     ) -> float:
         """Returns the scalar dot product with the other vector."""
-        return (
-            self.x * other.x
-            + self.y * other.y
-        )
+        return self.x * other.x + self.y * other.y
 
     def __add__(
         self,
@@ -192,16 +180,11 @@ class Vec2(ctypes.Structure):
         ):
             return NotImplemented
 
-        return (
-            self.x == other.x
-            and self.y == other.y
-        )
+        return self.x == other.x and self.y == other.y
 
     def __repr__(self) -> str:
         """Returns a representation containing the component values."""
-        return (
-            f"Vec2({self.x}, {self.y})"
-        )
+        return f"Vec2({self.x}, {self.y})"
 
 
 class Vec3(ctypes.Structure):
@@ -211,6 +194,7 @@ class Vec3(ctypes.Structure):
         x: X component.
         y: Y component.
         z: Z component."""
+
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -233,11 +217,7 @@ class Vec3(ctypes.Structure):
     @property
     def length(self) -> float:
         """Euclidean magnitude of the components."""
-        return _math.sqrt(
-            self.x * self.x
-            + self.y * self.y
-            + self.z * self.z
-        )
+        return _math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
 
     def normalized(self) -> Vec3:
         """Returns a unit-length copy; a zero-length vector remains zero."""
@@ -268,11 +248,7 @@ class Vec3(ctypes.Structure):
         other: Vec3,
     ) -> float:
         """Returns the scalar dot product with the other vector."""
-        return (
-            self.x * other.x
-            + self.y * other.y
-            + self.z * other.z
-        )
+        return self.x * other.x + self.y * other.y + self.z * other.z
 
     def cross(
         self,
@@ -280,14 +256,9 @@ class Vec3(ctypes.Structure):
     ) -> Vec3:
         """Returns the right-handed cross product with the other vector."""
         return Vec3(
-            self.y * other.z
-            - self.z * other.y,
-
-            self.z * other.x
-            - self.x * other.z,
-
-            self.x * other.y
-            - self.y * other.x,
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
         )
 
     def __add__(
@@ -345,21 +316,11 @@ class Vec3(ctypes.Structure):
         ):
             return NotImplemented
 
-        return (
-            self.x == other.x
-            and self.y == other.y
-            and self.z == other.z
-        )
+        return self.x == other.x and self.y == other.y and self.z == other.z
 
     def __repr__(self) -> str:
         """Returns a representation containing the component values."""
-        return (
-            f"Vec3("
-            f"{self.x}, "
-            f"{self.y}, "
-            f"{self.z}"
-            f")"
-        )
+        return f"Vec3(" f"{self.x}, " f"{self.y}, " f"{self.z}" f")"
 
 
 class Vec4(ctypes.Structure):
@@ -370,6 +331,7 @@ class Vec4(ctypes.Structure):
         y: Y component.
         z: Z component.
         w: W component."""
+
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -486,14 +448,7 @@ class Vec4(ctypes.Structure):
 
     def __repr__(self) -> str:
         """Returns a representation containing the component values."""
-        return (
-            f"Vec4("
-            f"{self.x}, "
-            f"{self.y}, "
-            f"{self.z}, "
-            f"{self.w}"
-            f")"
-        )
+        return f"Vec4(" f"{self.x}, " f"{self.y}, " f"{self.z}, " f"{self.w}" f")"
 
 
 class Quaternion(ctypes.Structure):
@@ -504,6 +459,7 @@ class Quaternion(ctypes.Structure):
         y: Y component.
         z: Z component.
         w: W component."""
+
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -545,22 +501,15 @@ class Quaternion(ctypes.Structure):
         """Creates a rotation about a nonzero axis, normalizing the axis before use."""
         axis = axis.normalized()
 
-        half_angle = (
-            angle.as_radians
-            * 0.5
-        )
+        half_angle = angle.as_radians * 0.5
 
-        sin = _math.sin(
-            half_angle
-        )
+        sin = _math.sin(half_angle)
 
         return cls(
             axis.x * sin,
             axis.y * sin,
             axis.z * sin,
-            _math.cos(
-                half_angle
-            ),
+            _math.cos(half_angle),
         )
 
     @classmethod
@@ -571,44 +520,34 @@ class Quaternion(ctypes.Structure):
         roll: Angle,
     ) -> Quaternion:
         """Constructs yaw * pitch * roll about Y, X, and Z; the rightmost rotation acts first on a vector."""
-        pitch_rotation = (
-            cls.from_axis_angle(
-                Vec3(
-                    1.0,
-                    0.0,
-                    0.0,
-                ),
-                pitch,
-            )
+        pitch_rotation = cls.from_axis_angle(
+            Vec3(
+                1.0,
+                0.0,
+                0.0,
+            ),
+            pitch,
         )
 
-        yaw_rotation = (
-            cls.from_axis_angle(
-                Vec3(
-                    0.0,
-                    1.0,
-                    0.0,
-                ),
-                yaw,
-            )
+        yaw_rotation = cls.from_axis_angle(
+            Vec3(
+                0.0,
+                1.0,
+                0.0,
+            ),
+            yaw,
         )
 
-        roll_rotation = (
-            cls.from_axis_angle(
-                Vec3(
-                    0.0,
-                    0.0,
-                    1.0,
-                ),
-                roll,
-            )
+        roll_rotation = cls.from_axis_angle(
+            Vec3(
+                0.0,
+                0.0,
+                1.0,
+            ),
+            roll,
         )
 
-        return (
-            yaw_rotation
-            * pitch_rotation
-            * roll_rotation
-        ).normalized()
+        return (yaw_rotation * pitch_rotation * roll_rotation).normalized()
 
     @classmethod
     def from_to(
@@ -617,37 +556,25 @@ class Quaternion(ctypes.Structure):
         to_vector: Vec3,
     ) -> Quaternion:
         """Returns the shortest rotation aligning two nonzero directions; vector lengths are ignored."""
-        from_vector = (
-            from_vector.normalized()
-        )
+        from_vector = from_vector.normalized()
 
-        to_vector = (
-            to_vector.normalized()
-        )
+        to_vector = to_vector.normalized()
 
-        dot = from_vector.dot(
-            to_vector
-        )
+        dot = from_vector.dot(to_vector)
 
         if dot > 1.0 - 1.0e-6:
             return cls.identity()
 
         if dot < -1.0 + 1.0e-6:
-            if (
-                abs(from_vector.x)
-                <= abs(from_vector.y)
-                and abs(from_vector.x)
-                <= abs(from_vector.z)
+            if abs(from_vector.x) <= abs(from_vector.y) and abs(from_vector.x) <= abs(
+                from_vector.z
             ):
                 candidate = Vec3(
                     1.0,
                     0.0,
                     0.0,
                 )
-            elif (
-                abs(from_vector.y)
-                <= abs(from_vector.z)
-            ):
+            elif abs(from_vector.y) <= abs(from_vector.z):
                 candidate = Vec3(
                     0.0,
                     1.0,
@@ -660,22 +587,14 @@ class Quaternion(ctypes.Structure):
                     1.0,
                 )
 
-            axis = (
-                from_vector
-                .cross(candidate)
-                .normalized()
-            )
+            axis = from_vector.cross(candidate).normalized()
 
             return cls.from_axis_angle(
                 axis,
-                Angle.from_radians(
-                    _math.pi
-                ),
+                Angle.from_radians(_math.pi),
             )
 
-        axis = from_vector.cross(
-            to_vector
-        )
+        axis = from_vector.cross(to_vector)
 
         return cls(
             axis.x,
@@ -688,10 +607,7 @@ class Quaternion(ctypes.Structure):
     def length(self) -> float:
         """Euclidean magnitude of the components."""
         return _math.sqrt(
-            self.x * self.x
-            + self.y * self.y
-            + self.z * self.z
-            + self.w * self.w
+            self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w
         )
 
     def normalized(self) -> Quaternion:
@@ -730,11 +646,7 @@ class Quaternion(ctypes.Structure):
 
         t = q.cross(vector) * 2.0
 
-        return (
-            vector
-            + t * self.w
-            + q.cross(t)
-        )
+        return vector + t * self.w + q.cross(t)
 
     def __mul__(
         self,
@@ -742,25 +654,10 @@ class Quaternion(ctypes.Structure):
     ) -> Quaternion:
         """Composes two rotations; the right-hand quaternion acts first on a vector."""
         return Quaternion(
-            self.w * other.x
-            + self.x * other.w
-            + self.y * other.z
-            - self.z * other.y,
-
-            self.w * other.y
-            - self.x * other.z
-            + self.y * other.w
-            + self.z * other.x,
-
-            self.w * other.z
-            + self.x * other.y
-            - self.y * other.x
-            + self.z * other.w,
-
-            self.w * other.w
-            - self.x * other.x
-            - self.y * other.y
-            - self.z * other.z,
+            self.w * other.x + self.x * other.w + self.y * other.z - self.z * other.y,
+            self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x,
+            self.w * other.z + self.x * other.y - self.y * other.x + self.z * other.w,
+            self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z,
         )
 
     def __eq__(
@@ -783,14 +680,7 @@ class Quaternion(ctypes.Structure):
 
     def __repr__(self) -> str:
         """Returns a representation containing the component values."""
-        return (
-            f"Quaternion("
-            f"{self.x}, "
-            f"{self.y}, "
-            f"{self.z}, "
-            f"{self.w}"
-            f")"
-        )
+        return f"Quaternion(" f"{self.x}, " f"{self.y}, " f"{self.z}, " f"{self.w}" f")"
 
 
 class Rect(ctypes.Structure):
@@ -801,6 +691,7 @@ class Rect(ctypes.Structure):
         y: Top edge in physical pixels.
         width: Horizontal extent in physical pixels.
         height: Vertical extent in physical pixels."""
+
     _fields_ = [
         ("x", ctypes.c_float),
         ("y", ctypes.c_float),
@@ -826,10 +717,7 @@ class Rect(ctypes.Structure):
     @property
     def aspect_ratio(self) -> float:
         """Width divided by height; height must be nonzero for a finite result."""
-        return (
-            self.width
-            / self.height
-        )
+        return self.width / self.height
 
     def __eq__(
         self,
@@ -852,12 +740,7 @@ class Rect(ctypes.Structure):
     def __repr__(self) -> str:
         """Returns a representation containing the component values."""
         return (
-            f"Rect("
-            f"{self.x}, "
-            f"{self.y}, "
-            f"{self.width}, "
-            f"{self.height}"
-            f")"
+            f"Rect(" f"{self.x}, " f"{self.y}, " f"{self.width}, " f"{self.height}" f")"
         )
 
 
@@ -868,6 +751,7 @@ class Transform(ctypes.Structure):
         position: Position in world space.
         rotation: Orientation quaternion; assigned values are normalized.
         scale: Component-wise scale along the model's local axes."""
+
     _fields_ = [
         ("position", Vec3),
         ("rotation", Quaternion),
@@ -882,22 +766,16 @@ class Transform(ctypes.Structure):
     ) -> None:
         """Creates a transform at the origin with identity rotation and unit scale."""
         super().__init__(
-            position
-            if position is not None
-            else Vec3(),
-
+            position if position is not None else Vec3(),
+            (rotation.normalized() if rotation is not None else Quaternion.identity()),
             (
-                rotation.normalized()
-                if rotation is not None
-                else Quaternion.identity()
-            ),
-
-            scale
-            if scale is not None
-            else Vec3(
-                1.0,
-                1.0,
-                1.0,
+                scale
+                if scale is not None
+                else Vec3(
+                    1.0,
+                    1.0,
+                    1.0,
+                )
             ),
         )
 
@@ -919,19 +797,14 @@ class Transform(ctypes.Structure):
         translation: Vec3,
     ) -> None:
         """Adds a world-space translation without rotating it by the current orientation."""
-        self.position = (
-            self.position
-            + translation
-        )
+        self.position = self.position + translation
 
     def set_rotation(
         self,
         rotation: Quaternion,
     ) -> None:
         """Sets the orientation to a normalized copy of the quaternion."""
-        self.rotation = (
-            rotation.normalized()
-        )
+        self.rotation = rotation.normalized()
 
     def set_euler(
         self,
@@ -940,12 +813,10 @@ class Transform(ctypes.Structure):
         roll: Angle,
     ) -> None:
         """Sets orientation to yaw * pitch * roll, about Y, X, and Z respectively."""
-        self.rotation = (
-            Quaternion.from_euler(
-                pitch,
-                yaw,
-                roll,
-            )
+        self.rotation = Quaternion.from_euler(
+            pitch,
+            yaw,
+            roll,
         )
 
     def rotate_pitch_by(
@@ -953,63 +824,48 @@ class Transform(ctypes.Structure):
         angle: Angle,
     ) -> None:
         """Applies an additional rotation about the world X axis."""
-        rotation = (
-            Quaternion.from_axis_angle(
-                Vec3(
-                    1.0,
-                    0.0,
-                    0.0,
-                ),
-                angle,
-            )
+        rotation = Quaternion.from_axis_angle(
+            Vec3(
+                1.0,
+                0.0,
+                0.0,
+            ),
+            angle,
         )
 
-        self.rotation = (
-            rotation
-            * self.rotation
-        ).normalized()
+        self.rotation = (rotation * self.rotation).normalized()
 
     def rotate_yaw_by(
         self,
         angle: Angle,
     ) -> None:
         """Applies an additional rotation about the world Y axis."""
-        rotation = (
-            Quaternion.from_axis_angle(
-                Vec3(
-                    0.0,
-                    1.0,
-                    0.0,
-                ),
-                angle,
-            )
+        rotation = Quaternion.from_axis_angle(
+            Vec3(
+                0.0,
+                1.0,
+                0.0,
+            ),
+            angle,
         )
 
-        self.rotation = (
-            rotation
-            * self.rotation
-        ).normalized()
+        self.rotation = (rotation * self.rotation).normalized()
 
     def rotate_roll_by(
         self,
         angle: Angle,
     ) -> None:
         """Applies an additional rotation about the world Z axis."""
-        rotation = (
-            Quaternion.from_axis_angle(
-                Vec3(
-                    0.0,
-                    0.0,
-                    1.0,
-                ),
-                angle,
-            )
+        rotation = Quaternion.from_axis_angle(
+            Vec3(
+                0.0,
+                0.0,
+                1.0,
+            ),
+            angle,
         )
 
-        self.rotation = (
-            rotation
-            * self.rotation
-        ).normalized()
+        self.rotation = (rotation * self.rotation).normalized()
 
     def scale_by(
         self,
@@ -1077,12 +933,9 @@ class Transform(ctypes.Structure):
             return NotImplemented
 
         return (
-            self.position
-            == other.position
-            and self.rotation
-            == other.rotation
-            and self.scale
-            == other.scale
+            self.position == other.position
+            and self.rotation == other.rotation
+            and self.scale == other.scale
         )
 
     def __repr__(self) -> str:

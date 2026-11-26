@@ -29,9 +29,7 @@ class NativeGraphicsHandle(ctypes.Structure):
     ]
 
 
-class NativeCameraHandle(
-    ctypes.Structure
-):
+class NativeCameraHandle(ctypes.Structure):
     _fields_ = [
         ("value", ctypes.c_uint64),
     ]
@@ -108,9 +106,7 @@ class NativeGameCallbacks(ctypes.Structure):
 
 
 def _find_library() -> Path:
-    override = os.environ.get(
-        "OXIDE_LIBRARY"
-    )
+    override = os.environ.get("OXIDE_LIBRARY")
 
     if override:
         path = Path(override)
@@ -118,9 +114,7 @@ def _find_library() -> Path:
         if path.is_file():
             return path
 
-        raise RuntimeError(
-            f"OXIDE_LIBRARY does not exist: {path}"
-        )
+        raise RuntimeError(f"OXIDE_LIBRARY does not exist: {path}")
 
     # Development-tree fallback.
     #
@@ -149,15 +143,11 @@ def _find_library() -> Path:
 
 _library_path = _find_library()
 
-lib = ctypes.CDLL(
-    str(_library_path)
-)
+lib = ctypes.CDLL(str(_library_path))
 
 
 lib.oxide_last_error_message.argtypes = []
-lib.oxide_last_error_message.restype = (
-    ctypes.c_char_p
-)
+lib.oxide_last_error_message.restype = ctypes.c_char_p
 
 
 lib.oxide_run.argtypes = [
@@ -169,60 +159,44 @@ lib.oxide_run.restype = ctypes.c_int
 
 
 lib.oxide_camera_create.argtypes = [
-    ctypes.POINTER(
-        NativeCameraHandle
-    ),
+    ctypes.POINTER(NativeCameraHandle),
 ]
-lib.oxide_camera_create.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_create.restype = ctypes.c_int
 
 lib.oxide_camera_destroy.argtypes = [
     NativeCameraHandle,
 ]
-lib.oxide_camera_destroy.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_destroy.restype = ctypes.c_int
 
 lib.oxide_camera_get_position.argtypes = [
     NativeCameraHandle,
     ctypes.POINTER(Vec3),
 ]
-lib.oxide_camera_get_position.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_get_position.restype = ctypes.c_int
 
 lib.oxide_camera_set_position.argtypes = [
     NativeCameraHandle,
     Vec3,
 ]
-lib.oxide_camera_set_position.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_set_position.restype = ctypes.c_int
 
 lib.oxide_camera_translate_by.argtypes = [
     NativeCameraHandle,
     Vec3,
 ]
-lib.oxide_camera_translate_by.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_translate_by.restype = ctypes.c_int
 
 lib.oxide_camera_get_rotation.argtypes = [
     NativeCameraHandle,
     ctypes.POINTER(Quaternion),
 ]
-lib.oxide_camera_get_rotation.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_get_rotation.restype = ctypes.c_int
 
 lib.oxide_camera_set_rotation.argtypes = [
     NativeCameraHandle,
     Quaternion,
 ]
-lib.oxide_camera_set_rotation.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_set_rotation.restype = ctypes.c_int
 
 lib.oxide_camera_set_euler.argtypes = [
     NativeCameraHandle,
@@ -230,111 +204,89 @@ lib.oxide_camera_set_euler.argtypes = [
     Angle,
     Angle,
 ]
-lib.oxide_camera_set_euler.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_set_euler.restype = ctypes.c_int
 
 lib.oxide_camera_rotate_pitch_by.argtypes = [
     NativeCameraHandle,
     Angle,
 ]
-lib.oxide_camera_rotate_pitch_by.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_rotate_pitch_by.restype = ctypes.c_int
 
 lib.oxide_camera_rotate_yaw_by.argtypes = [
     NativeCameraHandle,
     Angle,
 ]
-lib.oxide_camera_rotate_yaw_by.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_rotate_yaw_by.restype = ctypes.c_int
 
 lib.oxide_camera_rotate_roll_by.argtypes = [
     NativeCameraHandle,
     Angle,
 ]
-lib.oxide_camera_rotate_roll_by.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_rotate_roll_by.restype = ctypes.c_int
 
 lib.oxide_camera_get_field_of_view.argtypes = [
     NativeCameraHandle,
     ctypes.POINTER(Angle),
 ]
-lib.oxide_camera_get_field_of_view.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_get_field_of_view.restype = ctypes.c_int
 
 lib.oxide_camera_set_field_of_view.argtypes = [
     NativeCameraHandle,
     Angle,
 ]
-lib.oxide_camera_set_field_of_view.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_set_field_of_view.restype = ctypes.c_int
 
 lib.oxide_camera_get_near_plane.argtypes = [
     NativeCameraHandle,
-    ctypes.POINTER(
-        ctypes.c_float
-    ),
+    ctypes.POINTER(ctypes.c_float),
 ]
-lib.oxide_camera_get_near_plane.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_get_near_plane.restype = ctypes.c_int
 
 lib.oxide_camera_get_far_plane.argtypes = [
     NativeCameraHandle,
-    ctypes.POINTER(
-        ctypes.c_float
-    ),
+    ctypes.POINTER(ctypes.c_float),
 ]
-lib.oxide_camera_get_far_plane.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_get_far_plane.restype = ctypes.c_int
 
 lib.oxide_camera_set_clip_planes.argtypes = [
     NativeCameraHandle,
     ctypes.c_float,
     ctypes.c_float,
 ]
-lib.oxide_camera_set_clip_planes.restype = (
-    ctypes.c_int
-)
+lib.oxide_camera_set_clip_planes.restype = ctypes.c_int
 
 lib.oxide_graphics_full_rect.argtypes = [
     NativeGraphicsHandle,
     ctypes.POINTER(Rect),
 ]
-lib.oxide_graphics_full_rect.restype = (
-    ctypes.c_int
-)
+lib.oxide_graphics_full_rect.restype = ctypes.c_int
 
 lib.oxide_graphics_bind_camera.argtypes = [
     NativeGraphicsHandle,
     NativeCameraHandle,
     Rect,
 ]
-lib.oxide_graphics_bind_camera.restype = (
-    ctypes.c_int
-)
+lib.oxide_graphics_bind_camera.restype = ctypes.c_int
 
 lib.oxide_graphics_clear_lights.argtypes = [
     NativeGraphicsHandle,
 ]
-lib.oxide_graphics_clear_lights.restype = (
-    ctypes.c_int
-)
+lib.oxide_graphics_clear_lights.restype = ctypes.c_int
 
 
 # Resource/content signatures. Vertex and Color are assigned in their
 # defining public modules to avoid circular imports.
 lib.oxide_mesh_destroy.argtypes = [NativeMeshHandle]
 lib.oxide_mesh_destroy.restype = ctypes.c_int
-lib.oxide_mesh_vertex_count.argtypes = [NativeMeshHandle, ctypes.POINTER(ctypes.c_size_t)]
+lib.oxide_mesh_vertex_count.argtypes = [
+    NativeMeshHandle,
+    ctypes.POINTER(ctypes.c_size_t),
+]
 lib.oxide_mesh_vertex_count.restype = ctypes.c_int
-lib.oxide_mesh_index_count.argtypes = [NativeMeshHandle, ctypes.POINTER(ctypes.c_size_t)]
+lib.oxide_mesh_index_count.argtypes = [
+    NativeMeshHandle,
+    ctypes.POINTER(ctypes.c_size_t),
+]
 lib.oxide_mesh_index_count.restype = ctypes.c_int
 lib.oxide_mesh_get_pivot.argtypes = [NativeMeshHandle, ctypes.POINTER(Vec3)]
 lib.oxide_mesh_get_pivot.restype = ctypes.c_int
@@ -357,27 +309,49 @@ lib.oxide_mesh_set_orientation.restype = ctypes.c_int
 
 lib.oxide_texture_destroy.argtypes = [NativeTextureHandle]
 lib.oxide_texture_destroy.restype = ctypes.c_int
-lib.oxide_texture_width.argtypes = [NativeTextureHandle, ctypes.POINTER(ctypes.c_uint32)]
+lib.oxide_texture_width.argtypes = [
+    NativeTextureHandle,
+    ctypes.POINTER(ctypes.c_uint32),
+]
 lib.oxide_texture_width.restype = ctypes.c_int
-lib.oxide_texture_height.argtypes = [NativeTextureHandle, ctypes.POINTER(ctypes.c_uint32)]
+lib.oxide_texture_height.argtypes = [
+    NativeTextureHandle,
+    ctypes.POINTER(ctypes.c_uint32),
+]
 lib.oxide_texture_height.restype = ctypes.c_int
 
 lib.oxide_material_destroy.argtypes = [NativeMaterialHandle]
 lib.oxide_material_destroy.restype = ctypes.c_int
-lib.oxide_material_create.argtypes = [NativeTextureHandle, ctypes.POINTER(NativeMaterialHandle)]
+lib.oxide_material_create.argtypes = [
+    NativeTextureHandle,
+    ctypes.POINTER(NativeMaterialHandle),
+]
 lib.oxide_material_create.restype = ctypes.c_int
-lib.oxide_material_base_texture.argtypes = [NativeMaterialHandle, ctypes.POINTER(NativeTextureHandle)]
+lib.oxide_material_base_texture.argtypes = [
+    NativeMaterialHandle,
+    ctypes.POINTER(NativeTextureHandle),
+]
 lib.oxide_material_base_texture.restype = ctypes.c_int
 
 lib.oxide_content_manager_create.argtypes = [ctypes.POINTER(NativeContentManagerHandle)]
 lib.oxide_content_manager_create.restype = ctypes.c_int
-lib.oxide_content_manager_create_with_cache_directory.argtypes = [ctypes.c_char_p, ctypes.POINTER(NativeContentManagerHandle)]
+lib.oxide_content_manager_create_with_cache_directory.argtypes = [
+    ctypes.c_char_p,
+    ctypes.POINTER(NativeContentManagerHandle),
+]
 lib.oxide_content_manager_create_with_cache_directory.restype = ctypes.c_int
 lib.oxide_content_manager_destroy.argtypes = [NativeContentManagerHandle]
 lib.oxide_content_manager_destroy.restype = ctypes.c_int
-lib.oxide_content_manager_cache_directory_length.argtypes = [NativeContentManagerHandle, ctypes.POINTER(ctypes.c_size_t)]
+lib.oxide_content_manager_cache_directory_length.argtypes = [
+    NativeContentManagerHandle,
+    ctypes.POINTER(ctypes.c_size_t),
+]
 lib.oxide_content_manager_cache_directory_length.restype = ctypes.c_int
-lib.oxide_content_manager_copy_cache_directory.argtypes = [NativeContentManagerHandle, ctypes.c_void_p, ctypes.c_size_t]
+lib.oxide_content_manager_copy_cache_directory.argtypes = [
+    NativeContentManagerHandle,
+    ctypes.c_void_p,
+    ctypes.c_size_t,
+]
 lib.oxide_content_manager_copy_cache_directory.restype = ctypes.c_int
 
 for _name, _handle in (
@@ -515,9 +489,7 @@ lib.oxide_material_set_normal_strength.restype = ctypes.c_int
 
 
 def last_error_message() -> str:
-    message = (
-        lib.oxide_last_error_message()
-    )
+    message = lib.oxide_last_error_message()
 
     if not message:
         return "Unknown Oxide error."
@@ -539,9 +511,7 @@ def check(
     except ValueError:
         typed_status = OxideStatus.INTERNAL_ERROR
 
-    error_type = error_type_for(
-        typed_status
-    )
+    error_type = error_type_for(typed_status)
 
     raise error_type(
         typed_status,

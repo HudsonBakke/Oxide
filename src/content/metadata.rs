@@ -122,10 +122,14 @@ pub(crate) fn source_dependencies(path: &Path) -> ContentResult<Vec<DependencyMe
             gltf::buffer::Source::Uri(uri) => Some(uri),
             gltf::buffer::Source::Bin => None,
         })
-        .chain(gltf.document.images().filter_map(|image| match image.source() {
-            gltf::image::Source::Uri { uri, .. } => Some(uri),
-            gltf::image::Source::View { .. } => None,
-        }));
+        .chain(
+            gltf.document
+                .images()
+                .filter_map(|image| match image.source() {
+                    gltf::image::Source::Uri { uri, .. } => Some(uri),
+                    gltf::image::Source::View { .. } => None,
+                }),
+        );
 
     // gltf::import reads all declared buffers/images, even when selecting one
     // subobject. Mirror its URI rules so cache dependencies match those reads.

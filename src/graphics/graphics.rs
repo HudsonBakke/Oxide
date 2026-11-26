@@ -1,7 +1,8 @@
 use crate::{math::Rect, math::Transform, platform::window::PlatformWindow};
 
 use super::{
-    Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight, SpotLight,
+    Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
+    SpotLight,
     backend::d3d12::{D3D12Device, D3D12Renderer, D3D12SwapChain},
 };
 

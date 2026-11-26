@@ -33,8 +33,8 @@ use super::{
 
 use crate::{
     graphics::{
-        Camera, DirectionalLight, Environment, GraphicsResult, Material, Mesh, PointLight, SpotLight,
-        mesh::MeshId, texture::TextureId,
+        Camera, DirectionalLight, Environment, GraphicsResult, Material, Mesh, PointLight,
+        SpotLight, mesh::MeshId, texture::TextureId,
     },
     math::{Rect, Transform},
 };
@@ -147,7 +147,6 @@ struct ObjectConstants {
     material: [f32; 4],
     emissive: [f32; 4],
 }
-
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -315,7 +314,9 @@ impl D3D12Renderer {
             environment: None,
             environment_descriptor_cache: HashMap::new(),
             irradiance_cache: HashMap::new(),
-            fallback_environment_texture: crate::graphics::Texture::solid(crate::graphics::Color::BLACK),
+            fallback_environment_texture: crate::graphics::Texture::solid(
+                crate::graphics::Color::BLACK,
+            ),
             texture_cache: HashMap::new(),
             material_descriptor_cache: HashMap::new(),
             texture_heap,
@@ -463,9 +464,7 @@ impl D3D12Renderer {
         // t0 and t1 must be consecutive in the descriptor table. Cache one
         // stable descriptor pair for each base/normal texture combination.
         let pair_key = (texture_id, normal_texture_id);
-        let descriptor_index = if let Some(&index) =
-            self.material_descriptor_cache.get(&pair_key)
-        {
+        let descriptor_index = if let Some(&index) = self.material_descriptor_cache.get(&pair_key) {
             index
         } else {
             let index = self.next_texture_descriptor;
@@ -474,16 +473,8 @@ impl D3D12Renderer {
                 "Oxide exceeded the temporary GPU texture limit"
             );
             self.next_texture_descriptor += 2;
-            self.copy_texture_descriptor(
-                device,
-                base_descriptor_index,
-                index,
-            );
-            self.copy_texture_descriptor(
-                device,
-                normal_descriptor_index,
-                index + 1,
-            );
+            self.copy_texture_descriptor(device, base_descriptor_index, index);
+            self.copy_texture_descriptor(device, normal_descriptor_index, index + 1);
             self.material_descriptor_cache.insert(pair_key, index);
             index
         };
@@ -500,20 +491,14 @@ impl D3D12Renderer {
         let object_constants = ObjectConstants {
             model: model_matrix.transposed().as_array(),
             normal: normal_matrix.transposed().as_array(),
-            base_color: [
-                base_color.r, base_color.g,
-                base_color.b, base_color.a,
-            ],
+            base_color: [base_color.r, base_color.g, base_color.b, base_color.a],
             material: [
                 material.metallic(),
                 material.roughness(),
                 material.emissive_strength(),
                 material.normal_strength(),
             ],
-            emissive: [
-                emissive.r, emissive.g,
-                emissive.b, emissive.a,
-            ],
+            emissive: [emissive.r, emissive.g, emissive.b, emissive.a],
         };
 
         let model_address = self.constant_buffer.write(&object_constants);
@@ -799,7 +784,6 @@ impl D3D12Renderer {
         Ok(())
     }
 
-
     pub(crate) fn set_environment(&mut self, environment: Environment) {
         self.environment = Some(environment);
     }
@@ -823,9 +807,6 @@ impl D3D12Renderer {
     pub(crate) fn clear_lights(&mut self) {
         self.active_lights.clear();
     }
-
-
-
 
     fn draw_background(&mut self, device: &D3D12Device) -> Result<()> {
         let Some(constants) = self.pending_background else {
@@ -854,18 +835,22 @@ impl D3D12Renderer {
         let address = self.constant_buffer.write(&constants);
 
         unsafe {
-            self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
-            self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
-            self.command_list.SetGraphicsRootConstantBufferView(0, address);
+            self.command_list
+                .SetGraphicsRootSignature(self.background_pipeline.root_signature());
+            self.command_list
+                .SetPipelineState(self.background_pipeline.pipeline_state());
+            self.command_list
+                .SetGraphicsRootConstantBufferView(0, address);
             self.command_list.SetGraphicsRootDescriptorTable(1, handle);
             self.command_list.DrawInstanced(3, 1, 0, 0);
 
-            self.command_list.SetGraphicsRootSignature(self.pipeline.root_signature());
-            self.command_list.SetPipelineState(self.pipeline.pipeline_state());
+            self.command_list
+                .SetGraphicsRootSignature(self.pipeline.root_signature());
+            self.command_list
+                .SetPipelineState(self.pipeline.pipeline_state());
         }
         Ok(())
     }
-
 
     fn prepare_environment_descriptors(
         &mut self,
@@ -921,12 +906,7 @@ impl D3D12Renderer {
                 let index = self.next_texture_descriptor;
                 assert!(index < MAX_TEXTURES);
                 self.next_texture_descriptor += 1;
-                let gpu = D3D12Texture::new(
-                    device,
-                    &self.command_list,
-                    texture,
-                    index,
-                )?;
+                let gpu = D3D12Texture::new(device, &self.command_list, texture, index)?;
                 self.create_texture_srv(device, &gpu);
                 self.texture_cache.insert(id, gpu);
             }
@@ -948,17 +928,14 @@ impl D3D12Renderer {
         }
 
         let key = (environment_id, background_id);
-        let descriptor_index = if let Some(&index) =
-            self.environment_descriptor_cache.get(&key)
-        {
+        let descriptor_index = if let Some(&index) = self.environment_descriptor_cache.get(&key) {
             index
         } else {
             let index = self.next_texture_descriptor;
             assert!(index + 2 < MAX_TEXTURES);
             self.next_texture_descriptor += 3;
 
-            let fallback_descriptor =
-                self.texture_cache[&fallback_id].descriptor_index();
+            let fallback_descriptor = self.texture_cache[&fallback_id].descriptor_index();
             let specular_descriptor = environment_id
                 .map(|id| self.texture_cache[&id].descriptor_index())
                 .unwrap_or(fallback_descriptor);
@@ -977,10 +954,8 @@ impl D3D12Renderer {
             index
         };
 
-        let mut handle =
-            unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
-        handle.ptr +=
-            descriptor_index as u64 * self.texture_descriptor_size as u64;
+        let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+        handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
         Ok(handle)
     }
 

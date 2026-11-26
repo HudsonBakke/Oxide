@@ -41,7 +41,6 @@ pub struct Mesh {
     reference: Vec3,
 }
 
-
 fn generate_tangents(vertices: &mut [Vertex], indices: &[u32]) {
     if vertices.is_empty() || indices.len() < 3 {
         return;
@@ -51,7 +50,11 @@ fn generate_tangents(vertices: &mut [Vertex], indices: &[u32]) {
     let mut bitangents = vec![Vec3::default(); vertices.len()];
 
     for triangle in indices.chunks_exact(3) {
-        let [i0, i1, i2] = [triangle[0] as usize, triangle[1] as usize, triangle[2] as usize];
+        let [i0, i1, i2] = [
+            triangle[0] as usize,
+            triangle[1] as usize,
+            triangle[2] as usize,
+        ];
         if i0 >= vertices.len() || i1 >= vertices.len() || i2 >= vertices.len() {
             continue;
         }

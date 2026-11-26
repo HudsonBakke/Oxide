@@ -11,6 +11,7 @@ from .math import Vec2
 
 class Keys(IntEnum):
     """Physical keyboard keys, independent of text input and keyboard layout."""
+
     #: Physical A key.
     A = 0
     #: Physical B key.
@@ -153,6 +154,7 @@ class Keys(IntEnum):
 
 class MouseButtons(IntEnum):
     """Named mouse buttons; use the additional-button queries for numeric OS button indices."""
+
     #: Left mouse button.
     LEFT = 0
     #: Right mouse button.
@@ -167,6 +169,7 @@ class MouseButtons(IntEnum):
 
 class KeyboardState:
     """Current and previous physical key state for held and per-frame transition queries."""
+
     def __init__(
         self,
         native: _native.NativeKeyboardState,
@@ -195,17 +198,15 @@ class KeyboardState:
     def is_key_pressed(self, key: Keys) -> bool:
         """Whether the physical key changed from released to held this frame."""
         index = int(key)
-        return (
-            self._is_set(self._current, index)
-            and not self._is_set(self._previous, index)
+        return self._is_set(self._current, index) and not self._is_set(
+            self._previous, index
         )
 
     def is_key_released(self, key: Keys) -> bool:
         """Whether the physical key changed from held to released this frame."""
         index = int(key)
-        return (
-            not self._is_set(self._current, index)
-            and self._is_set(self._previous, index)
+        return not self._is_set(self._current, index) and self._is_set(
+            self._previous, index
         )
 
     @staticmethod
@@ -216,24 +217,18 @@ class KeyboardState:
         if not 0 <= index < 128:
             return False
 
-        return (
-            words[index // 64]
-            & (1 << (index % 64))
-        ) != 0
+        return (words[index // 64] & (1 << (index % 64))) != 0
 
 
 class Keyboard:
     """Access to snapshots of physical keyboard state."""
+
     @staticmethod
     def get_state() -> KeyboardState:
         """Returns an input snapshot; pressed/released queries compare with the previous frame."""
         native = _native.NativeKeyboardState()
 
-        _native.check(
-            _native.lib.oxide_keyboard_get_state(
-                ctypes.byref(native)
-            )
-        )
+        _native.check(_native.lib.oxide_keyboard_get_state(ctypes.byref(native)))
 
         return KeyboardState(native)
 
@@ -244,7 +239,9 @@ class MouseState:
     Attributes:
         position: Cursor position in physical pixels relative to the window's client-area top-left.
         delta: Raw mouse motion accumulated this frame in device-reported units.
-        scroll_delta: Scroll accumulated this frame, in lines or pixels according to the OS event."""
+        scroll_delta: Scroll accumulated this frame, in lines or pixels according to the OS event.
+    """
+
     def __init__(
         self,
         native: _native.NativeMouseState,
@@ -288,9 +285,8 @@ class MouseState:
     ) -> bool:
         """Whether the mouse button changed from released to held this frame."""
         index = int(button)
-        return (
-            self._is_set(self._current, index)
-            and not self._is_set(self._previous, index)
+        return self._is_set(self._current, index) and not self._is_set(
+            self._previous, index
         )
 
     def is_button_released(
@@ -299,9 +295,8 @@ class MouseState:
     ) -> bool:
         """Whether the mouse button changed from held to released this frame."""
         index = int(button)
-        return (
-            not self._is_set(self._current, index)
-            and self._is_set(self._previous, index)
+        return not self._is_set(self._current, index) and self._is_set(
+            self._previous, index
         )
 
     def is_other_button_down(
@@ -327,9 +322,8 @@ class MouseState:
     ) -> bool:
         """Whether an additional OS mouse button became held this frame."""
         index = 5 + button
-        return (
-            self._is_set(self._current, index)
-            and not self._is_set(self._previous, index)
+        return self._is_set(self._current, index) and not self._is_set(
+            self._previous, index
         )
 
     def is_other_button_released(
@@ -338,30 +332,23 @@ class MouseState:
     ) -> bool:
         """Whether an additional OS mouse button became released this frame."""
         index = 5 + button
-        return (
-            not self._is_set(self._current, index)
-            and self._is_set(self._previous, index)
+        return not self._is_set(self._current, index) and self._is_set(
+            self._previous, index
         )
 
     @staticmethod
     def _is_set(value: int, index: int) -> bool:
-        return (
-            0 <= index < 64
-            and (value & (1 << index)) != 0
-        )
+        return 0 <= index < 64 and (value & (1 << index)) != 0
 
 
 class Mouse:
     """Access to button, cursor-motion, and scroll snapshots."""
+
     @staticmethod
     def get_state() -> MouseState:
         """Returns an input snapshot; pressed/released queries compare with the previous frame."""
         native = _native.NativeMouseState()
 
-        _native.check(
-            _native.lib.oxide_mouse_get_state(
-                native
-            )
-        )
+        _native.check(_native.lib.oxide_mouse_get_state(native))
 
         return MouseState(native)

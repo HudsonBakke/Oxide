@@ -3,6 +3,7 @@ using System;
 using Oxide.Native;
 
 namespace Oxide;
+
 /// <summary>Category of a failure returned by the native engine.</summary>
 public enum OxideErrorKind
 {
@@ -19,21 +20,13 @@ public enum OxideErrorKind
 }
 
 /// <summary>Exception raised when the native engine returns a non-success status.</summary>
-public sealed class OxideException
-    : Exception
+public sealed class OxideException : Exception
 {
-    internal OxideException(
-        OxideStatus status,
-        string message
-    )
-        : base(message)
+    internal OxideException(OxideStatus status, string message) : base(message)
     {
-        Kind =
-            (OxideErrorKind)(int)status;
+        Kind = (OxideErrorKind)(int)status;
     }
 
     /// <summary>Category of the native failure that produced this exception.</summary>
-    public OxideErrorKind Kind {
-        get;
-    }
+    public OxideErrorKind Kind { get; }
 }

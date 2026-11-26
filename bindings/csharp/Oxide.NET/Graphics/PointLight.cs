@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Oxide.Math;
 
 namespace Oxide.Graphics;
+
 [StructLayout(LayoutKind.Sequential)]
 /// <summary>Omnidirectional point light with inverse-square distance attenuation.</summary>
 public struct PointLight
@@ -11,25 +12,21 @@ public struct PointLight
     private Vec3 _position;
     private Color _color;
     private float _intensity;
+
     /// <summary>Creates a point light; intensity must not be negative.</summary>
-    public PointLight(
-        Vec3 position,
-        Color color,
-        float intensity
-    )
+    public PointLight(Vec3 position, Color color, float intensity)
     {
         if (intensity < 0.0f)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(intensity),
-                "Light intensity cannot be negative."
-            );
+            throw new ArgumentOutOfRangeException(nameof(intensity),
+                                                  "Light intensity cannot be negative.");
         }
 
         _position = position;
         _color = color;
         _intensity = intensity;
     }
+
     /// <summary>Position in world space.</summary>
     public Vec3 Position
     {
@@ -51,10 +48,8 @@ public struct PointLight
         {
             if (value < 0.0f)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    "Light intensity cannot be negative."
-                );
+                throw new ArgumentOutOfRangeException(nameof(value),
+                                                      "Light intensity cannot be negative.");
             }
 
             _intensity = value;

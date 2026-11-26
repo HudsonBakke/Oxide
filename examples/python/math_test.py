@@ -49,12 +49,10 @@ print(
     direction.length,
 )
 
-rotation = (
-    Quaternion.from_euler(
-        Angle.degrees(0.0),
-        Angle.degrees(90.0),
-        Angle.degrees(0.0),
-    )
+rotation = Quaternion.from_euler(
+    Angle.degrees(0.0),
+    Angle.degrees(90.0),
+    Angle.degrees(0.0),
 )
 
 print(
@@ -81,11 +79,7 @@ transform.position = Vec3(
     3.0,
 )
 
-transform.rotate_yaw_by(
-    Angle.degrees(
-        45.0
-    )
-)
+transform.rotate_yaw_by(Angle.degrees(45.0))
 
 transform.scale_by(
     Vec3(

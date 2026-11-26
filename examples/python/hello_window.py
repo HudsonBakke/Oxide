@@ -69,11 +69,7 @@ class MyGame(Game):
         self,
         time: GameTime,
     ) -> None:
-        self.transform.rotate_yaw_by(
-            Angle.degrees(
-                45.0 * time.delta_seconds
-            )
-        )
+        self.transform.rotate_yaw_by(Angle.degrees(45.0 * time.delta_seconds))
 
     def draw(
         self,
@@ -84,14 +80,9 @@ class MyGame(Game):
             graphics.full_rect,
         )
 
-        graphics.add_light(
-            self.light
-        )
+        graphics.add_light(self.light)
 
-        if (
-            self.mesh is not None
-            and self.material is not None
-        ):
+        if self.mesh is not None and self.material is not None:
             graphics.draw_mesh(
                 self.mesh,
                 self.material,

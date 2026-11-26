@@ -20,7 +20,8 @@ use windows::{
         },
         Dxgi::Common::{
             DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32_FLOAT,
-            DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC,
+            DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_UNKNOWN,
+            DXGI_SAMPLE_DESC,
         },
     },
     core::Result,
@@ -333,7 +334,6 @@ impl D3D12Pipeline {
         })
     }
 
-
     pub(crate) fn new_background(
         device: &D3D12Device,
         vertex_shader: &D3D12Shader,
@@ -350,7 +350,10 @@ impl D3D12Pipeline {
             D3D12_ROOT_PARAMETER {
                 ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
                 Anonymous: D3D12_ROOT_PARAMETER_0 {
-                    Descriptor: D3D12_ROOT_DESCRIPTOR { ShaderRegister: 0, RegisterSpace: 0 },
+                    Descriptor: D3D12_ROOT_DESCRIPTOR {
+                        ShaderRegister: 0,
+                        RegisterSpace: 0,
+                    },
                 },
                 ShaderVisibility: D3D12_SHADER_VISIBILITY_ALL,
             },
@@ -388,12 +391,17 @@ impl D3D12Pipeline {
             Flags: D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
         };
         let mut blob = None;
-        unsafe { D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &mut blob, None)?; }
+        unsafe {
+            D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &mut blob, None)?;
+        }
         let blob = blob.unwrap();
         let root_signature: ID3D12RootSignature = unsafe {
             device.device().CreateRootSignature(
                 0,
-                std::slice::from_raw_parts(blob.GetBufferPointer() as *const u8, blob.GetBufferSize()),
+                std::slice::from_raw_parts(
+                    blob.GetBufferPointer() as *const u8,
+                    blob.GetBufferSize(),
+                ),
             )?
         };
         let mut rtv = [DXGI_FORMAT_UNKNOWN; 8];
@@ -431,13 +439,21 @@ impl D3D12Pipeline {
             PrimitiveTopologyType: D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
             NumRenderTargets: 1,
             RTVFormats: rtv,
-            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
             ..Default::default()
         };
         let pipeline_state = unsafe {
-            device.device().CreateGraphicsPipelineState(&pipeline_desc)?
+            device
+                .device()
+                .CreateGraphicsPipelineState(&pipeline_desc)?
         };
-        Ok(Self { root_signature, pipeline_state })
+        Ok(Self {
+            root_signature,
+            pipeline_state,
+        })
     }
 
     pub(crate) fn root_signature(&self) -> &ID3D12RootSignature {

@@ -1,4 +1,5 @@
 namespace Oxide.Input;
+
 /// <summary>Physical keyboard keys, independent of text input and keyboard layout.</summary>
 public enum Keys
 {

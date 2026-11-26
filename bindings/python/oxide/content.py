@@ -18,7 +18,9 @@ class Vertex(ctypes.Structure):
         position: Vertex position in model space.
         normal: Model-space surface normal used for lighting.
         tex_coord: Texture UV coordinates; (0, 0) addresses the top-left corner.
-        tangent: Model-space tangent XYZ and bitangent handedness W (normally +1 or -1)."""
+        tangent: Model-space tangent XYZ and bitangent handedness W (normally +1 or -1).
+    """
+
     _fields_ = [
         ("position", Vec3),
         ("normal", Vec3),
@@ -93,9 +95,8 @@ class Mesh(_OwnedResource):
     """Indexed triangle geometry with model-space pivot and attachment orientation; owns a native resource in language bindings.
 
     Native resources are released automatically when their Python owner is collected."""
-    _destroy_function = (
-        _native.lib.oxide_mesh_destroy
-    )
+
+    _destroy_function = _native.lib.oxide_mesh_destroy
 
     def __init__(
         self,
@@ -103,21 +104,13 @@ class Mesh(_OwnedResource):
         indices: list[int],
     ) -> None:
         """Copies vertices and triangle indices into a new mesh and computes its pivot and tangent frame."""
-        vertex_array_type = (
-            Vertex * len(vertices)
-        )
+        vertex_array_type = Vertex * len(vertices)
 
-        index_array_type = (
-            ctypes.c_uint32 * len(indices)
-        )
+        index_array_type = ctypes.c_uint32 * len(indices)
 
-        vertex_array = vertex_array_type(
-            *vertices
-        )
+        vertex_array = vertex_array_type(*vertices)
 
-        index_array = index_array_type(
-            *indices
-        )
+        index_array = index_array_type(*indices)
 
         handle = _native.NativeMeshHandle()
 
@@ -187,11 +180,7 @@ class Mesh(_OwnedResource):
 
     def recalculate_pivot(self) -> None:
         """Sets the pivot to the arithmetic mean of all model-space vertex positions."""
-        _native.check(
-            _native.lib.oxide_mesh_recalculate_pivot(
-                self._handle
-            )
-        )
+        _native.check(_native.lib.oxide_mesh_recalculate_pivot(self._handle))
 
     @property
     def direction(self) -> Vec3:
@@ -330,9 +319,7 @@ class Mesh(_OwnedResource):
         indices: list[int],
     ) -> None:
         """Copies replacement triangle indices into the mesh; the index count must remain unchanged."""
-        array_type = (
-            ctypes.c_uint32 * len(indices)
-        )
+        array_type = ctypes.c_uint32 * len(indices)
 
         values = array_type(*indices)
 
@@ -349,9 +336,8 @@ class Texture(_OwnedResource):
     """Immutable image resource; load through ContentManager or construct RGBA8/solid-color pixels.
 
     Native resources are released automatically when their Python owner is collected."""
-    _destroy_function = (
-        _native.lib.oxide_texture_destroy
-    )
+
+    _destroy_function = _native.lib.oxide_texture_destroy
 
     @classmethod
     def from_rgba(
@@ -384,9 +370,7 @@ class Texture(_OwnedResource):
         from .graphics import Color
 
         if not isinstance(color, Color):
-            raise TypeError(
-                "color must be a Color"
-            )
+            raise TypeError("color must be a Color")
 
         handle = _native.NativeTextureHandle()
 
@@ -432,9 +416,8 @@ class Material(_OwnedResource):
     """Surface settings for base color, metallicity, roughness, emission, and tangent-space normal mapping.
 
     Native resources are released automatically when their Python owner is collected."""
-    _destroy_function = (
-        _native.lib.oxide_material_destroy
-    )
+
+    _destroy_function = _native.lib.oxide_material_destroy
 
     def __init__(
         self,
@@ -445,13 +428,9 @@ class Material(_OwnedResource):
             base_texture,
             Texture,
         ):
-            raise TypeError(
-                "base_texture must be a Texture"
-            )
+            raise TypeError("base_texture must be a Texture")
 
-        handle = (
-            _native.NativeMaterialHandle()
-        )
+        handle = _native.NativeMaterialHandle()
 
         _native.check(
             _native.lib.oxide_material_create(
@@ -468,13 +447,9 @@ class Material(_OwnedResource):
         from .graphics import Color
 
         if not isinstance(color, Color):
-            raise TypeError(
-                "color must be a Color"
-            )
+            raise TypeError("color must be a Color")
 
-        handle = (
-            _native.NativeMaterialHandle()
-        )
+        handle = _native.NativeMaterialHandle()
 
         _native.check(
             _native.lib.oxide_material_solid(
@@ -484,7 +459,6 @@ class Material(_OwnedResource):
         )
 
         return cls._from_handle(handle)
-
 
     def _get_float(self, name: str) -> float:
         result = ctypes.c_float()
@@ -534,6 +508,7 @@ class Material(_OwnedResource):
 
     def _get_color(self, name: str):
         from .graphics import Color
+
         result = Color()
         _native.check(
             getattr(_native.lib, f"oxide_material_get_{name}")(
@@ -544,12 +519,11 @@ class Material(_OwnedResource):
 
     def _set_color(self, name: str, value) -> None:
         from .graphics import Color
+
         if not isinstance(value, Color):
             raise TypeError("value must be a Color")
         _native.check(
-            getattr(_native.lib, f"oxide_material_set_{name}")(
-                self._handle, value
-            )
+            getattr(_native.lib, f"oxide_material_set_{name}")(self._handle, value)
         )
 
     @property
@@ -575,9 +549,7 @@ class Material(_OwnedResource):
     @property
     def base_texture(self) -> Texture:
         """Base-color texture sampled by the material."""
-        handle = (
-            _native.NativeTextureHandle()
-        )
+        handle = _native.NativeTextureHandle()
 
         _native.check(
             _native.lib.oxide_material_base_texture(
@@ -603,41 +575,26 @@ class ContentManager(_OwnedResource):
     Native resources are released automatically when their Python owner is collected.
 
     Paths are relative to the working directory. glTF names select nodes for meshes,
-    materials for materials, and textures for textures. Cache failures fall back to source import."""
-    _destroy_function = (
-        _native.lib
-        .oxide_content_manager_destroy
-    )
+    materials for materials, and textures for textures. Cache failures fall back to source import.
+    """
+
+    _destroy_function = _native.lib.oxide_content_manager_destroy
 
     def __init__(
         self,
-        cache_directory: (
-            str | PathLike[str] | None
-        ) = None,
+        cache_directory: str | PathLike[str] | None = None,
     ) -> None:
         """Creates a loader using the default target/oxide-content cache, or a supplied cache directory."""
-        handle = (
-            _native.NativeContentManagerHandle()
-        )
+        handle = _native.NativeContentManagerHandle()
 
         if cache_directory is None:
-            status = (
-                _native.lib
-                .oxide_content_manager_create(
-                    ctypes.byref(handle)
-                )
-            )
+            status = _native.lib.oxide_content_manager_create(ctypes.byref(handle))
         else:
-            path = str(
-                cache_directory
-            ).encode("utf-8")
+            path = str(cache_directory).encode("utf-8")
 
-            status = (
-                _native.lib
-                .oxide_content_manager_create_with_cache_directory(
-                    path,
-                    ctypes.byref(handle),
-                )
+            status = _native.lib.oxide_content_manager_create_with_cache_directory(
+                path,
+                ctypes.byref(handle),
             )
 
         _native.check(status)
@@ -649,29 +606,23 @@ class ContentManager(_OwnedResource):
         length = ctypes.c_size_t()
 
         _native.check(
-            _native.lib
-            .oxide_content_manager_cache_directory_length(
+            _native.lib.oxide_content_manager_cache_directory_length(
                 self._handle,
                 ctypes.byref(length),
             )
         )
 
-        buffer = ctypes.create_string_buffer(
-            length.value + 1
-        )
+        buffer = ctypes.create_string_buffer(length.value + 1)
 
         _native.check(
-            _native.lib
-            .oxide_content_manager_copy_cache_directory(
+            _native.lib.oxide_content_manager_copy_cache_directory(
                 self._handle,
                 buffer,
                 len(buffer),
             )
         )
 
-        return buffer.value.decode(
-            "utf-8"
-        )
+        return buffer.value.decode("utf-8")
 
     def load(
         self,
@@ -681,43 +632,24 @@ class ContentManager(_OwnedResource):
     ) -> ContentType:
         """Loads a Mesh, Material, or Texture from a source path, optionally selecting a named glTF subobject.
 
-        Raises ContentError for import/I/O failures; unsupported asset types raise TypeError."""
-        encoded_path = str(path).encode(
-            "utf-8"
-        )
+        Raises ContentError for import/I/O failures; unsupported asset types raise TypeError.
+        """
+        encoded_path = str(path).encode("utf-8")
 
         if asset_type is Mesh:
             handle = _native.NativeMeshHandle()
-            default_fn = (
-                _native.lib.oxide_content_load_mesh
-            )
-            sub_fn = (
-                _native.lib.oxide_content_load_mesh_sub
-            )
+            default_fn = _native.lib.oxide_content_load_mesh
+            sub_fn = _native.lib.oxide_content_load_mesh_sub
         elif asset_type is Material:
-            handle = (
-                _native.NativeMaterialHandle()
-            )
-            default_fn = (
-                _native.lib.oxide_content_load_material
-            )
-            sub_fn = (
-                _native.lib.oxide_content_load_material_sub
-            )
+            handle = _native.NativeMaterialHandle()
+            default_fn = _native.lib.oxide_content_load_material
+            sub_fn = _native.lib.oxide_content_load_material_sub
         elif asset_type is Texture:
-            handle = (
-                _native.NativeTextureHandle()
-            )
-            default_fn = (
-                _native.lib.oxide_content_load_texture
-            )
-            sub_fn = (
-                _native.lib.oxide_content_load_texture_sub
-            )
+            handle = _native.NativeTextureHandle()
+            default_fn = _native.lib.oxide_content_load_texture
+            sub_fn = _native.lib.oxide_content_load_texture_sub
         else:
-            raise TypeError(
-                "asset_type must be Mesh, Material, or Texture"
-            )
+            raise TypeError("asset_type must be Mesh, Material, or Texture")
 
         if subobject is None or subobject == "":
             status = default_fn(
@@ -735,32 +667,40 @@ class ContentManager(_OwnedResource):
 
         _native.check(status)
 
-        return asset_type._from_handle(
-            handle
-        )
+        return asset_type._from_handle(handle)
 
 
 # Signatures that depend on Vertex are declared here to avoid making
 # _native.py depend on this public module.
 _native.lib.oxide_mesh_create.argtypes = [
-    ctypes.POINTER(Vertex), ctypes.c_size_t,
-    ctypes.POINTER(ctypes.c_uint32), ctypes.c_size_t,
+    ctypes.POINTER(Vertex),
+    ctypes.c_size_t,
+    ctypes.POINTER(ctypes.c_uint32),
+    ctypes.c_size_t,
     ctypes.POINTER(_native.NativeMeshHandle),
 ]
 _native.lib.oxide_mesh_create.restype = ctypes.c_int
 _native.lib.oxide_mesh_copy_vertices.argtypes = [
-    _native.NativeMeshHandle, ctypes.POINTER(Vertex), ctypes.c_size_t,
+    _native.NativeMeshHandle,
+    ctypes.POINTER(Vertex),
+    ctypes.c_size_t,
 ]
 _native.lib.oxide_mesh_copy_vertices.restype = ctypes.c_int
 _native.lib.oxide_mesh_set_vertices.argtypes = [
-    _native.NativeMeshHandle, ctypes.POINTER(Vertex), ctypes.c_size_t,
+    _native.NativeMeshHandle,
+    ctypes.POINTER(Vertex),
+    ctypes.c_size_t,
 ]
 _native.lib.oxide_mesh_set_vertices.restype = ctypes.c_int
 _native.lib.oxide_mesh_copy_indices.argtypes = [
-    _native.NativeMeshHandle, ctypes.POINTER(ctypes.c_uint32), ctypes.c_size_t,
+    _native.NativeMeshHandle,
+    ctypes.POINTER(ctypes.c_uint32),
+    ctypes.c_size_t,
 ]
 _native.lib.oxide_mesh_copy_indices.restype = ctypes.c_int
 _native.lib.oxide_mesh_set_indices.argtypes = [
-    _native.NativeMeshHandle, ctypes.POINTER(ctypes.c_uint32), ctypes.c_size_t,
+    _native.NativeMeshHandle,
+    ctypes.POINTER(ctypes.c_uint32),
+    ctypes.c_size_t,
 ]
 _native.lib.oxide_mesh_set_indices.restype = ctypes.c_int

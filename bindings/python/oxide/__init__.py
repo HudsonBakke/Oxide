@@ -58,7 +58,6 @@ __all__ = [
     "Mouse",
     "MouseButtons",
     "MouseState",
-
     "ContentError",
     "GraphicsError",
     "InternalError",
@@ -77,13 +76,11 @@ __all__ = [
     "Vec2",
     "Vec3",
     "Vec4",
-
     "ContentManager",
     "Material",
     "Mesh",
     "Texture",
     "Vertex",
-
     "Camera",
     "Color",
     "DirectionalLight",

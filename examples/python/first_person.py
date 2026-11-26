@@ -2,7 +2,14 @@ import math
 
 from oxide.app import AppConfig, Game, GameTime
 from oxide.content import Material, Mesh, Vertex
-from oxide.graphics import Camera, Color, DirectionalLight, Graphics, PointLight, SpotLight
+from oxide.graphics import (
+    Camera,
+    Color,
+    DirectionalLight,
+    Graphics,
+    PointLight,
+    SpotLight,
+)
 from oxide.input import Keyboard, Keys, Mouse, MouseButtons
 from oxide.math import Angle, Quaternion, Transform, Vec2, Vec3
 
@@ -11,9 +18,9 @@ def make_quad() -> Mesh:
     return Mesh(
         [
             Vertex(Vec3(-0.5, 0, -0.5), Vec3(0, 1, 0), Vec2(0, 0)),
-            Vertex(Vec3( 0.5, 0, -0.5), Vec3(0, 1, 0), Vec2(1, 0)),
-            Vertex(Vec3( 0.5, 0,  0.5), Vec3(0, 1, 0), Vec2(1, 1)),
-            Vertex(Vec3(-0.5, 0,  0.5), Vec3(0, 1, 0), Vec2(0, 1)),
+            Vertex(Vec3(0.5, 0, -0.5), Vec3(0, 1, 0), Vec2(1, 0)),
+            Vertex(Vec3(0.5, 0, 0.5), Vec3(0, 1, 0), Vec2(1, 1)),
+            Vertex(Vec3(-0.5, 0, 0.5), Vec3(0, 1, 0), Vec2(0, 1)),
         ],
         [0, 1, 2, 0, 2, 3],
     )
@@ -24,12 +31,12 @@ def make_cube() -> Mesh:
     indices: list[int] = []
 
     faces = [
-        (Vec3(0,0,1),  [(-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)]),
-        (Vec3(0,0,-1), [(1,-1,-1),(-1,-1,-1),(-1,1,-1),(1,1,-1)]),
-        (Vec3(1,0,0),  [(1,-1,1),(1,-1,-1),(1,1,-1),(1,1,1)]),
-        (Vec3(-1,0,0), [(-1,-1,-1),(-1,-1,1),(-1,1,1),(-1,1,-1)]),
-        (Vec3(0,1,0),  [(-1,1,1),(1,1,1),(1,1,-1),(-1,1,-1)]),
-        (Vec3(0,-1,0), [(-1,-1,-1),(1,-1,-1),(1,-1,1),(-1,-1,1)]),
+        (Vec3(0, 0, 1), [(-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1)]),
+        (Vec3(0, 0, -1), [(1, -1, -1), (-1, -1, -1), (-1, 1, -1), (1, 1, -1)]),
+        (Vec3(1, 0, 0), [(1, -1, 1), (1, -1, -1), (1, 1, -1), (1, 1, 1)]),
+        (Vec3(-1, 0, 0), [(-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, 1, -1)]),
+        (Vec3(0, 1, 0), [(-1, 1, 1), (1, 1, 1), (1, 1, -1), (-1, 1, -1)]),
+        (Vec3(0, -1, 0), [(-1, -1, -1), (1, -1, -1), (1, -1, 1), (-1, -1, 1)]),
     ]
 
     for normal, points in faces:
@@ -42,7 +49,7 @@ def make_cube() -> Mesh:
                     Vec2(),
                 )
             )
-        indices.extend([base, base+2, base+1, base, base+3, base+2])
+        indices.extend([base, base + 2, base + 1, base, base + 3, base + 2])
 
     return Mesh(vertices, indices)
 
@@ -72,7 +79,7 @@ def make_sphere(segments: int, rings: int) -> Mesh:
         for segment in range(segments):
             a = ring * stride + segment
             b = a + stride
-            indices.extend([a, a+1, b+1, a, b+1, b])
+            indices.extend([a, a + 1, b + 1, a, b + 1, b])
 
     return Mesh(vertices, indices)
 
@@ -89,21 +96,21 @@ class FirstPersonGame(Game):
         self.brown = Material.solid(Color.rgb(0.45, 0.25, 0.10))
         self.red = Material.solid(Color.rgb(0.65, 0.16, 0.10))
         self.directional_lights = [
-            DirectionalLight(Vec3(0,-1,0), Color.rgb(1.0,0.75,0.65), 0.30),
-            DirectionalLight(Vec3(0,1,0), Color.rgb(0.45,0.55,1.0), 0.18),
-            DirectionalLight(Vec3(-1,0,0), Color.rgb(1.0,0.35,0.30), 0.22),
-            DirectionalLight(Vec3(1,0,0), Color.rgb(0.30,1.0,0.45), 0.22),
+            DirectionalLight(Vec3(0, -1, 0), Color.rgb(1.0, 0.75, 0.65), 0.30),
+            DirectionalLight(Vec3(0, 1, 0), Color.rgb(0.45, 0.55, 1.0), 0.18),
+            DirectionalLight(Vec3(-1, 0, 0), Color.rgb(1.0, 0.35, 0.30), 0.22),
+            DirectionalLight(Vec3(1, 0, 0), Color.rgb(0.30, 1.0, 0.45), 0.22),
         ]
-        self.sun = PointLight(Vec3(4,4,-5), Color.rgb(1.0,0.72,0.15), 2.5)
+        self.sun = PointLight(Vec3(4, 4, -5), Color.rgb(1.0, 0.72, 0.15), 2.5)
         self.flashlight = SpotLight(
-            Vec3(-4,1.2,-3),
-            Vec3(0.8,-0.15,-1),
+            Vec3(-4, 1.2, -3),
+            Vec3(0.8, -0.15, -1),
             Angle.degrees(32),
             Color.WHITE,
             5.0,
         )
-        self.yellow = Material.solid(Color.rgb(1.0,0.75,0.10))
-        self.gray = Material.solid(Color.rgb(0.22,0.24,0.28))
+        self.yellow = Material.solid(Color.rgb(1.0, 0.75, 0.10))
+        self.gray = Material.solid(Color.rgb(0.22, 0.24, 0.28))
         self.yaw = 0.0
         self.pitch = 0.0
         self.captured = False
@@ -161,17 +168,23 @@ class FirstPersonGame(Game):
         right = rotation.rotate_vector(Vec3(1, 0, 0))
 
         movement = Vec3()
-        if keyboard.is_key_down(Keys.W): movement = movement + forward
-        if keyboard.is_key_down(Keys.S): movement = movement - forward
-        if keyboard.is_key_down(Keys.D): movement = movement + right
-        if keyboard.is_key_down(Keys.A): movement = movement - right
-        if keyboard.is_key_down(Keys.SPACE): movement = movement + Vec3(0,1,0)
-        if keyboard.is_key_down(Keys.LEFT_SHIFT) or keyboard.is_key_down(Keys.RIGHT_SHIFT): movement = movement - Vec3(0,1,0)
+        if keyboard.is_key_down(Keys.W):
+            movement = movement + forward
+        if keyboard.is_key_down(Keys.S):
+            movement = movement - forward
+        if keyboard.is_key_down(Keys.D):
+            movement = movement + right
+        if keyboard.is_key_down(Keys.A):
+            movement = movement - right
+        if keyboard.is_key_down(Keys.SPACE):
+            movement = movement + Vec3(0, 1, 0)
+        if keyboard.is_key_down(Keys.LEFT_SHIFT) or keyboard.is_key_down(
+            Keys.RIGHT_SHIFT
+        ):
+            movement = movement - Vec3(0, 1, 0)
 
         if movement.length > 0.0:
-            self.camera.translate_by(
-                movement.normalized() * (5.0 * time.delta_seconds)
-            )
+            self.camera.translate_by(movement.normalized() * (5.0 * time.delta_seconds))
 
     @staticmethod
     def draw_oriented_box(
@@ -183,7 +196,8 @@ class FirstPersonGame(Game):
         rotation: Quaternion,
     ) -> None:
         graphics.draw_mesh(
-            mesh, material,
+            mesh,
+            material,
             Transform(position=position, scale=scale, rotation=rotation),
         )
 
@@ -208,10 +222,12 @@ class FirstPersonGame(Game):
         graphics.add_light(self.sun)
         camera_rotation = self.camera.rotation
         camera_position = self.camera.position
-        forward3d = camera_rotation.rotate_vector(Vec3(0,0,-1))
-        right3d = camera_rotation.rotate_vector(Vec3(1,0,0))
-        down3d = camera_rotation.rotate_vector(Vec3(0,-1,0))
-        self.flashlight.position = camera_position + forward3d * 0.7 + right3d * 0.35 + down3d * 0.25
+        forward3d = camera_rotation.rotate_vector(Vec3(0, 0, -1))
+        right3d = camera_rotation.rotate_vector(Vec3(1, 0, 0))
+        down3d = camera_rotation.rotate_vector(Vec3(0, -1, 0))
+        self.flashlight.position = (
+            camera_position + forward3d * 0.7 + right3d * 0.35 + down3d * 0.25
+        )
         self.flashlight.direction = forward3d
         graphics.add_light(self.flashlight)
 
@@ -225,24 +241,44 @@ class FirstPersonGame(Game):
                     Vec3(2.0, 1.0, 2.0),
                 )
 
-        self.draw_box(graphics, self.sphere, self.yellow, Vec3(4,4,-5), Vec3(1.1,1.1,1.1))
-        self.draw_oriented_box(
-            graphics, self.cube, self.gray,
-            camera_position + forward3d * 0.9 + right3d * 0.35 + down3d * 0.25,
-            Vec3(0.22,0.22,0.8), camera_rotation,
+        self.draw_box(
+            graphics, self.sphere, self.yellow, Vec3(4, 4, -5), Vec3(1.1, 1.1, 1.1)
         )
         self.draw_oriented_box(
-            graphics, self.cube, self.yellow,
+            graphics,
+            self.cube,
+            self.gray,
+            camera_position + forward3d * 0.9 + right3d * 0.35 + down3d * 0.25,
+            Vec3(0.22, 0.22, 0.8),
+            camera_rotation,
+        )
+        self.draw_oriented_box(
+            graphics,
+            self.cube,
+            self.yellow,
             camera_position + forward3d * 1.3 + right3d * 0.35 + down3d * 0.25,
-            Vec3(0.28,0.28,0.12), camera_rotation,
+            Vec3(0.28, 0.28, 0.12),
+            camera_rotation,
         )
 
-        self.draw_box(graphics, self.cube, self.brown, Vec3(0,1.5,-6), Vec3(0.22,3,0.22))
-        self.draw_box(graphics, self.cube, self.red, Vec3(0,2.8,-6), Vec3(1.4,1.3,0.55))
-        self.draw_box(graphics, self.cube, self.brown, Vec3(0,3.9,-6), Vec3(0.8,0.8,0.8))
-        self.draw_box(graphics, self.cube, self.brown, Vec3(0,3.0,-6), Vec3(4.0,0.18,0.18))
-        self.draw_box(graphics, self.cube, self.dark, Vec3(0,4.45,-6), Vec3(1.7,0.15,1.2))
-        self.draw_box(graphics, self.cube, self.dark, Vec3(0,4.75,-6), Vec3(0.9,0.55,0.8))
+        self.draw_box(
+            graphics, self.cube, self.brown, Vec3(0, 1.5, -6), Vec3(0.22, 3, 0.22)
+        )
+        self.draw_box(
+            graphics, self.cube, self.red, Vec3(0, 2.8, -6), Vec3(1.4, 1.3, 0.55)
+        )
+        self.draw_box(
+            graphics, self.cube, self.brown, Vec3(0, 3.9, -6), Vec3(0.8, 0.8, 0.8)
+        )
+        self.draw_box(
+            graphics, self.cube, self.brown, Vec3(0, 3.0, -6), Vec3(4.0, 0.18, 0.18)
+        )
+        self.draw_box(
+            graphics, self.cube, self.dark, Vec3(0, 4.45, -6), Vec3(1.7, 0.15, 1.2)
+        )
+        self.draw_box(
+            graphics, self.cube, self.dark, Vec3(0, 4.75, -6), Vec3(0.9, 0.55, 0.8)
+        )
 
 
 FirstPersonGame().run(

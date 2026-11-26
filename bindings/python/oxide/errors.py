@@ -7,6 +7,7 @@ from enum import IntEnum
 
 class OxideStatus(IntEnum):
     """Native operation status; zero indicates success and nonzero values identify failure categories."""
+
     #: Operation completed successfully.
     OK = 0
     #: An argument or resource handle is invalid.
@@ -26,6 +27,7 @@ class OxideError(RuntimeError):
 
     Attributes:
         status: Native status code associated with the failure."""
+
     def __init__(
         self,
         status: OxideStatus,
@@ -38,26 +40,31 @@ class OxideError(RuntimeError):
 
 class InvalidArgumentError(OxideError):
     """Raised when an argument violates a native API requirement."""
+
     pass
 
 
 class InvalidOperationError(OxideError):
     """Raised when an operation is invalid for the current engine state."""
+
     pass
 
 
 class ContentError(OxideError):
     """Raised when asset validation, importing, or content I/O fails."""
+
     pass
 
 
 class GraphicsError(OxideError):
     """Raised when a native graphics operation fails."""
+
     pass
 
 
 class InternalError(OxideError):
     """Raised when the native engine reports an unexpected internal failure."""
+
     pass
 
 

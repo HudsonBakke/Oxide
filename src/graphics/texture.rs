@@ -35,11 +35,10 @@ impl Texture {
         let path = path.as_ref();
         let image = image::open(path)?;
 
-        if path.extension().and_then(|v| v.to_str())
-            .is_some_and(|v| {
-                v.eq_ignore_ascii_case("hdr")
-                    || v.eq_ignore_ascii_case("exr")
-            })
+        if path
+            .extension()
+            .and_then(|v| v.to_str())
+            .is_some_and(|v| v.eq_ignore_ascii_case("hdr") || v.eq_ignore_ascii_case("exr"))
         {
             let image = image.to_rgb32f();
             let width = image.width();
@@ -107,11 +106,7 @@ impl Texture {
     }
 
     /// Creates a texture directly from RGBA8 pixel data.
-    pub fn rgba(
-        width: u32,
-        height: u32,
-        pixels: Vec<u8>,
-    ) -> crate::OxideResult<Self> {
+    pub fn rgba(width: u32, height: u32, pixels: Vec<u8>) -> crate::OxideResult<Self> {
         let expected = (width as usize)
             .checked_mul(height as usize)
             .and_then(|value| value.checked_mul(4))
@@ -129,7 +124,6 @@ impl Texture {
 
         Ok(Self::from_rgba(width, height, pixels))
     }
-
 
     pub(crate) fn environment_prefilter(&self) -> EnvironmentPrefilter {
         const SPECULAR_LEVELS: u32 = 5;
@@ -166,9 +160,7 @@ impl Texture {
 
         for y in 0..irradiance_height {
             for x in 0..irradiance_width {
-                let normal = equirectangular_direction(
-                    x, y, irradiance_width, irradiance_height
-                );
+                let normal = equirectangular_direction(x, y, irradiance_width, irradiance_height);
                 let color = integrate_irradiance(self, normal, IRRADIANCE_SAMPLES);
                 write_rgb(&mut irradiance, x, y, irradiance_width, color);
             }
@@ -190,13 +182,20 @@ impl Texture {
         }
     }
 
-    pub(crate) fn hdr_pixels(&self) -> Option<&[f32]> { self.hdr_pixels.as_deref() }
+    pub(crate) fn hdr_pixels(&self) -> Option<&[f32]> {
+        self.hdr_pixels.as_deref()
+    }
 
     pub(crate) fn from_hdr_rgba(width: u32, height: u32, pixels: Vec<f32>) -> Self {
-        Self { id: next_texture_id(), width, height, pixels: Vec::new(), hdr_pixels: Some(pixels) }
+        Self {
+            id: next_texture_id(),
+            width,
+            height,
+            pixels: Vec::new(),
+            hdr_pixels: Some(pixels),
+        }
     }
 }
-
 
 pub(crate) struct EnvironmentPrefilter {
     pub(crate) specular: Vec<(u32, u32, Vec<f32>)>,
@@ -278,11 +277,7 @@ fn sample_direction(texture: &Texture, direction: crate::math::Vec3) -> [f32; 3]
     result
 }
 
-fn integrate_irradiance(
-    texture: &Texture,
-    normal: crate::math::Vec3,
-    samples: u32,
-) -> [f32; 3] {
+fn integrate_irradiance(texture: &Texture, normal: crate::math::Vec3, samples: u32) -> [f32; 3] {
     let (tangent, bitangent) = basis(normal);
     let mut sum = [0.0_f32; 3];
 
@@ -292,13 +287,8 @@ fn integrate_irradiance(
         let (u1, u2) = hammersley(i, samples);
         let r = u1.sqrt();
         let phi = std::f32::consts::TAU * u2;
-        let local = crate::math::Vec3::new(
-            r * phi.cos(),
-            r * phi.sin(),
-            (1.0 - u1).sqrt(),
-        );
-        let direction =
-            tangent * local.x + bitangent * local.y + normal * local.z;
+        let local = crate::math::Vec3::new(r * phi.cos(), r * phi.sin(), (1.0 - u1).sqrt());
+        let direction = tangent * local.x + bitangent * local.y + normal * local.z;
         let sample = sample_direction(texture, direction);
         for channel in 0..3 {
             sum[channel] += sample[channel];
@@ -325,19 +315,13 @@ fn integrate_ggx(
     for i in 0..samples {
         let (u1, u2) = hammersley(i, samples);
         let phi = std::f32::consts::TAU * u1;
-        let cos_theta =
-            ((1.0 - u2) / (1.0 + (alpha2 - 1.0) * u2)).sqrt();
+        let cos_theta = ((1.0 - u2) / (1.0 + (alpha2 - 1.0) * u2)).sqrt();
         let sin_theta = (1.0 - cos_theta * cos_theta).max(0.0).sqrt();
-        let half_local = crate::math::Vec3::new(
-            sin_theta * phi.cos(),
-            sin_theta * phi.sin(),
-            cos_theta,
-        );
-        let half_vector = (
-            tangent * half_local.x
-            + bitangent * half_local.y
-            + normal * half_local.z
-        ).normalized();
+        let half_local =
+            crate::math::Vec3::new(sin_theta * phi.cos(), sin_theta * phi.sin(), cos_theta);
+        let half_vector =
+            (tangent * half_local.x + bitangent * half_local.y + normal * half_local.z)
+                .normalized();
         let light = (half_vector * (2.0 * view.dot(&half_vector)) - view).normalized();
         let n_dot_l = normal.dot(&light).max(0.0);
         if n_dot_l > 0.0 {
@@ -389,7 +373,18 @@ impl ContentAssetInternal for Texture {
     fn supports_extension(extension: &str) -> bool {
         matches!(
             extension,
-            "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tif" | "tiff" | "webp" | "hdr" | "exr" | "gltf" | "glb"
+            "png"
+                | "jpg"
+                | "jpeg"
+                | "gif"
+                | "bmp"
+                | "tif"
+                | "tiff"
+                | "webp"
+                | "hdr"
+                | "exr"
+                | "gltf"
+                | "glb"
         )
     }
 
@@ -436,15 +431,17 @@ impl ContentAssetInternal for Texture {
         writer.write_all(&[is_hdr as u8])?;
 
         if let Some(pixels) = &self.hdr_pixels {
-            let pixel_count = u64::try_from(pixels.len())
-                .map_err(|_| ContentError::InvalidCache("texture pixel data is too large".into()))?;
+            let pixel_count = u64::try_from(pixels.len()).map_err(|_| {
+                ContentError::InvalidCache("texture pixel data is too large".into())
+            })?;
             writer.write_all(&pixel_count.to_le_bytes())?;
             for value in pixels {
                 writer.write_all(&value.to_le_bytes())?;
             }
         } else {
-            let pixel_count = u64::try_from(self.pixels.len())
-                .map_err(|_| ContentError::InvalidCache("texture pixel data is too large".into()))?;
+            let pixel_count = u64::try_from(self.pixels.len()).map_err(|_| {
+                ContentError::InvalidCache("texture pixel data is too large".into())
+            })?;
             writer.write_all(&pixel_count.to_le_bytes())?;
             writer.write_all(&self.pixels)?;
         }
@@ -491,7 +488,13 @@ impl ContentAssetInternal for Texture {
             ));
         }
 
-        let byte_count = if is_hdr { pixel_count.checked_mul(4).ok_or_else(|| ContentError::InvalidCache("HDR texture byte count overflow".into()))? } else { pixel_count };
+        let byte_count = if is_hdr {
+            pixel_count.checked_mul(4).ok_or_else(|| {
+                ContentError::InvalidCache("HDR texture byte count overflow".into())
+            })?
+        } else {
+            pixel_count
+        };
         if payload_size != HEADER_SIZE + byte_count {
             return Err(ContentError::InvalidCache(
                 "texture payload size is inconsistent".into(),
