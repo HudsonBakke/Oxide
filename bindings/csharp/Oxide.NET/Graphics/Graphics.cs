@@ -5,6 +5,7 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
+/// <summary>Per-frame rendering interface valid only during the current Draw callback.</summary>
 public sealed class Graphics
 {
     private NativeGraphicsHandle
@@ -21,6 +22,7 @@ public sealed class Graphics
         _valid = true;
     }
 
+    /// <summary>Gets the current backbuffer width or requests a new width.</summary>
     public uint PreferredBackbufferWidth
     {
         get => NativeMethods.oxide_app_window_width();
@@ -44,6 +46,7 @@ public sealed class Graphics
         }
     }
 
+    /// <summary>Gets the current backbuffer height or requests a new height.</summary>
     public uint PreferredBackbufferHeight
     {
         get => NativeMethods.oxide_app_window_height();
@@ -67,6 +70,7 @@ public sealed class Graphics
         }
     }
 
+    /// <summary>Rectangle covering the current backbuffer.</summary>
     public Rect FullRect
     {
         get
@@ -85,7 +89,8 @@ public sealed class Graphics
         }
     }
 
-    public void SetEnvironment(
+        /// <summary>Sets ambient lighting, IBL, and background rendering for the current scene.</summary>
+public void SetEnvironment(
         Environment environment
     )
     {
@@ -104,7 +109,8 @@ public sealed class Graphics
         );
     }
 
-    public void ClearEnvironment()
+        /// <summary>Removes the current scene environment.</summary>
+public void ClearEnvironment()
     {
         NativeMethods.Check(
             NativeMethods.oxide_graphics_clear_environment(
@@ -113,7 +119,8 @@ public sealed class Graphics
         );
     }
 
-    public void ClearLights()
+        /// <summary>Removes lights accumulated for the current frame.</summary>
+public void ClearLights()
     {
         EnsureValid();
 
@@ -141,7 +148,8 @@ public sealed class Graphics
         }
     }
 
-    public void BindCamera(
+        /// <summary>Binds a camera to the specified destination rectangle for subsequent draws.</summary>
+public void BindCamera(
         Camera camera,
         Rect destination
     )
@@ -162,6 +170,7 @@ public sealed class Graphics
         );
     }
 
+    /// <summary>Adds a light to the current frame's lighting state.</summary>
     public void AddLight(
         PointLight light
     )
@@ -177,6 +186,7 @@ public sealed class Graphics
         );
     }
 
+    /// <summary>Adds a light to the current frame's lighting state.</summary>
     public void AddLight(
         SpotLight light
     )
@@ -192,6 +202,7 @@ public sealed class Graphics
         );
     }
 
+    /// <summary>Adds a light to the current frame's lighting state.</summary>
     public void AddLight(
         DirectionalLight light
     )
@@ -207,7 +218,8 @@ public sealed class Graphics
         );
     }
 
-    public void DrawMesh(
+        /// <summary>Draws a mesh with the supplied material and transform.</summary>
+public void DrawMesh(
         Mesh mesh,
         Material material,
         Transform transform

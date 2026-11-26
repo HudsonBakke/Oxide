@@ -11,6 +11,7 @@ use super::{
 };
 
 #[derive(Debug)]
+/// Loads source assets and maintains Oxide's compiled-content cache.
 pub struct ContentManager {
     cache_directory: PathBuf,
 }
@@ -94,6 +95,7 @@ impl ContentManager {
         Ok(asset)
     }
 
+    /// Returns the compiled-content cache directory.
     pub fn cache_directory(&self) -> &Path {
         &self.cache_directory
     }

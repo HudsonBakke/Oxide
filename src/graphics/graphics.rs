@@ -9,6 +9,7 @@ use super::{
 ///
 /// `Graphics` owns the active graphics backend and coordinates
 /// rendering, presentation, and surface resizing.
+/// Per-frame rendering interface supplied to the game's draw callback.
 pub struct Graphics {
     device: D3D12Device,
     renderer: D3D12Renderer,

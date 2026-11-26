@@ -5,6 +5,7 @@ using Oxide.Native;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Position, rotation, and scale describing an object's placement.</summary>
 public struct Transform
     : IEquatable<Transform>
 {
@@ -12,6 +13,7 @@ public struct Transform
     private Quaternion _rotation;
     private Vec3 _scale;
 
+    /// <summary>Creates or accesses Transform.</summary>
     public Transform()
     {
         _position =
@@ -32,6 +34,7 @@ public struct Transform
             );
     }
 
+    /// <summary>Current cursor position in window coordinates.</summary>
     public Vec3 Position
     {
         readonly get =>
@@ -41,6 +44,7 @@ public struct Transform
             _position = value;
     }
 
+    /// <summary>Creates or accesses Rotation.</summary>
     public Quaternion Rotation
     {
         readonly get =>
@@ -51,6 +55,7 @@ public struct Transform
                 value.Normalized();
     }
 
+    /// <summary>Object scale.</summary>
     public Vec3 Scale
     {
         readonly get =>
@@ -60,6 +65,7 @@ public struct Transform
             _scale = value;
     }
 
+    /// <summary>Creates or accesses TranslateBy.</summary>
     public void TranslateBy(
         Vec3 translation
     )
@@ -68,6 +74,7 @@ public struct Transform
             translation;
     }
 
+    /// <summary>Creates or accesses SetEuler.</summary>
     public void SetEuler(
         Angle pitch,
         Angle yaw,
@@ -82,6 +89,7 @@ public struct Transform
             );
     }
 
+    /// <summary>Creates or accesses RotatePitchBy.</summary>
     public void RotatePitchBy(
         Angle angle
     )
@@ -101,6 +109,7 @@ public struct Transform
                 .Normalized();
     }
 
+    /// <summary>Creates or accesses RotateYawBy.</summary>
     public void RotateYawBy(
         Angle angle
     )
@@ -120,6 +129,7 @@ public struct Transform
                 .Normalized();
     }
 
+    /// <summary>Creates or accesses RotateRollBy.</summary>
     public void RotateRollBy(
         Angle angle
     )
@@ -139,6 +149,7 @@ public struct Transform
                 .Normalized();
     }
 
+    /// <summary>Multiplies the current scale component-wise.</summary>
     public void ScaleBy(
         Vec3 scale
     )
@@ -151,6 +162,7 @@ public struct Transform
             );
     }
 
+    /// <summary>Computes a child transform that aligns two mesh attachment points.</summary>
     public static Transform FromAttachment(
         Mesh parent,
         Transform parentTransform,
@@ -193,6 +205,7 @@ public struct Transform
         return result;
     }
 
+    /// <summary>Tests value equality.</summary>
     public readonly bool Equals(
         Transform other
     )

@@ -5,14 +5,20 @@ use super::{Angle, Mat4, Vec3};
 /// A quaternion representing a 3D rotation.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Quaternion rotation used for three-dimensional orientation and vector rotation.
 pub struct Quaternion {
+    /// Public Oxide x API.
     pub x: f32,
+    /// Public Oxide y API.
     pub y: f32,
+    /// Public Oxide z API.
     pub z: f32,
+    /// Public Oxide w API.
     pub w: f32,
 }
 
 impl Quaternion {
+    /// Public Oxide IDENTITY API.
     pub const IDENTITY: Self = Self {
         x: 0.0,
         y: 0.0,
@@ -20,6 +26,7 @@ impl Quaternion {
         w: 1.0,
     };
 
+    /// Public Oxide fn API.
     pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
         Self { x, y, z, w }
     }

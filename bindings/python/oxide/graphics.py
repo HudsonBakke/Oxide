@@ -16,6 +16,7 @@ from .content import Material, Mesh
 
 
 class Color(ctypes.Structure):
+    """Linear RGBA color with floating-point channels."""
     _fields_ = [
         ("r", ctypes.c_float),
         ("g", ctypes.c_float),
@@ -44,6 +45,7 @@ class Color(ctypes.Structure):
         g: float,
         b: float,
     ) -> Color:
+        """Public Oxide rgb operation."""
         return cls(
             r,
             g,
@@ -59,6 +61,7 @@ class Color(ctypes.Structure):
         b: float,
         a: float,
     ) -> Color:
+        """Public Oxide rgba operation."""
         return cls(
             r,
             g,
@@ -132,8 +135,8 @@ Color.YELLOW = Color.rgb(
 )
 
 
-
 class Environment:
+    """Explicit ambient, IBL, and visible-background settings for a scene."""
     def __init__(
         self,
         ambient_color: Color,
@@ -157,6 +160,7 @@ class Environment:
 
 
 class PointLight(ctypes.Structure):
+    """Omnidirectional light emitted from a world-space point."""
     _fields_ = [
         ("position", Vec3),
         ("color", Color),
@@ -188,6 +192,7 @@ class PointLight(ctypes.Structure):
 
 
 class SpotLight(ctypes.Structure):
+    """Cone-shaped positional light."""
     _fields_ = [
         ("position", Vec3),
         ("direction", Vec3),
@@ -248,6 +253,7 @@ class SpotLight(ctypes.Structure):
 
 
 class DirectionalLight(ctypes.Structure):
+    """Infinitely distant light with parallel rays."""
     _fields_ = [
         ("direction", Vec3),
         ("color", Color),
@@ -290,6 +296,7 @@ class DirectionalLight(ctypes.Structure):
 
 
 class Camera:
+    """Perspective camera defining the viewpoint used to render a scene."""
     def __init__(self) -> None:
         handle = (
             _native.NativeCameraHandle()
@@ -320,6 +327,7 @@ class Camera:
 
     @property
     def position(self) -> Vec3:
+        """Public Oxide position operation."""
         result = Vec3()
 
         _native.check(
@@ -337,6 +345,7 @@ class Camera:
         self,
         value: Vec3,
     ) -> None:
+        """Public Oxide position operation."""
         _native.check(
             _native.lib
             .oxide_camera_set_position(
@@ -347,6 +356,7 @@ class Camera:
 
     @property
     def rotation(self) -> Quaternion:
+        """Public Oxide rotation operation."""
         result = Quaternion()
 
         _native.check(
@@ -364,6 +374,7 @@ class Camera:
         self,
         value: Quaternion,
     ) -> None:
+        """Public Oxide rotation operation."""
         _native.check(
             _native.lib
             .oxide_camera_set_rotation(
@@ -374,6 +385,7 @@ class Camera:
 
     @property
     def field_of_view(self) -> Angle:
+        """Public Oxide field of view operation."""
         result = Angle()
 
         _native.check(
@@ -391,6 +403,7 @@ class Camera:
         self,
         value: Angle,
     ) -> None:
+        """Public Oxide field of view operation."""
         _native.check(
             _native.lib
             .oxide_camera_set_field_of_view(
@@ -401,6 +414,7 @@ class Camera:
 
     @property
     def near_plane(self) -> float:
+        """Public Oxide near plane operation."""
         result = ctypes.c_float()
 
         _native.check(
@@ -417,6 +431,7 @@ class Camera:
 
     @property
     def far_plane(self) -> float:
+        """Public Oxide far plane operation."""
         result = ctypes.c_float()
 
         _native.check(
@@ -435,6 +450,7 @@ class Camera:
         self,
         translation: Vec3,
     ) -> None:
+        """Add a world-space translation."""
         _native.check(
             _native.lib
             .oxide_camera_translate_by(
@@ -449,6 +465,7 @@ class Camera:
         yaw: Angle,
         roll: Angle,
     ) -> None:
+        """Set orientation from pitch, yaw, and roll."""
         _native.check(
             _native.lib
             .oxide_camera_set_euler(
@@ -463,6 +480,7 @@ class Camera:
         self,
         angle: Angle,
     ) -> None:
+        """Public Oxide rotate pitch by operation."""
         _native.check(
             _native.lib
             .oxide_camera_rotate_pitch_by(
@@ -475,6 +493,7 @@ class Camera:
         self,
         angle: Angle,
     ) -> None:
+        """Public Oxide rotate yaw by operation."""
         _native.check(
             _native.lib
             .oxide_camera_rotate_yaw_by(
@@ -487,6 +506,7 @@ class Camera:
         self,
         angle: Angle,
     ) -> None:
+        """Public Oxide rotate roll by operation."""
         _native.check(
             _native.lib
             .oxide_camera_rotate_roll_by(
@@ -500,6 +520,7 @@ class Camera:
         near_plane: float,
         far_plane: float,
     ) -> None:
+        """Set near and far clipping distances."""
         _native.check(
             _native.lib
             .oxide_camera_set_clip_planes(
@@ -511,6 +532,7 @@ class Camera:
 
 
 class Graphics:
+    """Per-frame rendering interface valid only during the current draw callback."""
     def __init__(
         self,
         handle: _native.NativeGraphicsHandle,
@@ -530,6 +552,7 @@ class Graphics:
 
     @property
     def preferred_backbuffer_width(self) -> int:
+        """Public Oxide preferred backbuffer width operation."""
         return _native.lib.oxide_app_window_width()
 
     @preferred_backbuffer_width.setter
@@ -537,6 +560,7 @@ class Graphics:
         self,
         value: int,
     ) -> None:
+        """Public Oxide preferred backbuffer width operation."""
         if value <= 0:
             raise ValueError(
                 "backbuffer width must be greater than zero"
@@ -551,6 +575,7 @@ class Graphics:
 
     @property
     def preferred_backbuffer_height(self) -> int:
+        """Public Oxide preferred backbuffer height operation."""
         return _native.lib.oxide_app_window_height()
 
     @preferred_backbuffer_height.setter
@@ -558,6 +583,7 @@ class Graphics:
         self,
         value: int,
     ) -> None:
+        """Public Oxide preferred backbuffer height operation."""
         if value <= 0:
             raise ValueError(
                 "backbuffer height must be greater than zero"
@@ -572,6 +598,7 @@ class Graphics:
 
     @property
     def full_rect(self) -> Rect:
+        """Public Oxide full rect operation."""
         self._require_valid()
 
         result = Rect()
@@ -591,6 +618,7 @@ class Graphics:
         camera: Camera,
         destination: Rect,
     ) -> None:
+        """Bind a camera to a destination rectangle for subsequent draws."""
         self._require_valid()
 
         _native.check(
@@ -608,6 +636,7 @@ class Graphics:
         material: Material,
         transform: Transform,
     ) -> None:
+        """Draw a mesh with the supplied material and transform."""
         self._require_valid()
 
         if not isinstance(mesh, Mesh):
@@ -629,6 +658,7 @@ class Graphics:
         self,
         environment: Environment,
     ) -> None:
+        """Set ambient lighting, IBL, and background rendering for the scene."""
         self._require_valid()
         if not isinstance(environment, Environment):
             raise TypeError("environment must be an Environment")
@@ -655,6 +685,7 @@ class Graphics:
         )
 
     def clear_environment(self) -> None:
+        """Remove the current environment."""
         self._require_valid()
         _native.check(
             _native.lib.oxide_graphics_clear_environment(
@@ -663,6 +694,7 @@ class Graphics:
         )
 
     def clear_lights(self) -> None:
+        """Remove lights accumulated for the current frame."""
         self._require_valid()
 
         _native.check(
@@ -680,6 +712,7 @@ class Graphics:
             | DirectionalLight
         ),
     ) -> None:
+        """Add a light to the current frame."""
         self._require_valid()
 
         if isinstance(

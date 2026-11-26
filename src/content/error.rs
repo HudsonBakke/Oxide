@@ -1,6 +1,7 @@
 use std::{fmt, io, path::PathBuf};
 
 #[derive(Debug)]
+/// Error produced while validating, importing, caching, or loading content.
 pub enum ContentError {
     FileNotFound {
         path: PathBuf,
@@ -48,6 +49,7 @@ pub enum ContentError {
     },
 }
 
+/// Public Oxide ContentResult API.
 pub type ContentResult<T> = Result<T, ContentError>;
 
 impl fmt::Display for ContentError {

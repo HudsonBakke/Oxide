@@ -6,6 +6,7 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Public Oxide Keys API.
 pub enum Keys {
     A,
     B,
@@ -79,23 +80,32 @@ pub enum Keys {
 }
 
 #[derive(Debug, Clone, Default)]
+/// Snapshot of current and previous keyboard state used for level and edge queries.
 pub struct KeyboardState {
     current: HashSet<Keys>,
     previous: HashSet<Keys>,
 }
 
 impl KeyboardState {
+    /// Returns whether the key is held.
     pub fn is_key_down(&self, key: Keys) -> bool {
         self.current.contains(&key)
     }
 
+    /// Returns whether the key is not held.
     pub fn is_key_up(&self, key: Keys) -> bool {
         !self.is_key_down(key)
     }
 
+    /// Returns whether the key transitioned from up to down this frame.
+
+
     pub fn is_key_pressed(&self, key: Keys) -> bool {
         self.current.contains(&key) && !self.previous.contains(&key)
     }
+
+    /// Returns whether the key transitioned from down to up this frame.
+
 
     pub fn is_key_released(&self, key: Keys) -> bool {
         !self.current.contains(&key) && self.previous.contains(&key)
@@ -106,9 +116,11 @@ impl KeyboardState {
     }
 }
 
+/// Entry point for retrieving the current keyboard snapshot.
 pub struct Keyboard;
 
 impl Keyboard {
+    /// Returns the current input snapshot.
     pub fn get_state() -> KeyboardState {
         lock_keyboard().clone()
     }

@@ -3,11 +3,13 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
+/// <summary>Perspective camera defining the viewpoint used to render a scene.</summary>
 public sealed class Camera
 {
     private readonly CameraSafeHandle
         _handle;
 
+    /// <summary>Initializes or accesses Camera.</summary>
     public Camera()
     {
         NativeMethods.Check(
@@ -39,7 +41,8 @@ public sealed class Camera
         }
     }
 
-    public Vec3 Position
+        /// <summary>Gets or sets the camera position in world space.</summary>
+public Vec3 Position
     {
         get
         {
@@ -66,7 +69,8 @@ public sealed class Camera
         }
     }
 
-    public Quaternion Rotation
+        /// <summary>Gets or sets the camera orientation.</summary>
+public Quaternion Rotation
     {
         get
         {
@@ -93,7 +97,8 @@ public sealed class Camera
         }
     }
 
-    public Angle FieldOfView
+        /// <summary>Gets or sets the camera's vertical perspective field of view.</summary>
+public Angle FieldOfView
     {
         get
         {
@@ -120,6 +125,7 @@ public sealed class Camera
         }
     }
 
+    /// <summary>Translates the camera in world space.</summary>
     public void TranslateBy(
         Vec3 translation
     )
@@ -133,6 +139,7 @@ public sealed class Camera
         );
     }
 
+    /// <summary>Sets camera orientation from pitch, yaw, and roll.</summary>
     public void SetEuler(
         Angle pitch,
         Angle yaw,
@@ -150,7 +157,8 @@ public sealed class Camera
         );
     }
 
-    public void SetClipPlanes(
+        /// <summary>Sets the near and far clipping distances.</summary>
+public void SetClipPlanes(
         float nearPlane,
         float farPlane
     )
@@ -165,7 +173,8 @@ public sealed class Camera
         );
     }
 
-    public float NearPlane
+        /// <summary>Gets the near clipping distance.</summary>
+public float NearPlane
     {
         get
         {
@@ -181,7 +190,8 @@ public sealed class Camera
         }
     }
 
-    public float FarPlane
+        /// <summary>Gets the far clipping distance.</summary>
+public float FarPlane
     {
         get
         {
@@ -197,6 +207,7 @@ public sealed class Camera
         }
     }
 
+    /// <summary>Applies an incremental pitch rotation.</summary>
     public void RotatePitchBy(
         Angle angle
     )
@@ -210,6 +221,7 @@ public sealed class Camera
         );
     }
 
+    /// <summary>Applies an incremental yaw rotation.</summary>
     public void RotateYawBy(
         Angle angle
     )
@@ -223,6 +235,7 @@ public sealed class Camera
         );
     }
 
+    /// <summary>Applies an incremental roll rotation.</summary>
     public void RotateRollBy(
         Angle angle
     )

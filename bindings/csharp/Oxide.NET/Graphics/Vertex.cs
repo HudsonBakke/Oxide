@@ -5,14 +5,20 @@ using Oxide.Math;
 namespace Oxide.Graphics;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Vertex data containing position, normal, texture coordinates, and tangent.</summary>
 public struct Vertex
     : IEquatable<Vertex>
 {
+    /// <summary>Vertex position.</summary>
     public Vec3 Position;
+    /// <summary>Vertex normal.</summary>
     public Vec3 Normal;
+    /// <summary>Vertex texture coordinates.</summary>
     public Vec2 TexCoord;
+    /// <summary>Vertex tangent; W stores tangent-space handedness.</summary>
     public Vec4 Tangent;
 
+    /// <summary>Creates or accesses Vertex.</summary>
     public Vertex(
         Vec3 position,
         Vec3 normal,
@@ -25,6 +31,7 @@ public struct Vertex
         Tangent = new Vec4(0.0f, 0.0f, 0.0f, 1.0f);
     }
 
+    /// <summary>Creates or accesses Vertex.</summary>
     public Vertex(Vec3 position, Vec3 normal, Vec2 texCoord, Vec4 tangent)
     {
         Position = position;
@@ -33,6 +40,7 @@ public struct Vertex
         Tangent = tangent;
     }
 
+    /// <summary>Tests value equality.</summary>
     public readonly bool Equals(
         Vertex other
     )

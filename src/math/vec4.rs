@@ -3,22 +3,30 @@ use std::ops::{Add, Div, Mul, Sub};
 
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
+/// Four-component floating-point vector.
 pub struct Vec4 {
+    /// Public Oxide x API.
     pub x: f32,
+    /// Public Oxide y API.
     pub y: f32,
+    /// Public Oxide z API.
     pub z: f32,
+    /// Public Oxide w API.
     pub w: f32,
 }
 
 impl Vec4 {
+    /// Creates a value from its components or defaults.
     pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
         Self { x, y, z, w }
     }
 
+    /// Public Oxide from position API.
     pub fn from_position(v: Vec3) -> Self {
         Self::new(v.x, v.y, v.z, 1.0)
     }
 
+    /// Public Oxide from direction API.
     pub fn from_direction(v: Vec3) -> Self {
         Self::new(v.x, v.y, v.z, 0.0)
     }

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Angle value stored in radians with degree conversion helpers.</summary>
 public readonly struct Angle
     : IEquatable<Angle>
 {
@@ -16,9 +17,11 @@ public readonly struct Angle
         _radians = radians;
     }
 
+    /// <summary>Zero radians.</summary>
     public static Angle Zero =>
         new(0.0f);
 
+    /// <summary>Creates an angle from radians.</summary>
     public static Angle Radians(
         float radians
     )
@@ -28,6 +31,7 @@ public readonly struct Angle
         );
     }
 
+    /// <summary>Creates an angle from degrees.</summary>
     public static Angle Degrees(
         float degrees
     )
@@ -39,14 +43,17 @@ public readonly struct Angle
         );
     }
 
+    /// <summary>Angle value in radians.</summary>
     public float AsRadians =>
         _radians;
 
+    /// <summary>Angle value in degrees.</summary>
     public float AsDegrees =>
         _radians
             * 180.0f
             / MathF.PI;
 
+    /// <summary>Tests value equality.</summary>
     public bool Equals(
         Angle other
     )

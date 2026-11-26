@@ -7,6 +7,7 @@ use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDel
 use crate::math::Vec2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Public Oxide MouseButton API.
 pub enum MouseButton {
     Left,
     Right,
@@ -17,6 +18,7 @@ pub enum MouseButton {
 }
 
 #[derive(Debug, Clone)]
+/// Snapshot of mouse buttons, cursor motion, and scroll motion for the current frame.
 pub struct MouseState {
     current: HashSet<MouseButton>,
     previous: HashSet<MouseButton>,
@@ -38,17 +40,25 @@ impl Default for MouseState {
 }
 
 impl MouseState {
+    /// Returns whether the button is held.
     pub fn is_button_down(&self, button: MouseButton) -> bool {
         self.current.contains(&button)
     }
 
+    /// Returns whether the button is not held.
     pub fn is_button_up(&self, button: MouseButton) -> bool {
         !self.is_button_down(button)
     }
 
+    /// Returns whether the button transitioned from up to down this frame.
+
+
     pub fn is_button_pressed(&self, button: MouseButton) -> bool {
         self.current.contains(&button) && !self.previous.contains(&button)
     }
+
+    /// Returns whether the button transitioned from down to up this frame.
+
 
     pub fn is_button_released(&self, button: MouseButton) -> bool {
         !self.current.contains(&button) && self.previous.contains(&button)
@@ -58,22 +68,27 @@ impl MouseState {
         self.previous.contains(&button)
     }
 
+    /// Current cursor position in window coordinates.
     pub fn position(&self) -> Vec2 {
         self.position
     }
 
+    /// Cursor motion accumulated this frame.
     pub fn delta(&self) -> Vec2 {
         self.delta
     }
 
+    /// Scroll motion accumulated this frame.
     pub fn scroll_delta(&self) -> Vec2 {
         self.scroll_delta
     }
 }
 
+/// Entry point for retrieving the current mouse snapshot.
 pub struct Mouse;
 
 impl Mouse {
+    /// Returns the current input snapshot.
     pub fn get_state() -> MouseState {
         lock_mouse().clone()
     }

@@ -4,13 +4,18 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Three-component floating-point vector.</summary>
 public struct Vec3
     : IEquatable<Vec3>
 {
+    /// <summary>X component.</summary>
     public float X;
+    /// <summary>Y component.</summary>
     public float Y;
+    /// <summary>Z component.</summary>
     public float Z;
 
+    /// <summary>Creates or accesses Vec3.</summary>
     public Vec3(
         float x,
         float y,
@@ -22,6 +27,7 @@ public struct Vec3
         Z = z;
     }
 
+    /// <summary>Vector magnitude.</summary>
     public readonly float Length =>
         MathF.Sqrt(
             X * X
@@ -29,6 +35,7 @@ public struct Vec3
             + Z * Z
         );
 
+    /// <summary>Returns a normalized copy; zero vectors remain zero.</summary>
     public readonly Vec3 Normalized()
     {
         float length =
@@ -46,6 +53,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Normalizes this vector in place; zero vectors remain zero.</summary>
     public void Normalize()
     {
         float length =
@@ -61,6 +69,7 @@ public struct Vec3
         Z /= length;
     }
 
+    /// <summary>Returns the dot product with another vector.</summary>
     public readonly float Dot(
         Vec3 other
     )
@@ -70,6 +79,7 @@ public struct Vec3
             + Z * other.Z;
     }
 
+    /// <summary>Returns the three-dimensional cross product.</summary>
     public readonly Vec3 Cross(
         Vec3 other
     )
@@ -153,6 +163,7 @@ public struct Vec3
         );
     }
 
+    /// <summary>Tests value equality.</summary>
     public readonly bool Equals(
         Vec3 other
     )

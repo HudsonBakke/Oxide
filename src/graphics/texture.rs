@@ -19,6 +19,7 @@ fn next_texture_id() -> TextureId {
 
 /// A 2D texture containing RGBA image data.
 #[derive(Debug)]
+/// Immutable 2D texture resource loadable through the content pipeline or created procedurally.
 pub struct Texture {
     id: TextureId,
 
@@ -88,10 +89,12 @@ impl Texture {
         }
     }
 
+    /// Texture width in pixels.
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Texture height in pixels.
     pub fn height(&self) -> u32 {
         self.height
     }

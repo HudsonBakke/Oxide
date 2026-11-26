@@ -3,6 +3,7 @@ use super::{Angle, Mat4, Quaternion, Vec3};
 /// Position, orientation, and scale of an object in 3D space.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Position, rotation, and scale describing an object's placement in world space.
 pub struct Transform {
     position: Vec3,
     rotation: Quaternion,

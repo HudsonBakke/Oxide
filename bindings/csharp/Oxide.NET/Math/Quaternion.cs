@@ -4,14 +4,20 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Quaternion rotation for three-dimensional orientation.</summary>
 public readonly struct Quaternion
     : IEquatable<Quaternion>
 {
+    /// <summary>Creates or accesses X.</summary>
     public readonly float X;
+    /// <summary>Creates or accesses Y.</summary>
     public readonly float Y;
+    /// <summary>Creates or accesses Z.</summary>
     public readonly float Z;
+    /// <summary>Creates or accesses W.</summary>
     public readonly float W;
 
+    /// <summary>Creates or accesses Quaternion.</summary>
     public Quaternion(
         float x,
         float y,
@@ -25,6 +31,7 @@ public readonly struct Quaternion
         W = w;
     }
 
+    /// <summary>Identity rotation.</summary>
     public static Quaternion Identity =>
         new(
             0.0f,
@@ -33,6 +40,7 @@ public readonly struct Quaternion
             1.0f
         );
 
+    /// <summary>Vector or quaternion magnitude.</summary>
     public float Length =>
         MathF.Sqrt(
             X * X
@@ -41,6 +49,7 @@ public readonly struct Quaternion
             + W * W
         );
 
+    /// <summary>Returns a normalized copy.</summary>
     public Quaternion Normalized()
     {
         float length =
@@ -59,6 +68,7 @@ public readonly struct Quaternion
         );
     }
 
+    /// <summary>Returns the quaternion conjugate.</summary>
     public Quaternion Conjugate()
     {
         return new Quaternion(
@@ -69,6 +79,7 @@ public readonly struct Quaternion
         );
     }
 
+    /// <summary>Rotates a vector by this quaternion.</summary>
     public Vec3 RotateVector(
         Vec3 vector
     )
@@ -89,6 +100,7 @@ public readonly struct Quaternion
             + q.Cross(t);
     }
 
+    /// <summary>Creates a rotation around an axis.</summary>
     public static Quaternion FromAxisAngle(
         Vec3 axis,
         Angle angle
@@ -116,6 +128,7 @@ public readonly struct Quaternion
         );
     }
 
+    /// <summary>Creates a rotation from pitch, yaw, and roll.</summary>
     public static Quaternion FromEuler(
         Angle pitch,
         Angle yaw,
@@ -159,6 +172,7 @@ public readonly struct Quaternion
         ).Normalized();
     }
 
+    /// <summary>Creates the shortest rotation from one direction to another.</summary>
     public static Quaternion FromTo(
         Vec3 from,
         Vec3 to
@@ -270,6 +284,7 @@ public readonly struct Quaternion
         );
     }
 
+    /// <summary>Tests value equality.</summary>
     public bool Equals(
         Quaternion other
     )

@@ -36,48 +36,6 @@ impl Mat4 {
         result
     }
 
-    pub fn rotation_x(radians: f32) -> Self {
-        let mut result = Self::identity();
-
-        let c = radians.cos();
-        let s = radians.sin();
-
-        result.m[1][1] = c;
-        result.m[1][2] = -s;
-        result.m[2][1] = s;
-        result.m[2][2] = c;
-
-        result
-    }
-
-    pub fn rotation_y(radians: f32) -> Self {
-        let mut result = Self::identity();
-
-        let c = radians.cos();
-        let s = radians.sin();
-
-        result.m[0][0] = c;
-        result.m[0][2] = s;
-        result.m[2][0] = -s;
-        result.m[2][2] = c;
-
-        result
-    }
-
-    pub fn rotation_z(radians: f32) -> Self {
-        let mut result = Self::identity();
-
-        let c = radians.cos();
-        let s = radians.sin();
-
-        result.m[0][0] = c;
-        result.m[0][1] = -s;
-        result.m[1][0] = s;
-        result.m[1][1] = c;
-
-        result
-    }
-
     pub fn scale(x: f32, y: f32, z: f32) -> Self {
         let mut result = Self::identity();
 

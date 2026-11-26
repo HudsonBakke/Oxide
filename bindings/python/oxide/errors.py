@@ -13,6 +13,7 @@ class OxideStatus(IntEnum):
 
 
 class OxideError(RuntimeError):
+    """Base exception raised for errors reported by Oxide."""
     def __init__(
         self,
         status: OxideStatus,
@@ -23,6 +24,7 @@ class OxideError(RuntimeError):
 
 
 class InvalidArgumentError(OxideError):
+    """Raised when an argument violates an Oxide API contract."""
     pass
 
 
@@ -39,6 +41,7 @@ class GraphicsError(OxideError):
 
 
 class InternalError(OxideError):
+    """Raised when Oxide reports an internal failure."""
     pass
 
 

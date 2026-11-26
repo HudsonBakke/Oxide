@@ -6,6 +6,7 @@ using Oxide.Native;
 
 namespace Oxide.Graphics;
 
+/// <summary>Indexed triangle mesh containing geometry and orientation metadata.</summary>
 public sealed class Mesh : IContentAsset
 {
     private readonly MeshSafeHandle
@@ -37,6 +38,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Number of vertices in the mesh.</summary>
     public int VertexCount
     {
         get
@@ -55,6 +57,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Number of indices in the mesh.</summary>
     public int IndexCount
     {
         get
@@ -73,6 +76,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Mesh pivot used as the transform origin.</summary>
     public Vec3 Pivot
     {
         get
@@ -100,6 +104,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Primary orientation direction of the mesh.</summary>
     public Vec3 Direction
     {
         get
@@ -127,6 +132,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Reference direction used to define mesh orientation.</summary>
     public Vec3 Reference
     {
         get
@@ -154,6 +160,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Derived side direction of the mesh orientation basis.</summary>
     public Vec3 Side
     {
         get
@@ -170,7 +177,8 @@ public sealed class Mesh : IContentAsset
         }
     }
 
-    public void SetOrientation(
+        /// <summary>Sets the mesh orientation basis from direction and reference vectors.</summary>
+public void SetOrientation(
         Vec3 direction,
         Vec3 reference
     )
@@ -185,7 +193,8 @@ public sealed class Mesh : IContentAsset
         );
     }
 
-    public void RecalculatePivot()
+        /// <summary>Recomputes the mesh pivot from its current vertices.</summary>
+public void RecalculatePivot()
     {
         NativeMethods.Check(
             NativeMethods
@@ -195,7 +204,8 @@ public sealed class Mesh : IContentAsset
         );
     }
 
-    public unsafe Vertex[] GetVertices()
+        /// <summary>Returns a copy of the mesh vertices.</summary>
+public unsafe Vertex[] GetVertices()
     {
         int count =
             VertexCount;
@@ -224,7 +234,8 @@ public sealed class Mesh : IContentAsset
         return vertices;
     }
 
-    public unsafe uint[] GetIndices()
+        /// <summary>Returns a copy of the mesh indices.</summary>
+public unsafe uint[] GetIndices()
     {
         int count =
             IndexCount;
@@ -253,6 +264,7 @@ public sealed class Mesh : IContentAsset
         return indices;
     }
 
+    /// <summary>Replaces the mesh vertex data.</summary>
     public unsafe void SetVertices(
         Vertex[] vertices
     )
@@ -275,6 +287,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Replaces the mesh index data.</summary>
     public unsafe void SetIndices(
         uint[] indices
     )
@@ -297,6 +310,7 @@ public sealed class Mesh : IContentAsset
         }
     }
 
+    /// <summary>Creates or accesses Mesh.</summary>
     public unsafe Mesh(
         Vertex[] vertices,
         uint[] indices

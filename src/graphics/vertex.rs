@@ -3,9 +3,13 @@ use crate::math::{Vec2, Vec3, Vec4};
 /// A vertex in a 3D mesh.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Vertex data consumed by Oxide's mesh renderer.
 pub struct Vertex {
+    /// World-space position.
     pub position: Vec3,
+    /// Public Oxide normal API.
     pub normal: Vec3,
+    /// Public Oxide tex coord API.
     pub tex_coord: Vec2,
 
     /// Tangent-space X axis. xyz is the tangent direction and w is the
@@ -30,6 +34,7 @@ impl Vertex {
         }
     }
 
+    /// Public Oxide fn API.
     pub const fn with_tangent(
         position: Vec3,
         normal: Vec3,

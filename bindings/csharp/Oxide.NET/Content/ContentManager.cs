@@ -1,16 +1,19 @@
-using Oxide.Native;
-using Oxide.Graphics;
 using System.Runtime.InteropServices;
+
+using Oxide.Graphics;
+using Oxide.Native;
 
 namespace Oxide.Content;
 
+/// <summary>Loads source assets and manages Oxide's compiled-content cache.</summary>
 public sealed class ContentManager
 {
     private readonly
         ContentManagerSafeHandle
         _handle;
 
-    public unsafe string CacheDirectory
+        /// <summary>Gets the directory used for compiled-content cache files.</summary>
+public unsafe string CacheDirectory
     {
         get
         {
@@ -55,6 +58,7 @@ public sealed class ContentManager
         }
     }
 
+    /// <summary>Creates a content manager.</summary>
     public ContentManager()
     {
         NativeMethods.Check(
@@ -70,6 +74,7 @@ public sealed class ContentManager
             );
     }
 
+    /// <summary>Creates a content manager.</summary>
     public ContentManager(
         string cacheDirectory
     )
@@ -122,7 +127,8 @@ public sealed class ContentManager
         }
     }
 
-    public T Load<T>(
+        /// <summary>Loads a Mesh, Material, or Texture from a source asset, optionally selecting a named subobject.</summary>
+public T Load<T>(
         string path,
         string? subObject = null
     )
@@ -206,7 +212,8 @@ public sealed class ContentManager
                 result =
                     new Texture(handle);
             }
-            else {
+            else
+            {
                 throw new NotSupportedException(
                     $"{typeof(T).Name} is not a supported Oxide content type."
                 );

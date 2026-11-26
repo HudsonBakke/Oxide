@@ -3,14 +3,20 @@ using System.Runtime.InteropServices;
 namespace Oxide.Math;
 
 [StructLayout(LayoutKind.Sequential)]
+/// <summary>Rectangle expressed by position and size.</summary>
 public readonly struct Rect
     : IEquatable<Rect>
 {
+    /// <summary>Creates or accesses X.</summary>
     public readonly float X;
+    /// <summary>Creates or accesses Y.</summary>
     public readonly float Y;
+    /// <summary>Creates or accesses Width.</summary>
     public readonly float Width;
+    /// <summary>Creates or accesses Height.</summary>
     public readonly float Height;
 
+    /// <summary>Creates or accesses Rect.</summary>
     public Rect(
         float x,
         float y,
@@ -24,9 +30,11 @@ public readonly struct Rect
         Height = height;
     }
 
+    /// <summary>Width divided by height.</summary>
     public float AspectRatio =>
         Width / Height;
 
+    /// <summary>Tests value equality.</summary>
     public bool Equals(
         Rect other
     )
