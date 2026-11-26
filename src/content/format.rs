@@ -4,7 +4,9 @@ use super::{ContentError, ContentResult};
 
 pub(crate) const MAGIC: &[u8; 8] = b"OXASSET\0";
 
-pub(crate) const FORMAT_VERSION: u32 = 3;
+// Version 4 invalidates caches that omitted named-subobject bytes or external
+// glTF dependencies. The source is reimported automatically on a version miss.
+pub(crate) const FORMAT_VERSION: u32 = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]

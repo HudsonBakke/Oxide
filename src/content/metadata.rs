@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -10,7 +11,7 @@ use super::{
     format::{read_u32, read_u64, write_u32, write_u64},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DependencyMetadata {
     pub path: PathBuf,
     pub size: u64,
@@ -39,14 +40,6 @@ impl DependencyMetadata {
             size: metadata.len(),
             modified_nanos,
         })
-    }
-
-    pub fn is_current(&self) -> bool {
-        let Ok(current) = Self::from_path(&self.path) else {
-            return false;
-        };
-
-        current.size == self.size && current.modified_nanos == self.modified_nanos
     }
 }
 
@@ -100,4 +93,72 @@ pub(crate) fn read_dependency(reader: &mut impl Read) -> ContentResult<Dependenc
         size,
         modified_nanos,
     })
+}
+
+/// Records the primary source first, followed by each distinct external glTF
+/// buffer/image. Embedded BIN chunks and data URIs are covered by the source.
+pub(crate) fn source_dependencies(path: &Path) -> ContentResult<Vec<DependencyMetadata>> {
+    let primary = DependencyMetadata::from_path(path)?;
+    let mut seen = HashSet::from([primary.path.clone()]);
+    let mut dependencies = vec![primary];
+
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("");
+    if !extension.eq_ignore_ascii_case("gltf") && !extension.eq_ignore_ascii_case("glb") {
+        return Ok(dependencies);
+    }
+
+    let gltf = gltf::Gltf::open(path).map_err(|error| ContentError::ImportFailed {
+        path: path.to_path_buf(),
+        message: error.to_string(),
+    })?;
+    let base = path.parent().unwrap_or_else(|| Path::new("."));
+    let uris = gltf
+        .document
+        .buffers()
+        .filter_map(|buffer| match buffer.source() {
+            gltf::buffer::Source::Uri(uri) => Some(uri),
+            gltf::buffer::Source::Bin => None,
+        })
+        .chain(gltf.document.images().filter_map(|image| match image.source() {
+            gltf::image::Source::Uri { uri, .. } => Some(uri),
+            gltf::image::Source::View { .. } => None,
+        }));
+
+    // gltf::import reads all declared buffers/images, even when selecting one
+    // subobject. Mirror its URI rules so cache dependencies match those reads.
+    for uri in uris {
+        let Some(dependency_path) = external_uri_path(base, uri)? else {
+            continue;
+        };
+        let dependency = DependencyMetadata::from_path(&dependency_path)?;
+        if seen.insert(dependency.path.clone()) {
+            dependencies.push(dependency);
+        }
+    }
+
+    Ok(dependencies)
+}
+
+fn external_uri_path(base: &Path, uri: &str) -> ContentResult<Option<PathBuf>> {
+    if uri.starts_with("data:") {
+        return Ok(None);
+    }
+    if let Some(path) = uri
+        .strip_prefix("file://")
+        .or_else(|| uri.strip_prefix("file:"))
+    {
+        return Ok(Some(PathBuf::from(path)));
+    }
+    if uri.contains(':') {
+        return Err(ContentError::InvalidCache(
+            "unsupported glTF dependency URI scheme".into(),
+        ));
+    }
+    let decoded = urlencoding::decode(uri).map_err(|error| {
+        ContentError::InvalidCache(format!("invalid glTF dependency URI: {error}"))
+    })?;
+    Ok(Some(base.join(decoded.as_ref())))
 }

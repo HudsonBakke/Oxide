@@ -77,12 +77,21 @@ impl ContentManager {
             subobject,
         );
 
-        // Cache failures are deliberately ignored.
-        // The source asset is authoritative.
-        if cache_path.is_file() {
-            if let Ok(asset) = self.try_load_compiled::<T>(&canonical_path, &cache_path, subobject)
-            {
-                return Ok(asset);
+        // Discover dependencies before importing, so a file changed during import
+        // cannot be recorded as current for an older payload. If metadata cannot
+        // be collected, bypass caching and let the importer report source errors.
+        let dependencies = metadata::source_dependencies(&canonical_path);
+
+        if let Ok(dependencies) = &dependencies {
+            if cache_path.is_file() {
+                if let Ok(asset) = self.try_load_compiled::<T>(
+                    &canonical_path,
+                    &cache_path,
+                    subobject,
+                    dependencies,
+                ) {
+                    return Ok(asset);
+                }
             }
         }
 
@@ -90,7 +99,9 @@ impl ContentManager {
 
         // Failure to write the cache should not prevent
         // an otherwise valid source asset from loading.
-        let _ = self.write_compiled::<T>(&canonical_path, &cache_path, subobject, &asset);
+        if let Ok(dependencies) = &dependencies {
+            let _ = self.write_compiled::<T>(&cache_path, subobject, &asset, dependencies);
+        }
 
         Ok(asset)
     }
@@ -131,6 +142,7 @@ impl ContentManager {
         source_path: &Path,
         cache_path: &Path,
         subobject: &str,
+        expected_dependencies: &[DependencyMetadata],
     ) -> ContentResult<T> {
         let file = File::open(cache_path)?;
 
@@ -186,10 +198,9 @@ impl ContentManager {
             ));
         }
 
-        if dependencies
-            .iter()
-            .any(|dependency| !dependency.is_current())
-        {
+        // Compare the complete graph as well as size and modification time.
+        // This also detects a URI whose symlink now resolves to another file.
+        if dependencies.as_slice() != expected_dependencies {
             return Err(ContentError::InvalidCache(
                 "compiled asset dependencies are stale".into(),
             ));
@@ -237,14 +248,15 @@ impl ContentManager {
 
     fn write_compiled<T: ContentAsset>(
         &self,
-        source_path: &Path,
         cache_path: &Path,
         subobject: &str,
         asset: &T,
+        dependencies: &[DependencyMetadata],
     ) -> ContentResult<()> {
         fs::create_dir_all(&self.cache_directory)?;
 
-        let dependency = DependencyMetadata::from_path(source_path)?;
+        let dependency_count = u32::try_from(dependencies.len())
+            .map_err(|_| ContentError::InvalidCache("too many content dependencies".into()))?;
 
         let temporary_path = temporary_cache_path(cache_path);
 
@@ -274,7 +286,7 @@ impl ContentManager {
 
             compiler_version: T::compiler_version(),
 
-            dependency_count: 1,
+            dependency_count,
 
             subobject_length,
 
@@ -283,7 +295,11 @@ impl ContentManager {
 
         format::write_header(&mut writer, &placeholder_header)?;
 
-        metadata::write_dependency(&mut writer, &dependency)?;
+        for dependency in dependencies {
+            metadata::write_dependency(&mut writer, dependency)?;
+        }
+
+        writer.write_all(subobject.as_bytes())?;
 
         let payload_start = writer.stream_position()?;
 
@@ -304,7 +320,7 @@ impl ContentManager {
 
             compiler_version: T::compiler_version(),
 
-            dependency_count: 1,
+            dependency_count,
 
             subobject_length,
 

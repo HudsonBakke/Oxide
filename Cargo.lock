@@ -1513,6 +1513,7 @@ dependencies = [
  "gltf",
  "image",
  "raw-window-handle",
+ "urlencoding",
  "windows",
  "winit",
 ]
