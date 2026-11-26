@@ -18,25 +18,11 @@ impl Color {
 
     pub const YELLOW: Self = Self::rgb(1.0, 1.0, 0.0);
 
-    pub const fn rgb(
-        r: f32,
-        g: f32,
-        b: f32,
-    ) -> Self {
-        Self {
-            r,
-            g,
-            b,
-            a: 1.0,
-        }
+    pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
+        Self { r, g, b, a: 1.0 }
     }
 
-    pub const fn rgba(
-        r: f32,
-        g: f32,
-        b: f32,
-        a: f32,
-    ) -> Self {
+    pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 }

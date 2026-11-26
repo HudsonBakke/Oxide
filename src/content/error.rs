@@ -1,8 +1,4 @@
-use std::{
-    fmt,
-    io,
-    path::PathBuf,
-};
+use std::{fmt, io, path::PathBuf};
 
 #[derive(Debug)]
 pub enum ContentError {
@@ -52,33 +48,20 @@ pub enum ContentError {
     },
 }
 
-pub type ContentResult<T> =
-    Result<T, ContentError>;
+pub type ContentResult<T> = Result<T, ContentError>;
 
 impl fmt::Display for ContentError {
-    fn fmt(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::FileNotFound { path } => {
-                write!(
-                    f,
-                    "content file not found: {}",
-                    path.display()
-                )
+                write!(f, "content file not found: {}", path.display())
             }
 
-            Self::UnsupportedFormat {
-                path,
-                extension,
-            } => {
+            Self::UnsupportedFormat { path, extension } => {
                 write!(
                     f,
                     "unsupported content format '{}' for {}",
-                    extension
-                        .as_deref()
-                        .unwrap_or("<none>"),
+                    extension.as_deref().unwrap_or("<none>"),
                     path.display()
                 )
             }
@@ -91,40 +74,22 @@ impl fmt::Display for ContentError {
                 write!(
                     f,
                     "content format '{}' cannot be loaded as {}: {}",
-                    extension
-                        .as_deref()
-                        .unwrap_or("<none>"),
+                    extension.as_deref().unwrap_or("<none>"),
                     asset_type,
                     path.display()
                 )
             }
 
-            Self::ImportFailed {
-                path,
-                message,
-            } => {
-                write!(
-                    f,
-                    "failed to import {}: {}",
-                    path.display(),
-                    message
-                )
+            Self::ImportFailed { path, message } => {
+                write!(f, "failed to import {}: {}", path.display(), message)
             }
 
             Self::Io(error) => {
-                write!(
-                    f,
-                    "content I/O error: {}",
-                    error
-                )
+                write!(f, "content I/O error: {}", error)
             }
 
             Self::InvalidCache(message) => {
-                write!(
-                    f,
-                    "invalid compiled Oxide asset: {}",
-                    message
-                )
+                write!(f, "invalid compiled Oxide asset: {}", message)
             }
 
             Self::SubObjectNotSupported {
@@ -155,10 +120,7 @@ impl fmt::Display for ContentError {
                 )
             }
 
-            Self::AmbiguousSubObject {
-                path,
-                asset_type,
-            } => {
+            Self::AmbiguousSubObject { path, asset_type } => {
                 write!(
                     f,
                     "{} contains multiple objects that can be loaded as {}; specify a subobject",
@@ -167,14 +129,8 @@ impl fmt::Display for ContentError {
                 )
             }
 
-            Self::InvalidSubObject {
-                message,
-            } => {
-                write!(
-                    f,
-                    "invalid content subobject: {}",
-                    message,
-                )
+            Self::InvalidSubObject { message } => {
+                write!(f, "invalid content subobject: {}", message,)
             }
         }
     }

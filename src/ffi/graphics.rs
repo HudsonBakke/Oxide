@@ -1,51 +1,21 @@
 use crate::{
-    graphics::{
-        DirectionalLight,
-        Graphics,
-        PointLight,
-        SpotLight,
-    },
-    math::{
-        Rect,
-        Transform,
-    },
+    graphics::{DirectionalLight, Graphics, PointLight, SpotLight},
+    math::{Rect, Transform},
 };
 
 use super::{
+    OxideCameraHandle, OxideGraphicsHandle, OxideMaterialHandle, OxideMeshHandle, OxideStatus,
     camera::with_camera,
-
-    error::{
-        ffi_boundary,
-        set_last_error,
-    },
-
-    resources::{
-        with_material,
-        with_mesh,
-    },
-    OxideMaterialHandle,
-    OxideMeshHandle,
-
-    OxideCameraHandle,
-    OxideGraphicsHandle,
-    OxideStatus,
+    error::{ffi_boundary, set_last_error},
+    resources::{with_material, with_mesh},
 };
 
-fn graphics_from_handle<'a>(
-    handle: OxideGraphicsHandle,
-) -> Option<&'a mut Graphics> {
+fn graphics_from_handle<'a>(handle: OxideGraphicsHandle) -> Option<&'a mut Graphics> {
     if handle.0.is_null() {
         return None;
     }
 
-    Some(
-        unsafe {
-            &mut *(
-                handle.0
-                    as *mut Graphics
-            )
-        }
-    )
+    Some(unsafe { &mut *(handle.0 as *mut Graphics) })
 }
 
 #[unsafe(no_mangle)]
@@ -55,68 +25,39 @@ pub extern "C" fn oxide_graphics_draw_mesh(
     material: OxideMaterialHandle,
     transform: Transform,
 ) -> OxideStatus {
-    ffi_boundary(
-        || {
-            let Some(graphics) =
-                graphics_from_handle(
-                    graphics
-                )
-            else {
-                set_last_error(
-                    "graphics handle is null"
-                );
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            let Some(result) =
-                with_mesh(
-                    mesh,
-                    |mesh| {
-                        with_material(
-                            material,
-                            |material| {
-                                graphics.draw_mesh(
-                                    mesh,
-                                    material,
-                                    &transform,
-                                )
-                            },
-                        )
-                    },
-                )
-            else {
-                set_last_error(
-                    "mesh handle is invalid"
-                );
+        let Some(result) = with_mesh(mesh, |mesh| {
+            with_material(material, |material| {
+                graphics.draw_mesh(mesh, material, &transform)
+            })
+        }) else {
+            set_last_error("mesh handle is invalid");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            let Some(result) =
-                result
-            else {
-                set_last_error(
-                    "material handle is invalid"
-                );
+        let Some(result) = result else {
+            set_last_error("material handle is invalid");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            match result {
-                Ok(()) =>
-                    OxideStatus::Ok,
+        match result {
+            Ok(()) => OxideStatus::Ok,
 
-                Err(error) => {
-                    set_last_error(
-                        error.to_string()
-                    );
+            Err(error) => {
+                set_last_error(error.to_string());
 
-                    OxideStatus::GraphicsError
-                }
+                OxideStatus::GraphicsError
             }
         }
-    )
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -124,61 +65,40 @@ pub extern "C" fn oxide_graphics_full_rect(
     graphics: OxideGraphicsHandle,
     result: *mut Rect,
 ) -> OxideStatus {
-    ffi_boundary(
-        || {
-            if result.is_null() {
-                set_last_error(
-                    "result pointer cannot be null"
-                );
+    ffi_boundary(|| {
+        if result.is_null() {
+            set_last_error("result pointer cannot be null");
 
-                return OxideStatus::InvalidArgument;
-            }
-
-            let Some(graphics) =
-                graphics_from_handle(
-                    graphics
-                )
-            else {
-                set_last_error(
-                    "graphics handle is null"
-                );
-
-                return OxideStatus::InvalidArgument;
-            };
-
-            unsafe {
-                *result =
-                    graphics.full_rect();
-            }
-
-            OxideStatus::Ok
+            return OxideStatus::InvalidArgument;
         }
-    )
+
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
+
+            return OxideStatus::InvalidArgument;
+        };
+
+        unsafe {
+            *result = graphics.full_rect();
+        }
+
+        OxideStatus::Ok
+    })
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_clear_lights(
-    graphics: OxideGraphicsHandle,
-) -> OxideStatus {
-    ffi_boundary(
-        || {
-            let Some(graphics) =
-                graphics_from_handle(
-                    graphics
-                )
-            else {
-                set_last_error(
-                    "graphics handle is null"
-                );
+pub extern "C" fn oxide_graphics_clear_lights(graphics: OxideGraphicsHandle) -> OxideStatus {
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            graphics.clear_lights();
+        graphics.clear_lights();
 
-            OxideStatus::Ok
-        }
-    )
+        OxideStatus::Ok
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -187,53 +107,30 @@ pub extern "C" fn oxide_graphics_bind_camera(
     camera: OxideCameraHandle,
     destination: Rect,
 ) -> OxideStatus {
-    ffi_boundary(
-        || {
-            let Some(graphics) =
-                graphics_from_handle(
-                    graphics
-                )
-            else {
-                set_last_error(
-                    "graphics handle is null"
-                );
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            let Some(result) =
-                with_camera(
-                    camera,
-                    |camera| {
-                        graphics.bind_camera(
-                            camera,
-                            destination,
-                        )
-                    },
-                )
-            else {
-                set_last_error(
-                    "camera handle is invalid"
-                );
+        let Some(result) = with_camera(camera, |camera| graphics.bind_camera(camera, destination))
+        else {
+            set_last_error("camera handle is invalid");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            match result {
-                Ok(()) => {
-                    OxideStatus::Ok
-                }
+        match result {
+            Ok(()) => OxideStatus::Ok,
 
-                Err(error) => {
-                    set_last_error(
-                        error.to_string()
-                    );
+            Err(error) => {
+                set_last_error(error.to_string());
 
-                    OxideStatus::GraphicsError
-                }
+                OxideStatus::GraphicsError
             }
         }
-    )
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -241,27 +138,17 @@ pub extern "C" fn oxide_graphics_add_point_light(
     graphics: OxideGraphicsHandle,
     light: PointLight,
 ) -> OxideStatus {
-    ffi_boundary(
-        || {
-            let Some(graphics) =
-                graphics_from_handle(
-                    graphics
-                )
-            else {
-                set_last_error(
-                    "graphics handle is null"
-                );
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            graphics.add_light(
-                &light
-            );
+        graphics.add_light(&light);
 
-            OxideStatus::Ok
-        }
-    )
+        OxideStatus::Ok
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -269,27 +156,17 @@ pub extern "C" fn oxide_graphics_add_spot_light(
     graphics: OxideGraphicsHandle,
     light: SpotLight,
 ) -> OxideStatus {
-    ffi_boundary(
-        || {
-            let Some(graphics) =
-                graphics_from_handle(
-                    graphics
-                )
-            else {
-                set_last_error(
-                    "graphics handle is null"
-                );
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            graphics.add_light(
-                &light
-            );
+        graphics.add_light(&light);
 
-            OxideStatus::Ok
-        }
-    )
+        OxideStatus::Ok
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -297,25 +174,15 @@ pub extern "C" fn oxide_graphics_add_directional_light(
     graphics: OxideGraphicsHandle,
     light: DirectionalLight,
 ) -> OxideStatus {
-    ffi_boundary(
-        || {
-            let Some(graphics) =
-                graphics_from_handle(
-                    graphics
-                )
-            else {
-                set_last_error(
-                    "graphics handle is null"
-                );
+    ffi_boundary(|| {
+        let Some(graphics) = graphics_from_handle(graphics) else {
+            set_last_error("graphics handle is null");
 
-                return OxideStatus::InvalidArgument;
-            };
+            return OxideStatus::InvalidArgument;
+        };
 
-            graphics.add_light(
-                &light
-            );
+        graphics.add_light(&light);
 
-            OxideStatus::Ok
-        }
-    )
+        OxideStatus::Ok
+    })
 }

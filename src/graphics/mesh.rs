@@ -1,29 +1,14 @@
 use std::{
-    sync::atomic::{
-        AtomicU64,
-        Ordering,
-    },
-    io::{
-        Read, 
-        Write,
-    },
+    io::{Read, Write},
     path::Path,
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use super::Vertex;
 
 use crate::{
-    content::{
-        AssetType,
-        ContentAsset,
-        ContentAssetInternal,
-        ContentError,
-        ContentResult,
-    },
-    math::{
-        Vec3,
-        Vec2,
-    },
+    content::{AssetType, ContentAsset, ContentAssetInternal, ContentError, ContentResult},
+    math::{Vec2, Vec3},
 };
 
 static NEXT_MESH_ID: AtomicU64 = AtomicU64::new(1);
@@ -33,12 +18,7 @@ static NEXT_MESH_ID: AtomicU64 = AtomicU64::new(1);
 pub(crate) struct MeshId(u64);
 
 fn next_mesh_id() -> MeshId {
-    MeshId(
-        NEXT_MESH_ID.fetch_add(
-            1,
-            Ordering::Relaxed,
-        )
-    )
+    MeshId(NEXT_MESH_ID.fetch_add(1, Ordering::Relaxed))
 }
 
 /// A collection of vertices and indices describing 3D geometry.
@@ -77,42 +57,23 @@ fn calculate_vertex_average(vertices: &[Vertex]) -> Vec3 {
 
 const ORIENTATION_EPSILON: f32 = 1.0e-6;
 
-fn orthogonalize_reference(
-    direction: Vec3,
-    reference: Vec3,
-) -> crate::OxideResult<Vec3> {
-    let projected =
-        reference
-        - direction
-            * reference.dot(
-                &direction
-            );
+fn orthogonalize_reference(direction: Vec3, reference: Vec3) -> crate::OxideResult<Vec3> {
+    let projected = reference - direction * reference.dot(&direction);
 
-    if projected.length()
-        <= ORIENTATION_EPSILON
-    {
-        return Err(
-            crate::OxideError::InvalidArgument {
-                argument:
-                    "reference",
+    if projected.length() <= ORIENTATION_EPSILON {
+        return Err(crate::OxideError::InvalidArgument {
+            argument: "reference",
 
-                message:
-                    "mesh reference cannot be parallel to mesh direction",
-            }
-        );
+            message: "mesh reference cannot be parallel to mesh direction",
+        });
     }
 
-    Ok(
-        projected.normalized()
-    )
+    Ok(projected.normalized())
 }
 
 impl Mesh {
     /// Creates a mesh from vertex and index data.
-    pub fn new(
-        vertices: Vec<Vertex>,
-        indices: Vec<u32>,
-    ) -> Self {
+    pub fn new(vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
         let pivot = calculate_vertex_average(&vertices);
 
         Self {
@@ -126,17 +87,9 @@ impl Mesh {
 
             pivot,
 
-            direction: Vec3::new(
-                0.0,
-                0.0,
-                -1.0,
-            ),
+            direction: Vec3::new(0.0, 0.0, -1.0),
 
-            reference: Vec3::new(
-                0.0,
-                1.0,
-                0.0,
-            ),
+            reference: Vec3::new(0.0, 1.0, 0.0),
         }
     }
 
@@ -147,21 +100,12 @@ impl Mesh {
         direction: Vec3,
         reference: Vec3,
     ) -> Self {
-        let mut mesh =
-            Self::new(
-                vertices,
-                indices,
-            );
+        let mut mesh = Self::new(vertices, indices);
 
         mesh.pivot = pivot;
 
-        mesh.set_orientation(
-            direction,
-            reference,
-        )
-        .expect(
-            "validated compiled mesh orientation should be valid"
-        );
+        mesh.set_orientation(direction, reference)
+            .expect("validated compiled mesh orientation should be valid");
 
         mesh
     }
@@ -178,8 +122,7 @@ impl Mesh {
 
     /// Recalculates the pivot using the average position of all vertices.
     pub fn recalculate_pivot(&mut self) {
-        self.pivot =
-            calculate_vertex_average(&self.vertices);
+        self.pivot = calculate_vertex_average(&self.vertices);
     }
 
     /// Returns the mesh's vertices.
@@ -196,8 +139,7 @@ impl Mesh {
     ///
     /// Requesting mutable access marks the mesh geometry as changed.
     pub fn vertices_mut(&mut self) -> &mut [Vertex] {
-        self.vertex_generation =
-            self.vertex_generation.wrapping_add(1);
+        self.vertex_generation = self.vertex_generation.wrapping_add(1);
 
         &mut self.vertices
     }
@@ -206,8 +148,7 @@ impl Mesh {
     ///
     /// Requesting mutable access marks the mesh geometry as changed.
     pub fn indices_mut(&mut self) -> &mut [u32] {
-        self.index_generation =
-            self.index_generation.wrapping_add(1);
+        self.index_generation = self.index_generation.wrapping_add(1);
 
         &mut self.indices
     }
@@ -250,61 +191,34 @@ impl Mesh {
     ///
     /// The supplied vector is automatically made perpendicular
     /// to the mesh's canonical direction and normalized.
-    pub fn set_reference(
-        &mut self,
-        reference: Vec3,
-    ) -> crate::OxideResult<()> {
-        if reference.length()
-            <= ORIENTATION_EPSILON
-        {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "reference",
+    pub fn set_reference(&mut self, reference: Vec3) -> crate::OxideResult<()> {
+        if reference.length() <= ORIENTATION_EPSILON {
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "reference",
 
-                    message:
-                        "mesh reference cannot be zero",
-                }
-            );
+                message: "mesh reference cannot be zero",
+            });
         }
 
-        self.reference =
-            orthogonalize_reference(
-                self.direction,
-                reference,
-            )?;
+        self.reference = orthogonalize_reference(self.direction, reference)?;
 
         Ok(())
     }
 
     /// Sets the mesh's canonical direction while preserving its
     /// current reference orientation when possible.
-    pub fn set_direction(
-        &mut self,
-        direction: Vec3,
-    ) -> crate::OxideResult<()> {
-        if direction.length()
-            <= ORIENTATION_EPSILON
-        {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "direction",
+    pub fn set_direction(&mut self, direction: Vec3) -> crate::OxideResult<()> {
+        if direction.length() <= ORIENTATION_EPSILON {
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "direction",
 
-                    message:
-                        "mesh direction cannot be zero",
-                }
-            );
+                message: "mesh direction cannot be zero",
+            });
         }
 
-        let direction =
-            direction.normalized();
+        let direction = direction.normalized();
 
-        self.reference =
-            orthogonalize_reference(
-                direction,
-                self.reference,
-            )?;
+        self.reference = orthogonalize_reference(direction, self.reference)?;
 
         self.direction = direction;
 
@@ -318,77 +232,45 @@ impl Mesh {
     ///
     /// Both vectors are normalized automatically, and `reference` is
     /// automatically made perpendicular to `direction`.
-    pub fn set_orientation(
-        &mut self,
-        direction: Vec3,
-        reference: Vec3,
-    ) -> crate::OxideResult<()> {
-        if direction.length()
-            <= ORIENTATION_EPSILON
-        {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "direction",
+    pub fn set_orientation(&mut self, direction: Vec3, reference: Vec3) -> crate::OxideResult<()> {
+        if direction.length() <= ORIENTATION_EPSILON {
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "direction",
 
-                    message:
-                        "mesh direction cannot be zero",
-                }
-            );
+                message: "mesh direction cannot be zero",
+            });
         }
 
-        if reference.length()
-            <= ORIENTATION_EPSILON
-        {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "reference",
+        if reference.length() <= ORIENTATION_EPSILON {
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "reference",
 
-                    message:
-                        "mesh reference cannot be zero",
-                }
-            );
+                message: "mesh reference cannot be zero",
+            });
         }
 
-        let direction =
-            direction.normalized();
+        let direction = direction.normalized();
 
-        let projected =
-            reference
-                - direction
-                    * reference.dot(
-                        &direction
-                    );
+        let projected = reference - direction * reference.dot(&direction);
 
-        if projected.length()
-            <= ORIENTATION_EPSILON
-        {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "reference",
+        if projected.length() <= ORIENTATION_EPSILON {
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "reference",
 
-                    message:
-                        "mesh reference cannot be parallel to mesh direction",
-                }
-            );
+                message: "mesh reference cannot be parallel to mesh direction",
+            });
         }
 
-        self.direction =
-            direction;
+        self.direction = direction;
 
-        self.reference =
-            projected.normalized();
+        self.reference = projected.normalized();
 
         Ok(())
     }
 
     /// Returns the third axis of the mesh's canonical orientation frame.
     pub fn side(&self) -> Vec3 {
-        self.direction
-            .cross(&self.reference)
-            .normalized()
+        self.direction.cross(&self.reference).normalized()
     }
 }
 
@@ -406,7 +288,7 @@ impl Clone for Mesh {
             pivot: self.pivot,
 
             direction: self.direction,
-            reference: self.reference, 
+            reference: self.reference,
         }
     }
 }
@@ -416,432 +298,205 @@ impl ContentAssetInternal for Mesh {
         3
     }
 
-    fn asset_type_name()
-        -> &'static str
-    {
+    fn asset_type_name() -> &'static str {
         "Mesh"
     }
 
-    fn supports_extension(
-        extension: &str,
-    ) -> bool {
-        matches!(
-            extension,
-            "gltf" | "glb"
-        )
+    fn supports_extension(extension: &str) -> bool {
+        matches!(extension, "gltf" | "glb")
     }
 
-    fn import(
-        path: &Path,
-        subobject: &str,
-    ) -> ContentResult<Self> {
-        crate::content::import_gltf_mesh(
-            path,
-            subobject,
-        )
+    fn import(path: &Path, subobject: &str) -> ContentResult<Self> {
+        crate::content::import_gltf_mesh(path, subobject)
     }
 
-    fn compiled_asset_type()
-        -> AssetType
-    {
+    fn compiled_asset_type() -> AssetType {
         AssetType::Mesh
     }
 
-    fn write_compiled(
-        &self,
-        writer: &mut impl Write,
-    ) -> ContentResult<()> {
-        write_mesh(
-            self,
-            writer,
-        )
+    fn write_compiled(&self, writer: &mut impl Write) -> ContentResult<()> {
+        write_mesh(self, writer)
     }
 
-    fn read_compiled(
-        reader: &mut impl Read,
-        payload_size: u64,
-    ) -> ContentResult<Self> {
-        read_mesh(
-            reader,
-            payload_size,
-        )
+    fn read_compiled(reader: &mut impl Read, payload_size: u64) -> ContentResult<Self> {
+        read_mesh(reader, payload_size)
     }
 }
 
 impl ContentAsset for Mesh {}
 
-fn write_f32(
-    writer: &mut impl Write,
-    value: f32,
-) -> ContentResult<()> {
-    writer.write_all(
-        &value.to_le_bytes()
-    )?;
+fn write_f32(writer: &mut impl Write, value: f32) -> ContentResult<()> {
+    writer.write_all(&value.to_le_bytes())?;
 
     Ok(())
 }
 
-fn write_vec2(
-    writer: &mut impl Write,
-    value: Vec2,
-) -> ContentResult<()> {
-    write_f32(
-        writer,
-        value.x,
-    )?;
+fn write_vec2(writer: &mut impl Write, value: Vec2) -> ContentResult<()> {
+    write_f32(writer, value.x)?;
 
-    write_f32(
-        writer,
-        value.y,
-    )
+    write_f32(writer, value.y)
 }
 
-fn write_vec3(
-    writer: &mut impl Write,
-    value: Vec3,
-) -> ContentResult<()> {
-    write_f32(
-        writer,
-        value.x,
-    )?;
+fn write_vec3(writer: &mut impl Write, value: Vec3) -> ContentResult<()> {
+    write_f32(writer, value.x)?;
 
-    write_f32(
-        writer,
-        value.y,
-    )?;
+    write_f32(writer, value.y)?;
 
-    write_f32(
-        writer,
-        value.z,
-    )
+    write_f32(writer, value.z)
 }
 
-fn write_mesh(
-    mesh: &Mesh,
-    writer: &mut impl Write,
-) -> ContentResult<()> {
-    let vertex_count =
-        u32::try_from(
-            mesh.vertices.len()
-        )
-        .map_err(
-            |_| {
-                ContentError::InvalidCache(
-                    "mesh contains too many vertices"
-                        .into()
-                )
-            }
-        )?;
+fn write_mesh(mesh: &Mesh, writer: &mut impl Write) -> ContentResult<()> {
+    let vertex_count = u32::try_from(mesh.vertices.len())
+        .map_err(|_| ContentError::InvalidCache("mesh contains too many vertices".into()))?;
 
-    let index_count =
-        u32::try_from(
-            mesh.indices.len()
-        )
-        .map_err(
-            |_| {
-                ContentError::InvalidCache(
-                    "mesh contains too many indices"
-                        .into()
-                )
-            }
-        )?;
+    let index_count = u32::try_from(mesh.indices.len())
+        .map_err(|_| ContentError::InvalidCache("mesh contains too many indices".into()))?;
 
-    writer.write_all(
-        &vertex_count.to_le_bytes()
-    )?;
+    writer.write_all(&vertex_count.to_le_bytes())?;
 
-    writer.write_all(
-        &index_count.to_le_bytes()
-    )?;
+    writer.write_all(&index_count.to_le_bytes())?;
 
-    write_vec3(
-        writer,
-        mesh.pivot,
-    )?;
+    write_vec3(writer, mesh.pivot)?;
 
-    write_vec3(
-        writer,
-        mesh.direction,
-    )?;
+    write_vec3(writer, mesh.direction)?;
 
-    write_vec3(
-        writer,
-        mesh.reference,
-    )?;
+    write_vec3(writer, mesh.reference)?;
 
     for vertex in &mesh.vertices {
-        write_vec3(
-            writer,
-            vertex.position,
-        )?;
+        write_vec3(writer, vertex.position)?;
 
-        write_vec3(
-            writer,
-            vertex.normal,
-        )?;
+        write_vec3(writer, vertex.normal)?;
 
-        write_vec2(
-            writer,
-            vertex.tex_coord,
-        )?;
+        write_vec2(writer, vertex.tex_coord)?;
     }
 
     for index in &mesh.indices {
-        writer.write_all(
-            &index.to_le_bytes()
-        )?;
+        writer.write_all(&index.to_le_bytes())?;
     }
 
     Ok(())
 }
 
-fn read_f32(
-    reader: &mut impl Read,
-) -> ContentResult<f32> {
-    let mut bytes =
-        [0u8; 4];
+fn read_f32(reader: &mut impl Read) -> ContentResult<f32> {
+    let mut bytes = [0u8; 4];
 
-    reader.read_exact(
-        &mut bytes
-    )?;
+    reader.read_exact(&mut bytes)?;
 
-    Ok(
-        f32::from_le_bytes(
-            bytes
-        )
-    )
+    Ok(f32::from_le_bytes(bytes))
 }
 
-fn read_vec2(
-    reader: &mut impl Read,
-) -> ContentResult<Vec2> {
-    Ok(
-        Vec2::new(
-            read_f32(reader)?,
-            read_f32(reader)?,
-        )
-    )
+fn read_vec2(reader: &mut impl Read) -> ContentResult<Vec2> {
+    Ok(Vec2::new(read_f32(reader)?, read_f32(reader)?))
 }
 
-fn read_vec3(
-    reader: &mut impl Read,
-) -> ContentResult<Vec3> {
-    Ok(
-        Vec3::new(
-            read_f32(reader)?,
-            read_f32(reader)?,
-            read_f32(reader)?,
-        )
-    )
+fn read_vec3(reader: &mut impl Read) -> ContentResult<Vec3> {
+    Ok(Vec3::new(
+        read_f32(reader)?,
+        read_f32(reader)?,
+        read_f32(reader)?,
+    ))
 }
 
-fn read_u32(
-    reader: &mut impl Read,
-) -> ContentResult<u32> {
-    let mut bytes =
-        [0u8; 4];
+fn read_u32(reader: &mut impl Read) -> ContentResult<u32> {
+    let mut bytes = [0u8; 4];
 
-    reader.read_exact(
-        &mut bytes
-    )?;
+    reader.read_exact(&mut bytes)?;
 
-    Ok(
-        u32::from_le_bytes(
-            bytes
-        )
-    )
+    Ok(u32::from_le_bytes(bytes))
 }
 
-fn read_mesh(
-    reader: &mut impl Read,
-    payload_size: u64,
-) -> ContentResult<Mesh> {
+fn read_mesh(reader: &mut impl Read, payload_size: u64) -> ContentResult<Mesh> {
     // vertex_count + index_count
     // + pivot + direction + reference
-    const FIXED_SIZE: u64 =
-        4
-        + 4
-        + 12
-        + 12
-        + 12;
+    const FIXED_SIZE: u64 = 4 + 4 + 12 + 12 + 12;
 
-    const VERTEX_SIZE: u64 =
-        32;
+    const VERTEX_SIZE: u64 = 32;
 
-    const INDEX_SIZE: u64 =
-        4;
+    const INDEX_SIZE: u64 = 4;
 
     if payload_size < FIXED_SIZE {
-        return Err(
-            ContentError::InvalidCache(
-                "mesh payload is too small"
-                    .into()
-            )
-        );
+        return Err(ContentError::InvalidCache(
+            "mesh payload is too small".into(),
+        ));
     }
 
-    let vertex_count =
-        read_u32(reader)?;
+    let vertex_count = read_u32(reader)?;
 
-    let index_count =
-        read_u32(reader)?;
+    let index_count = read_u32(reader)?;
 
-    let expected_size =
-        FIXED_SIZE
-            .checked_add(
-                u64::from(vertex_count)
-                    .checked_mul(
-                        VERTEX_SIZE
-                    )
-                    .ok_or_else(
-                        || {
-                            ContentError::InvalidCache(
-                                "mesh vertex data size overflow"
-                                    .into()
-                            )
-                        }
-                    )?
-            )
-            .and_then(
-                |size| {
-                    u64::from(index_count)
-                        .checked_mul(
-                            INDEX_SIZE
-                        )
-                        .and_then(
-                            |index_size| {
-                                size.checked_add(
-                                    index_size
-                                )
-                            }
-                        )
-                }
-            )
-            .ok_or_else(
-                || {
-                    ContentError::InvalidCache(
-                        "mesh payload size overflow"
-                            .into()
-                    )
-                }
-            )?;
+    let expected_size = FIXED_SIZE
+        .checked_add(
+            u64::from(vertex_count)
+                .checked_mul(VERTEX_SIZE)
+                .ok_or_else(|| {
+                    ContentError::InvalidCache("mesh vertex data size overflow".into())
+                })?,
+        )
+        .and_then(|size| {
+            u64::from(index_count)
+                .checked_mul(INDEX_SIZE)
+                .and_then(|index_size| size.checked_add(index_size))
+        })
+        .ok_or_else(|| ContentError::InvalidCache("mesh payload size overflow".into()))?;
 
-    if expected_size
-        != payload_size
-    {
-        return Err(
-            ContentError::InvalidCache(
-                "mesh payload size does not match declared mesh data"
-                    .into()
-            )
-        );
+    if expected_size != payload_size {
+        return Err(ContentError::InvalidCache(
+            "mesh payload size does not match declared mesh data".into(),
+        ));
     }
 
-    let pivot =
-        read_vec3(reader)?;
+    let pivot = read_vec3(reader)?;
 
-    let direction =
-        read_vec3(reader)?;
+    let direction = read_vec3(reader)?;
 
-    let reference =
-        read_vec3(reader)?;
+    let reference = read_vec3(reader)?;
 
-    let vertex_count =
-        usize::try_from(
-            vertex_count
-        )
-        .map_err(
-            |_| {
-                ContentError::InvalidCache(
-                    "mesh vertex count is too large for this platform"
-                        .into()
-                )
-            }
-        )?;
+    let vertex_count = usize::try_from(vertex_count).map_err(|_| {
+        ContentError::InvalidCache("mesh vertex count is too large for this platform".into())
+    })?;
 
-    let index_count =
-        usize::try_from(
-            index_count
-        )
-        .map_err(
-            |_| {
-                ContentError::InvalidCache(
-                    "mesh index count is too large for this platform"
-                        .into()
-                )
-            }
-        )?;
+    let index_count = usize::try_from(index_count).map_err(|_| {
+        ContentError::InvalidCache("mesh index count is too large for this platform".into())
+    })?;
 
-    let mut vertices =
-        Vec::with_capacity(
-            vertex_count
-        );
+    let mut vertices = Vec::with_capacity(vertex_count);
 
     for _ in 0..vertex_count {
-        let position =
-            read_vec3(reader)?;
+        let position = read_vec3(reader)?;
 
-        let normal =
-            read_vec3(reader)?;
+        let normal = read_vec3(reader)?;
 
-        let tex_coord =
-            read_vec2(reader)?;
+        let tex_coord = read_vec2(reader)?;
 
-        vertices.push(
-            Vertex::new(
-                position,
-                normal,
-                tex_coord,
-            )
-        );
+        vertices.push(Vertex::new(position, normal, tex_coord));
     }
 
-    let mut indices =
-        Vec::with_capacity(
-            index_count
-        );
+    let mut indices = Vec::with_capacity(index_count);
 
     for _ in 0..index_count {
-        indices.push(
-            read_u32(reader)?
-        );
+        indices.push(read_u32(reader)?);
     }
 
     // Don't trust a cache file merely because its byte count
     // is internally consistent.
     for &index in &indices {
-        if index as usize
-            >= vertices.len()
-        {
-            return Err(
-                ContentError::InvalidCache(
-                    "compiled mesh contains an out-of-range index"
-                        .into()
-                )
-            );
+        if index as usize >= vertices.len() {
+            return Err(ContentError::InvalidCache(
+                "compiled mesh contains an out-of-range index".into(),
+            ));
         }
     }
 
-    if direction.length()
-        <= 1.0e-6
-    {
-        return Err(
-            ContentError::InvalidCache(
-                "compiled mesh contains a zero canonical direction"
-                    .into()
-            )
-        );
+    if direction.length() <= 1.0e-6 {
+        return Err(ContentError::InvalidCache(
+            "compiled mesh contains a zero canonical direction".into(),
+        ));
     }
 
-    if reference.length()
-        <= 1.0e-6
-    {
-        return Err(
-            ContentError::InvalidCache(
-                "compiled mesh contains a zero canonical reference"
-                    .into()
-            )
-        );
+    if reference.length() <= 1.0e-6 {
+        return Err(ContentError::InvalidCache(
+            "compiled mesh contains a zero canonical reference".into(),
+        ));
     }
 
     // set_orientation() will normalize and orthogonalize the
@@ -849,34 +504,18 @@ fn read_mesh(
     //
     // We don't want malformed cache data to panic, though, so
     // validate parallelism first.
-    let normalized_direction =
-        direction.normalized();
+    let normalized_direction = direction.normalized();
 
     let perpendicular_reference =
-        reference
-            - normalized_direction
-                * reference.dot(
-                    &normalized_direction
-                );
+        reference - normalized_direction * reference.dot(&normalized_direction);
 
-    if perpendicular_reference.length()
-        <= 1.0e-6
-    {
-        return Err(
-            ContentError::InvalidCache(
-                "compiled mesh contains parallel canonical orientation vectors"
-                    .into()
-            )
-        );
+    if perpendicular_reference.length() <= 1.0e-6 {
+        return Err(ContentError::InvalidCache(
+            "compiled mesh contains parallel canonical orientation vectors".into(),
+        ));
     }
 
-    Ok(
-        Mesh::from_compiled(
-            vertices,
-            indices,
-            pivot,
-            direction,
-            reference,
-        )
-    )
+    Ok(Mesh::from_compiled(
+        vertices, indices, pivot, direction, reference,
+    ))
 }

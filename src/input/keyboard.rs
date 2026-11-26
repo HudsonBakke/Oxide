@@ -2,25 +2,79 @@ use std::collections::HashSet;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use winit::event::ElementState;
-use winit::keyboard::{
-    KeyCode,
-    PhysicalKey,
-};
+use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Keys {
-    A, B, C, D, E, F, G, H, I, J, K, L, M,
-    N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-    Key0, Key1, Key2, Key3, Key4,
-    Key5, Key6, Key7, Key8, Key9,
-    Escape, Space, Enter, Tab, Backspace,
-    LeftShift, RightShift,
-    LeftControl, RightControl,
-    LeftAlt, RightAlt,
-    Up, Down, Left, Right,
-    Insert, Delete, Home, End, PageUp, PageDown,
-    F1, F2, F3, F4, F5, F6,
-    F7, F8, F9, F10, F11, F12,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+    Key0,
+    Key1,
+    Key2,
+    Key3,
+    Key4,
+    Key5,
+    Key6,
+    Key7,
+    Key8,
+    Key9,
+    Escape,
+    Space,
+    Enter,
+    Tab,
+    Backspace,
+    LeftShift,
+    RightShift,
+    LeftControl,
+    RightControl,
+    LeftAlt,
+    RightAlt,
+    Up,
+    Down,
+    Left,
+    Right,
+    Insert,
+    Delete,
+    Home,
+    End,
+    PageUp,
+    PageDown,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -39,13 +93,11 @@ impl KeyboardState {
     }
 
     pub fn is_key_pressed(&self, key: Keys) -> bool {
-        self.current.contains(&key)
-            && !self.previous.contains(&key)
+        self.current.contains(&key) && !self.previous.contains(&key)
     }
 
     pub fn is_key_released(&self, key: Keys) -> bool {
-        !self.current.contains(&key)
-            && self.previous.contains(&key)
+        !self.current.contains(&key) && self.previous.contains(&key)
     }
 }
 
@@ -57,8 +109,7 @@ impl Keyboard {
     }
 }
 
-static KEYBOARD: OnceLock<Mutex<KeyboardState>> =
-    OnceLock::new();
+static KEYBOARD: OnceLock<Mutex<KeyboardState>> = OnceLock::new();
 
 fn lock_keyboard() -> MutexGuard<'static, KeyboardState> {
     KEYBOARD
@@ -67,10 +118,7 @@ fn lock_keyboard() -> MutexGuard<'static, KeyboardState> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-pub(crate) fn handle_keyboard_input(
-    physical_key: PhysicalKey,
-    state: ElementState,
-) {
+pub(crate) fn handle_keyboard_input(physical_key: PhysicalKey, state: ElementState) {
     let PhysicalKey::Code(code) = physical_key else {
         return;
     };

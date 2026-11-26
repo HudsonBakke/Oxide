@@ -1,23 +1,8 @@
-use crate::{
-    platform::window::PlatformWindow,
-    math::Transform,
-    math::Rect,
-};
+use crate::{math::Rect, math::Transform, platform::window::PlatformWindow};
 
 use super::{
-    GraphicsResult,
-    Mesh,
-    Camera,
-    DirectionalLight,
-    SpotLight,
-    PointLight,
-    LightSource,
-    Material,
-    backend::d3d12::{
-        D3D12Device,
-        D3D12Renderer,
-        D3D12SwapChain,
-    }
+    Camera, DirectionalLight, GraphicsResult, LightSource, Material, Mesh, PointLight, SpotLight,
+    backend::d3d12::{D3D12Device, D3D12Renderer, D3D12SwapChain},
 };
 
 /// Oxide's internal graphics subsystem.
@@ -39,12 +24,7 @@ impl Graphics {
 
         let renderer = D3D12Renderer::new(&device)?;
 
-        let swap_chain = D3D12SwapChain::new(
-            &device,
-            window.hwnd(),
-            size.width,
-            size.height,
-        )?;
+        let swap_chain = D3D12SwapChain::new(&device, window.hwnd(), size.width, size.height)?;
 
         Ok(Self {
             device,
@@ -52,21 +32,15 @@ impl Graphics {
             swap_chain,
         })
     }
-    
+
     pub(crate) fn begin_frame(&mut self) -> GraphicsResult<()> {
-        self.renderer.begin_frame(
-            &self.device,
-            &self.swap_chain,
-        )?;
+        self.renderer.begin_frame(&self.device, &self.swap_chain)?;
 
         Ok(())
     }
 
     pub(crate) fn end_frame(&mut self) -> GraphicsResult<()> {
-        self.renderer.end_frame(
-            &self.device,
-            &self.swap_chain,
-        )?;
+        self.renderer.end_frame(&self.device, &self.swap_chain)?;
 
         Ok(())
     }
@@ -78,48 +52,28 @@ impl Graphics {
         material: &Material,
         transform: &Transform,
     ) -> GraphicsResult<()> {
-        self.renderer.draw_mesh(
-            &self.device,
-            mesh,
-            material,
-            transform,
-        )?;
+        self.renderer
+            .draw_mesh(&self.device, mesh, material, transform)?;
 
         Ok(())
     }
 
     /// Resizes the graphics presentation surface.
-    pub(crate) fn resize(
-        &mut self,
-        width: u32,
-        height: u32,
-    ) -> GraphicsResult<()> {
+    pub(crate) fn resize(&mut self, width: u32, height: u32) -> GraphicsResult<()> {
         if width == 0 || height == 0 {
             return Ok(());
         }
 
-        self.renderer
-            .prepare_for_resize(&self.device)?;
+        self.renderer.prepare_for_resize(&self.device)?;
 
-        self.swap_chain.resize(
-            &self.device,
-            width,
-            height,
-        )?;
+        self.swap_chain.resize(&self.device, width, height)?;
 
         Ok(())
     }
 
     /// Binds a camera and destination rectangle for subsequent draw calls.
-    pub fn bind_camera(
-        &mut self,
-        camera: &Camera,
-        destination: Rect,
-    ) -> GraphicsResult<()> {
-        self.renderer.bind_camera(
-            camera,
-            destination,
-        )?;
+    pub fn bind_camera(&mut self, camera: &Camera, destination: Rect) -> GraphicsResult<()> {
+        self.renderer.bind_camera(camera, destination)?;
 
         Ok(())
     }
@@ -138,10 +92,7 @@ impl Graphics {
     ///
     /// The light affects subsequent draw calls until the lights are cleared
     /// or the current frame ends.
-    pub fn add_light<L: LightSource>(
-        &mut self,
-        light: &L,
-    ) {
+    pub fn add_light<L: LightSource>(&mut self, light: &L) {
         light.add_to_graphics(self);
     }
 
@@ -150,24 +101,15 @@ impl Graphics {
         self.renderer.clear_lights();
     }
 
-    pub(crate) fn add_point_light_internal(
-        &mut self,
-        light: &PointLight,
-    ) {
+    pub(crate) fn add_point_light_internal(&mut self, light: &PointLight) {
         self.renderer.add_point_light(light);
     }
 
-    pub(crate) fn add_spot_light_internal(
-        &mut self,
-        light: &SpotLight,
-    ) {
+    pub(crate) fn add_spot_light_internal(&mut self, light: &SpotLight) {
         self.renderer.add_spot_light(light);
     }
 
-    pub(crate) fn add_directional_light_internal(
-        &mut self,
-        light: &DirectionalLight,
-    ) {
+    pub(crate) fn add_directional_light_internal(&mut self, light: &DirectionalLight) {
         self.renderer.add_directional_light(light);
     }
 }

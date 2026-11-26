@@ -1,7 +1,4 @@
-use std::{
-    error::Error,
-    fmt,
-};
+use std::{error::Error, fmt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxideError {
@@ -15,35 +12,17 @@ pub enum OxideError {
     },
 }
 
-pub type OxideResult<T> =
-    Result<T, OxideError>;
+pub type OxideResult<T> = Result<T, OxideError>;
 
 impl fmt::Display for OxideError {
-    fn fmt(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidArgument {
-                argument,
-                message,
-            } => {
-                write!(
-                    f,
-                    "invalid argument '{}': {}",
-                    argument,
-                    message,
-                )
+            Self::InvalidArgument { argument, message } => {
+                write!(f, "invalid argument '{}': {}", argument, message,)
             }
 
-            Self::InvalidOperation {
-                message,
-            } => {
-                write!(
-                    f,
-                    "invalid operation: {}",
-                    message,
-                )
+            Self::InvalidOperation { message } => {
+                write!(f, "invalid operation: {}", message,)
             }
         }
     }

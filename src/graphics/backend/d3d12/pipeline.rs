@@ -1,60 +1,32 @@
 use windows::{
-    core::Result,
     Win32::Graphics::{
         Direct3D12::{
-            D3D12_DEPTH_WRITE_MASK_ALL,
-            D3D12_COMPARISON_FUNC_LESS,
-            D3D12SerializeRootSignature,
-            ID3D12PipelineState,
+            D3D_ROOT_SIGNATURE_VERSION_1, D3D12_BLEND_DESC, D3D12_COLOR_WRITE_ENABLE_ALL,
+            D3D12_COMPARISON_FUNC_ALWAYS, D3D12_COMPARISON_FUNC_LESS, D3D12_CULL_MODE_BACK,
+            D3D12_DEPTH_STENCIL_DESC, D3D12_DEPTH_WRITE_MASK_ALL, D3D12_DESCRIPTOR_RANGE,
+            D3D12_DESCRIPTOR_RANGE_TYPE_SRV, D3D12_FILL_MODE_SOLID,
+            D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_GRAPHICS_PIPELINE_STATE_DESC,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, D3D12_INPUT_ELEMENT_DESC,
+            D3D12_INPUT_LAYOUT_DESC, D3D12_PIPELINE_STATE_FLAG_NONE,
+            D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, D3D12_RASTERIZER_DESC,
+            D3D12_RENDER_TARGET_BLEND_DESC, D3D12_ROOT_DESCRIPTOR, D3D12_ROOT_DESCRIPTOR_TABLE,
+            D3D12_ROOT_PARAMETER, D3D12_ROOT_PARAMETER_0, D3D12_ROOT_PARAMETER_TYPE_CBV,
+            D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, D3D12_ROOT_SIGNATURE_DESC,
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT, D3D12_SHADER_BYTECODE,
+            D3D12_SHADER_VISIBILITY_PIXEL, D3D12_SHADER_VISIBILITY_VERTEX,
+            D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK, D3D12_STATIC_SAMPLER_DESC,
+            D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12SerializeRootSignature, ID3D12PipelineState,
             ID3D12RootSignature,
-            D3D12_BLEND_DESC,
-            D3D12_COLOR_WRITE_ENABLE_ALL,
-            D3D12_CULL_MODE_BACK,
-            D3D12_DEPTH_STENCIL_DESC,
-            D3D12_FILL_MODE_SOLID,
-            D3D12_GRAPHICS_PIPELINE_STATE_DESC,
-            D3D12_INPUT_LAYOUT_DESC,
-            D3D12_PIPELINE_STATE_FLAG_NONE,
-            D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-            D3D12_RASTERIZER_DESC,
-            D3D12_RENDER_TARGET_BLEND_DESC,
-            D3D12_ROOT_SIGNATURE_DESC,
-            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
-            D3D_ROOT_SIGNATURE_VERSION_1,
-            D3D12_SHADER_BYTECODE,
-            D3D12_INPUT_ELEMENT_DESC,
-            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-            D3D12_ROOT_PARAMETER,
-            D3D12_ROOT_PARAMETER_0,
-            D3D12_ROOT_PARAMETER_TYPE_CBV,
-            D3D12_ROOT_DESCRIPTOR,
-            D3D12_SHADER_VISIBILITY_VERTEX,
-            D3D12_SHADER_VISIBILITY_PIXEL,
-            D3D12_DESCRIPTOR_RANGE,
-            D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            D3D12_ROOT_DESCRIPTOR_TABLE,
-            D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-            D3D12_STATIC_SAMPLER_DESC,
-            D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-            D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-            D3D12_COMPARISON_FUNC_ALWAYS,
-            D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
         },
         Dxgi::Common::{
-            DXGI_FORMAT_R8G8B8A8_UNORM,
-            DXGI_FORMAT_UNKNOWN,
-            DXGI_SAMPLE_DESC,
-            DXGI_FORMAT_R32G32B32_FLOAT,
-            DXGI_FORMAT_R32G32_FLOAT,
-            DXGI_FORMAT_D32_FLOAT,
+            DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R32G32_FLOAT,
+            DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC,
         },
     },
+    core::Result,
 };
 
-use super::{
-    D3D12Device,
-    D3D12Shader,
-};
+use super::{D3D12Device, D3D12Shader};
 
 pub(crate) struct D3D12Pipeline {
     root_signature: ID3D12RootSignature,
@@ -67,19 +39,16 @@ impl D3D12Pipeline {
         vertex_shader: &D3D12Shader,
         pixel_shader: &D3D12Shader,
     ) -> Result<Self> {
-        let texture_range = [
-            D3D12_DESCRIPTOR_RANGE {
-                RangeType:
-                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        let texture_range = [D3D12_DESCRIPTOR_RANGE {
+            RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 
-                NumDescriptors: 1,
+            NumDescriptors: 1,
 
-                BaseShaderRegister: 0,
-                RegisterSpace: 0,
+            BaseShaderRegister: 0,
+            RegisterSpace: 0,
 
-                OffsetInDescriptorsFromTableStart: 0,
-            },
-        ];
+            OffsetInDescriptorsFromTableStart: 0,
+        }];
 
         let root_parameters = [
             D3D12_ROOT_PARAMETER {
@@ -92,10 +61,8 @@ impl D3D12Pipeline {
                     },
                 },
 
-                ShaderVisibility:
-                    D3D12_SHADER_VISIBILITY_VERTEX,
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_VERTEX,
             },
-
             D3D12_ROOT_PARAMETER {
                 ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
 
@@ -106,10 +73,8 @@ impl D3D12Pipeline {
                     },
                 },
 
-                ShaderVisibility:
-                    D3D12_SHADER_VISIBILITY_VERTEX,
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_VERTEX,
             },
-
             D3D12_ROOT_PARAMETER {
                 ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
 
@@ -120,73 +85,54 @@ impl D3D12Pipeline {
                     },
                 },
 
-                ShaderVisibility:
-                    D3D12_SHADER_VISIBILITY_PIXEL,
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_PIXEL,
             },
-
             D3D12_ROOT_PARAMETER {
-                ParameterType:
-                    D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+                ParameterType: D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 
-                Anonymous:
-                    D3D12_ROOT_PARAMETER_0 {
-                        DescriptorTable:
-                            D3D12_ROOT_DESCRIPTOR_TABLE {
-                                NumDescriptorRanges:
-                                    texture_range.len() as u32,
+                Anonymous: D3D12_ROOT_PARAMETER_0 {
+                    DescriptorTable: D3D12_ROOT_DESCRIPTOR_TABLE {
+                        NumDescriptorRanges: texture_range.len() as u32,
 
-                                pDescriptorRanges:
-                                    texture_range.as_ptr(),
-                            },
+                        pDescriptorRanges: texture_range.as_ptr(),
                     },
+                },
 
-                ShaderVisibility:
-                    D3D12_SHADER_VISIBILITY_PIXEL,
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_PIXEL,
             },
         ];
 
-        let static_samplers = [
-            D3D12_STATIC_SAMPLER_DESC {
-                Filter:
-                    D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+        let static_samplers = [D3D12_STATIC_SAMPLER_DESC {
+            Filter: D3D12_FILTER_MIN_MAG_MIP_LINEAR,
 
-                AddressU:
-                    D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            AddressU: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 
-                AddressV:
-                    D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            AddressV: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 
-                AddressW:
-                    D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            AddressW: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 
-                MipLODBias: 0.0,
-                MaxAnisotropy: 1,
+            MipLODBias: 0.0,
+            MaxAnisotropy: 1,
 
-                ComparisonFunc:
-                    D3D12_COMPARISON_FUNC_ALWAYS,
+            ComparisonFunc: D3D12_COMPARISON_FUNC_ALWAYS,
 
-                BorderColor:
-                    D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
+            BorderColor: D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK,
 
-                MinLOD: 0.0,
-                MaxLOD: f32::MAX,
+            MinLOD: 0.0,
+            MaxLOD: f32::MAX,
 
-                ShaderRegister: 0,
-                RegisterSpace: 0,
+            ShaderRegister: 0,
+            RegisterSpace: 0,
 
-                ShaderVisibility:
-                    D3D12_SHADER_VISIBILITY_PIXEL,
-            },
-        ];
+            ShaderVisibility: D3D12_SHADER_VISIBILITY_PIXEL,
+        }];
 
         let root_desc = D3D12_ROOT_SIGNATURE_DESC {
             NumParameters: root_parameters.len() as u32,
             pParameters: root_parameters.as_ptr(),
-            NumStaticSamplers:
-                static_samplers.len() as u32,
+            NumStaticSamplers: static_samplers.len() as u32,
 
-            pStaticSamplers:
-                static_samplers.as_ptr(),
+            pStaticSamplers: static_samplers.as_ptr(),
             Flags: D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
         };
 
@@ -202,9 +148,8 @@ impl D3D12Pipeline {
             )?;
         }
 
-        let signature_blob = signature_blob.expect(
-            "root signature serialization succeeded without producing a blob"
-        );
+        let signature_blob = signature_blob
+            .expect("root signature serialization succeeded without producing a blob");
 
         let root_signature: ID3D12RootSignature = unsafe {
             device.device().CreateRootSignature(
@@ -279,49 +224,36 @@ impl D3D12Pipeline {
 
         let input_elements = [
             D3D12_INPUT_ELEMENT_DESC {
-                SemanticName: windows::core::PCSTR(
-                    position_semantic.as_ptr()
-                ),
+                SemanticName: windows::core::PCSTR(position_semantic.as_ptr()),
                 SemanticIndex: 0,
                 Format: DXGI_FORMAT_R32G32B32_FLOAT,
                 InputSlot: 0,
                 AlignedByteOffset: 0,
-                InputSlotClass:
-                    D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InputSlotClass: D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                 InstanceDataStepRate: 0,
             },
-
             D3D12_INPUT_ELEMENT_DESC {
-                SemanticName: windows::core::PCSTR(
-                    normal_semantic.as_ptr()
-                ),
+                SemanticName: windows::core::PCSTR(normal_semantic.as_ptr()),
                 SemanticIndex: 0,
                 Format: DXGI_FORMAT_R32G32B32_FLOAT,
                 InputSlot: 0,
                 AlignedByteOffset: 12,
-                InputSlotClass:
-                    D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InputSlotClass: D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                 InstanceDataStepRate: 0,
             },
-
             D3D12_INPUT_ELEMENT_DESC {
-                SemanticName: windows::core::PCSTR(
-                    tex_coord_semantic.as_ptr()
-                ),
+                SemanticName: windows::core::PCSTR(tex_coord_semantic.as_ptr()),
                 SemanticIndex: 0,
                 Format: DXGI_FORMAT_R32G32_FLOAT,
                 InputSlot: 0,
                 AlignedByteOffset: 24,
-                InputSlotClass:
-                    D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                InputSlotClass: D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
                 InstanceDataStepRate: 0,
             },
         ];
 
         let mut pipeline_desc = D3D12_GRAPHICS_PIPELINE_STATE_DESC {
-            pRootSignature: std::mem::ManuallyDrop::new(
-                Some(root_signature.clone())
-            ),
+            pRootSignature: std::mem::ManuallyDrop::new(Some(root_signature.clone())),
 
             VS: vertex_bytecode,
             PS: pixel_bytecode,
@@ -336,8 +268,7 @@ impl D3D12Pipeline {
                 NumElements: input_elements.len() as u32,
             },
 
-            PrimitiveTopologyType:
-                D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+            PrimitiveTopologyType: D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
 
             NumRenderTargets: 1,
             RTVFormats: rtv_formats,
@@ -363,9 +294,7 @@ impl D3D12Pipeline {
         };
 
         unsafe {
-            std::mem::ManuallyDrop::drop(
-                &mut pipeline_desc.pRootSignature
-            );
+            std::mem::ManuallyDrop::drop(&mut pipeline_desc.pRootSignature);
         }
 
         Ok(Self {

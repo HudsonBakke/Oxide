@@ -1,7 +1,4 @@
-use crate::math::{
-    Vec2,
-    Vec3,
-};
+use crate::math::{Vec2, Vec3};
 
 /// A vertex in a 3D mesh
 #[repr(C)]
@@ -18,11 +15,7 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    pub const fn new(
-        position: Vec3,
-        normal: Vec3,
-        tex_coord: Vec2,
-    ) -> Self {
+    pub const fn new(position: Vec3, normal: Vec3, tex_coord: Vec2) -> Self {
         Self {
             position,
             normal,

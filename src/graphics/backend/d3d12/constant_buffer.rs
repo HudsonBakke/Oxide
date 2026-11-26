@@ -1,21 +1,13 @@
 use windows::{
-    core::Result,
     Win32::Graphics::{
         Direct3D12::{
-            D3D12_HEAP_PROPERTIES,
-            D3D12_HEAP_TYPE_UPLOAD,
-            D3D12_RESOURCE_DESC,
-            D3D12_RESOURCE_DIMENSION_BUFFER,
-            D3D12_RESOURCE_FLAG_NONE,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            ID3D12Resource,
+            D3D12_HEAP_PROPERTIES, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_DESC,
+            D3D12_RESOURCE_DIMENSION_BUFFER, D3D12_RESOURCE_FLAG_NONE,
+            D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, ID3D12Resource,
         },
-        Dxgi::Common::{
-            DXGI_FORMAT_UNKNOWN,
-            DXGI_SAMPLE_DESC,
-        },
+        Dxgi::Common::{DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
     },
+    core::Result,
 };
 
 use super::D3D12Device;
@@ -32,11 +24,8 @@ pub(crate) struct D3D12ConstantBuffer {
 }
 
 impl D3D12ConstantBuffer {
-    pub(crate) fn new(
-        device: &D3D12Device,
-    ) -> Result<Self> {
-        let size =
-            CONSTANT_BUFFER_ALIGNMENT * MAX_CONSTANTS_PER_FRAME;
+    pub(crate) fn new(device: &D3D12Device) -> Result<Self> {
+        let size = CONSTANT_BUFFER_ALIGNMENT * MAX_CONSTANTS_PER_FRAME;
 
         let resource_desc = D3D12_RESOURCE_DESC {
             Dimension: D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -72,18 +61,13 @@ impl D3D12ConstantBuffer {
             )?;
         }
 
-        let resource = resource.expect(
-            "CreateCommittedResource succeeded but returned no constant buffer"
-        );
+        let resource =
+            resource.expect("CreateCommittedResource succeeded but returned no constant buffer");
 
         let mut mapped = std::ptr::null_mut();
 
         unsafe {
-            resource.Map(
-                0,
-                None,
-                Some(&mut mapped),
-            )?;
+            resource.Map(0, None, Some(&mut mapped))?;
         }
 
         Ok(Self {
@@ -101,21 +85,16 @@ impl D3D12ConstantBuffer {
         self.next_offset = 0;
     }
 
-    pub(crate) fn write<T: Copy>(
-        &mut self,
-        data: &T,
-    ) -> u64 {
+    pub(crate) fn write<T: Copy>(&mut self, data: &T) -> u64 {
         let data_size = std::mem::size_of::<T>();
 
-        let allocation_size =
-            (data_size + CONSTANT_BUFFER_ALIGNMENT - 1)
-                / CONSTANT_BUFFER_ALIGNMENT
-                * CONSTANT_BUFFER_ALIGNMENT;
+        let allocation_size = (data_size + CONSTANT_BUFFER_ALIGNMENT - 1)
+            / CONSTANT_BUFFER_ALIGNMENT
+            * CONSTANT_BUFFER_ALIGNMENT;
 
         assert!(
             self.next_offset + allocation_size
-                <= CONSTANT_BUFFER_ALIGNMENT
-                    * MAX_CONSTANTS_PER_FRAME,
+                <= CONSTANT_BUFFER_ALIGNMENT * MAX_CONSTANTS_PER_FRAME,
             "Oxide exceeded the temporary per-frame constant-buffer capacity"
         );
 
@@ -131,9 +110,7 @@ impl D3D12ConstantBuffer {
             );
         }
 
-        let base_address = unsafe {
-            self.resource.GetGPUVirtualAddress()
-        };
+        let base_address = unsafe { self.resource.GetGPUVirtualAddress() };
 
         base_address + offset as u64
     }

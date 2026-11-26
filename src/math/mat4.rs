@@ -1,9 +1,6 @@
 use std::ops::Mul;
 
-use super::{
-    vec4::Vec4,
-    vec3::Vec3,
-};
+use super::{vec3::Vec3, vec4::Vec4};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Mat4 {
@@ -21,9 +18,7 @@ impl Mat4 {
         result
     }
 
-    pub(crate) fn from_array(
-        m: [[f32; 4]; 4],
-    ) -> Self {
+    pub(crate) fn from_array(m: [[f32; 4]; 4]) -> Self {
         Self { m }
     }
 
@@ -100,12 +95,7 @@ impl Mat4 {
     /// `near` and `far` specify the near and far clipping planes.
     ///
     /// The resulting normalized device coordinate depth range is `0.0..=1.0`.
-    pub fn perspective(
-        fov_y: f32,
-        aspect: f32,
-        near: f32,
-        far: f32,
-    ) -> Self {
+    pub fn perspective(fov_y: f32, aspect: f32, near: f32, far: f32) -> Self {
         assert!(fov_y > 0.0 && fov_y < std::f32::consts::PI);
         assert!(aspect > 0.0);
         assert!(near > 0.0);
@@ -139,23 +129,10 @@ impl Mat4 {
         result
     }
 
-    
-    pub(crate) fn transform_point(
-        &self,
-        point: Vec3,
-    ) -> Vec3 {
-        let result = *self * Vec4::new(
-            point.x,
-            point.y,
-            point.z,
-            1.0,
-        );
+    pub(crate) fn transform_point(&self, point: Vec3) -> Vec3 {
+        let result = *self * Vec4::new(point.x, point.y, point.z, 1.0);
 
-        Vec3::new(
-            result.x,
-            result.y,
-            result.z,
-        )
+        Vec3::new(result.x, result.y, result.z)
     }
 }
 
@@ -168,17 +145,14 @@ impl Mul<Vec4> for Mat4 {
                 + self.m[0][1] * vector.y
                 + self.m[0][2] * vector.z
                 + self.m[0][3] * vector.w,
-
             self.m[1][0] * vector.x
                 + self.m[1][1] * vector.y
                 + self.m[1][2] * vector.z
                 + self.m[1][3] * vector.w,
-
             self.m[2][0] * vector.x
                 + self.m[2][1] * vector.y
                 + self.m[2][2] * vector.z
                 + self.m[2][3] * vector.w,
-
             self.m[3][0] * vector.x
                 + self.m[3][1] * vector.y
                 + self.m[3][2] * vector.z
@@ -196,8 +170,7 @@ impl Mul<Mat4> for Mat4 {
         for row in 0..4 {
             for column in 0..4 {
                 for i in 0..4 {
-                    result.m[row][column] +=
-                        self.m[row][i] * other.m[i][column];
+                    result.m[row][column] += self.m[row][i] * other.m[i][column];
                 }
             }
         }

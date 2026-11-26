@@ -1,10 +1,4 @@
-use crate::math::{
-    Angle,
-    Mat4,
-    Transform,
-    Vec3,
-    Quaternion,
-};
+use crate::math::{Angle, Mat4, Quaternion, Transform, Vec3};
 
 /// Defines a viewpoint from which a 3D scene can be rendered.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -22,9 +16,7 @@ impl Camera {
         Self {
             transform: Transform::new(),
 
-            field_of_view: Angle::radians(
-                std::f32::consts::FRAC_PI_3
-            ),
+            field_of_view: Angle::radians(std::f32::consts::FRAC_PI_3),
 
             near_plane: 0.1,
             far_plane: 1000.0,
@@ -59,53 +51,30 @@ impl Camera {
         self.transform.rotation()
     }
 
-    pub fn set_rotation(
-        &mut self,
-        rotation: Quaternion,
-    ) {
+    pub fn set_rotation(&mut self, rotation: Quaternion) {
         self.transform.set_rotation(rotation);
     }
 
-    pub fn set_euler(
-        &mut self,
-        pitch: Angle,
-        yaw: Angle,
-        roll: Angle,
-    ) {
-        self.transform.set_euler(
-            pitch,
-            yaw,
-            roll,
-        );
+    pub fn set_euler(&mut self, pitch: Angle, yaw: Angle, roll: Angle) {
+        self.transform.set_euler(pitch, yaw, roll);
     }
 
     pub fn field_of_view(&self) -> Angle {
         self.field_of_view
     }
 
-    pub fn set_field_of_view(
-        &mut self,
-        field_of_view: Angle,
-    ) -> crate::OxideResult<()> {
-        let radians =
-            field_of_view.as_radians();
+    pub fn set_field_of_view(&mut self, field_of_view: Angle) -> crate::OxideResult<()> {
+        let radians = field_of_view.as_radians();
 
-        if radians <= 0.0
-            || radians >= std::f32::consts::PI
-        {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "field_of_view",
+        if radians <= 0.0 || radians >= std::f32::consts::PI {
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "field_of_view",
 
-                    message:
-                        "field of view must be between 0 and pi radians",
-                }
-            );
+                message: "field of view must be between 0 and pi radians",
+            });
         }
 
-        self.field_of_view =
-            field_of_view;
+        self.field_of_view = field_of_view;
 
         Ok(())
     }
@@ -118,69 +87,41 @@ impl Camera {
         self.far_plane
     }
 
-    pub fn set_clip_planes(
-        &mut self,
-        near_plane: f32,
-        far_plane: f32,
-    ) -> crate::OxideResult<()> {
+    pub fn set_clip_planes(&mut self, near_plane: f32, far_plane: f32) -> crate::OxideResult<()> {
         if near_plane <= 0.0 {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "near_plane",
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "near_plane",
 
-                    message:
-                        "near plane must be greater than zero",
-                }
-            );
+                message: "near plane must be greater than zero",
+            });
         }
 
         if far_plane <= near_plane {
-            return Err(
-                crate::OxideError::InvalidArgument {
-                    argument:
-                        "far_plane",
+            return Err(crate::OxideError::InvalidArgument {
+                argument: "far_plane",
 
-                    message:
-                        "far plane must be farther than the near plane",
-                }
-            );
+                message: "far plane must be farther than the near plane",
+            });
         }
 
-        self.near_plane =
-            near_plane;
+        self.near_plane = near_plane;
 
-        self.far_plane =
-            far_plane;
+        self.far_plane = far_plane;
 
         Ok(())
     }
 
     pub(crate) fn view_matrix(&self) -> Mat4 {
-        let position =
-            self.transform.position();
+        let position = self.transform.position();
 
-        let inverse_translation =
-            Mat4::translation(
-                -position.x,
-                -position.y,
-                -position.z,
-            );
+        let inverse_translation = Mat4::translation(-position.x, -position.y, -position.z);
 
-        let inverse_rotation =
-            self.transform
-                .rotation()
-                .conjugate()
-                .to_matrix();
+        let inverse_rotation = self.transform.rotation().conjugate().to_matrix();
 
-        inverse_rotation
-            * inverse_translation
+        inverse_rotation * inverse_translation
     }
 
-    pub(crate) fn projection_matrix(
-        &self,
-        aspect_ratio: f32,
-    ) -> Mat4 {
+    pub(crate) fn projection_matrix(&self, aspect_ratio: f32) -> Mat4 {
         Mat4::perspective(
             self.field_of_view.as_radians(),
             aspect_ratio,

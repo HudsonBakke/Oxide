@@ -1,39 +1,21 @@
 use windows::{
-    core::Result,
     Win32::Graphics::{
         Direct3D12::{
-            D3D12_HEAP_PROPERTIES,
-            D3D12_HEAP_TYPE_DEFAULT,
-            D3D12_HEAP_TYPE_UPLOAD,
-            D3D12_PLACED_SUBRESOURCE_FOOTPRINT,
-            D3D12_RESOURCE_BARRIER,
-            D3D12_RESOURCE_BARRIER_0,
-            D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-            D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            D3D12_RESOURCE_DESC,
-            D3D12_RESOURCE_DIMENSION_BUFFER,
-            D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-            D3D12_RESOURCE_FLAG_NONE,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            D3D12_RESOURCE_TRANSITION_BARRIER,
-            D3D12_TEXTURE_COPY_LOCATION,
-            D3D12_TEXTURE_COPY_LOCATION_0,
-            D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-            D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-            D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            D3D12_TEXTURE_LAYOUT_UNKNOWN,
-            ID3D12GraphicsCommandList,
-            ID3D12Resource,
+            D3D12_HEAP_PROPERTIES, D3D12_HEAP_TYPE_DEFAULT, D3D12_HEAP_TYPE_UPLOAD,
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT, D3D12_RESOURCE_BARRIER, D3D12_RESOURCE_BARRIER_0,
+            D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_DESC,
+            D3D12_RESOURCE_DIMENSION_BUFFER, D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST,
+            D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            D3D12_RESOURCE_TRANSITION_BARRIER, D3D12_TEXTURE_COPY_LOCATION,
+            D3D12_TEXTURE_COPY_LOCATION_0, D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+            D3D12_TEXTURE_LAYOUT_UNKNOWN, ID3D12GraphicsCommandList, ID3D12Resource,
         },
-        Dxgi::Common::{
-            DXGI_FORMAT_R8G8B8A8_UNORM,
-            DXGI_FORMAT_UNKNOWN,
-            DXGI_SAMPLE_DESC,
-        },
+        Dxgi::Common::{DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
     },
+    core::Result,
 };
 
 use crate::graphics::Texture;
@@ -99,12 +81,9 @@ impl D3D12Texture {
             )?;
         }
 
-        let resource = resource.expect(
-            "CreateCommittedResource succeeded but returned no texture"
-        );
+        let resource = resource.expect("CreateCommittedResource succeeded but returned no texture");
 
-        let mut footprint =
-            D3D12_PLACED_SUBRESOURCE_FOOTPRINT::default();
+        let mut footprint = D3D12_PLACED_SUBRESOURCE_FOOTPRINT::default();
 
         let mut row_count = 0u32;
         let mut row_size = 0u64;
@@ -149,8 +128,7 @@ impl D3D12Texture {
             ..Default::default()
         };
 
-        let mut upload_resource:
-            Option<ID3D12Resource> = None;
+        let mut upload_resource: Option<ID3D12Resource> = None;
 
         unsafe {
             device.device().CreateCommittedResource(
@@ -163,138 +141,85 @@ impl D3D12Texture {
             )?;
         }
 
-        let upload_resource =
-            upload_resource.expect(
-                "CreateCommittedResource succeeded but returned no texture upload buffer"
-            );
+        let upload_resource = upload_resource
+            .expect("CreateCommittedResource succeeded but returned no texture upload buffer");
 
-        let mut mapped =
-            std::ptr::null_mut();
+        let mut mapped = std::ptr::null_mut();
 
         unsafe {
-            upload_resource.Map(
-                0,
-                None,
-                Some(&mut mapped),
-            )?;
+            upload_resource.Map(0, None, Some(&mut mapped))?;
         }
 
         let mapped = mapped as *mut u8;
 
-        let source_row_pitch =
-            texture.width() as usize * 4;
+        let source_row_pitch = texture.width() as usize * 4;
 
-        let destination_row_pitch =
-            footprint.Footprint.RowPitch as usize;
+        let destination_row_pitch = footprint.Footprint.RowPitch as usize;
 
         let pixels = texture.pixels();
 
         for row in 0..texture.height() as usize {
-            let source_offset =
-                row * source_row_pitch;
+            let source_offset = row * source_row_pitch;
 
-            let destination_offset =
-                footprint.Offset as usize
-                + row * destination_row_pitch;
+            let destination_offset = footprint.Offset as usize + row * destination_row_pitch;
 
             unsafe {
                 std::ptr::copy_nonoverlapping(
-                    pixels
-                        .as_ptr()
-                        .add(source_offset),
-
-                    mapped.add(
-                        destination_offset
-                    ),
-
+                    pixels.as_ptr().add(source_offset),
+                    mapped.add(destination_offset),
                     source_row_pitch,
                 );
             }
         }
 
         unsafe {
-            upload_resource.Unmap(
-                0,
-                None,
-            );
+            upload_resource.Unmap(0, None);
         }
 
         let source = D3D12_TEXTURE_COPY_LOCATION {
-            pResource: std::mem::ManuallyDrop::new(
-                Some(upload_resource.clone())
-            ),
+            pResource: std::mem::ManuallyDrop::new(Some(upload_resource.clone())),
 
-            Type:
-                D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            Type: D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
 
-            Anonymous:
-                D3D12_TEXTURE_COPY_LOCATION_0 {
-                    PlacedFootprint: footprint,
-                },
+            Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
+                PlacedFootprint: footprint,
+            },
         };
 
-        let destination =
-            D3D12_TEXTURE_COPY_LOCATION {
-                pResource:
-                    std::mem::ManuallyDrop::new(
-                        Some(resource.clone())
-                    ),
+        let destination = D3D12_TEXTURE_COPY_LOCATION {
+            pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
 
-                Type:
-                    D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            Type: D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
 
-                Anonymous:
-                    D3D12_TEXTURE_COPY_LOCATION_0 {
-                        SubresourceIndex: 0,
-                    },
-            };
+            Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
+                SubresourceIndex: 0,
+            },
+        };
 
         unsafe {
-            command_list.CopyTextureRegion(
-                &destination,
-                0,
-                0,
-                0,
-                &source,
-                None,
-            );
+            command_list.CopyTextureRegion(&destination, 0, 0, 0, &source, None);
         }
 
-        let barrier =
-            D3D12_RESOURCE_BARRIER {
-                Type:
-                    D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+        let barrier = D3D12_RESOURCE_BARRIER {
+            Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 
-                Flags:
-                    D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
 
-                Anonymous:
-                    D3D12_RESOURCE_BARRIER_0 {
-                        Transition:
-                            std::mem::ManuallyDrop::new(
-                                D3D12_RESOURCE_TRANSITION_BARRIER {
-                                    pResource:
-                                        std::mem::ManuallyDrop::new(
-                                            Some(resource.clone())
-                                        ),
+            Anonymous: D3D12_RESOURCE_BARRIER_0 {
+                Transition: std::mem::ManuallyDrop::new(D3D12_RESOURCE_TRANSITION_BARRIER {
+                    pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
 
-                                    Subresource:
-                                        D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                    Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
 
-                                    StateBefore:
-                                        D3D12_RESOURCE_STATE_COPY_DEST,
+                    StateBefore: D3D12_RESOURCE_STATE_COPY_DEST,
 
-                                    StateAfter:
-                                        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-                                }
-                            ),
-                    },
-            };
+                    StateAfter: D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                }),
+            },
+        };
 
         unsafe {
-            command_list.ResourceBarrier(
-                &[barrier]
-            );
+            command_list.ResourceBarrier(&[barrier]);
         }
 
         Ok(Self {

@@ -55,9 +55,7 @@ impl Vec3 {
 
     /// Returns the dot product of 2 vectors
     pub fn dot(&self, other: &Self) -> f32 {
-        self.x * other.x
-            + self.y * other.y
-            + self.z * other.z
+        self.x * other.x + self.y * other.y + self.z * other.z
     }
 
     /// Returns the cross product of 2 vectors

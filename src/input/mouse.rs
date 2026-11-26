@@ -2,11 +2,7 @@ use std::collections::HashSet;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use winit::dpi::PhysicalPosition;
-use winit::event::{
-    ElementState,
-    MouseButton as WinitMouseButton,
-    MouseScrollDelta,
-};
+use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDelta};
 
 use crate::math::Vec2;
 
@@ -51,13 +47,11 @@ impl MouseState {
     }
 
     pub fn is_button_pressed(&self, button: MouseButton) -> bool {
-        self.current.contains(&button)
-            && !self.previous.contains(&button)
+        self.current.contains(&button) && !self.previous.contains(&button)
     }
 
     pub fn is_button_released(&self, button: MouseButton) -> bool {
-        !self.current.contains(&button)
-            && self.previous.contains(&button)
+        !self.current.contains(&button) && self.previous.contains(&button)
     }
 
     pub fn position(&self) -> Vec2 {
@@ -81,8 +75,7 @@ impl Mouse {
     }
 }
 
-static MOUSE: OnceLock<Mutex<MouseState>> =
-    OnceLock::new();
+static MOUSE: OnceLock<Mutex<MouseState>> = OnceLock::new();
 
 fn lock_mouse() -> MutexGuard<'static, MouseState> {
     MOUSE
@@ -91,10 +84,7 @@ fn lock_mouse() -> MutexGuard<'static, MouseState> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-pub(crate) fn handle_mouse_input(
-    button: WinitMouseButton,
-    state: ElementState,
-) {
+pub(crate) fn handle_mouse_input(button: WinitMouseButton, state: ElementState) {
     let button = map_button(button);
     let mut mouse = lock_mouse();
 
@@ -108,9 +98,7 @@ pub(crate) fn handle_mouse_input(
     }
 }
 
-pub(crate) fn handle_cursor_moved(
-    position: PhysicalPosition<f64>,
-) {
+pub(crate) fn handle_cursor_moved(position: PhysicalPosition<f64>) {
     let mut mouse = lock_mouse();
     let next = Vec2::new(position.x as f32, position.y as f32);
 
@@ -118,16 +106,12 @@ pub(crate) fn handle_cursor_moved(
     mouse.position = next;
 }
 
-pub(crate) fn handle_mouse_wheel(
-    delta: MouseScrollDelta,
-) {
+pub(crate) fn handle_mouse_wheel(delta: MouseScrollDelta) {
     let mut mouse = lock_mouse();
 
     let delta = match delta {
         MouseScrollDelta::LineDelta(x, y) => Vec2::new(x, y),
-        MouseScrollDelta::PixelDelta(position) => {
-            Vec2::new(position.x as f32, position.y as f32)
-        }
+        MouseScrollDelta::PixelDelta(position) => Vec2::new(position.x as f32, position.y as f32),
     };
 
     mouse.scroll_delta = mouse.scroll_delta + delta;

@@ -1,23 +1,13 @@
 use windows::{
-    core::Result,
     Win32::Graphics::{
         Direct3D12::{
-            D3D12_HEAP_PROPERTIES,
-            D3D12_HEAP_TYPE_UPLOAD,
-            D3D12_INDEX_BUFFER_VIEW,
-            D3D12_RESOURCE_DESC,
-            D3D12_RESOURCE_DIMENSION_BUFFER,
-            D3D12_RESOURCE_FLAG_NONE,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            ID3D12Resource,
+            D3D12_HEAP_PROPERTIES, D3D12_HEAP_TYPE_UPLOAD, D3D12_INDEX_BUFFER_VIEW,
+            D3D12_RESOURCE_DESC, D3D12_RESOURCE_DIMENSION_BUFFER, D3D12_RESOURCE_FLAG_NONE,
+            D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, ID3D12Resource,
         },
-        Dxgi::Common::{
-            DXGI_FORMAT_R32_UINT,
-            DXGI_FORMAT_UNKNOWN,
-            DXGI_SAMPLE_DESC,
-        },
+        Dxgi::Common::{DXGI_FORMAT_R32_UINT, DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
     },
+    core::Result,
 };
 
 use super::D3D12Device;
@@ -32,10 +22,7 @@ pub(crate) struct D3D12IndexBuffer {
 }
 
 impl D3D12IndexBuffer {
-    pub(crate) fn new(
-        device: &D3D12Device,
-        indices: &[u32],
-    ) -> Result<Self> {
+    pub(crate) fn new(device: &D3D12Device, indices: &[u32]) -> Result<Self> {
         let size = std::mem::size_of_val(indices) as u64;
 
         let heap_properties = D3D12_HEAP_PROPERTIES {
@@ -72,18 +59,13 @@ impl D3D12IndexBuffer {
             )?;
         }
 
-        let resource = resource.expect(
-            "CreateCommittedResource succeeded but returned no index buffer"
-        );
+        let resource =
+            resource.expect("CreateCommittedResource succeeded but returned no index buffer");
 
         let mut mapped = std::ptr::null_mut();
 
         unsafe {
-            resource.Map(
-                0,
-                None,
-                Some(&mut mapped),
-            )?;
+            resource.Map(0, None, Some(&mut mapped))?;
 
             std::ptr::copy_nonoverlapping(
                 indices.as_ptr() as *const u8,
@@ -95,9 +77,7 @@ impl D3D12IndexBuffer {
         }
 
         let view = D3D12_INDEX_BUFFER_VIEW {
-            BufferLocation: unsafe {
-                resource.GetGPUVirtualAddress()
-            },
+            BufferLocation: unsafe { resource.GetGPUVirtualAddress() },
             SizeInBytes: size as u32,
             Format: DXGI_FORMAT_R32_UINT,
         };

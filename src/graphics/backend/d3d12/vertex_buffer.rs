@@ -1,22 +1,14 @@
 use windows::{
-    core::Result,
     Win32::Graphics::Direct3D12::{
-        ID3D12Resource,
-        D3D12_HEAP_PROPERTIES,
-        D3D12_HEAP_TYPE_UPLOAD,
-        D3D12_RESOURCE_DESC,
-        D3D12_RESOURCE_DIMENSION_BUFFER,
-        D3D12_RESOURCE_FLAG_NONE,
-        D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        D3D12_VERTEX_BUFFER_VIEW,
+        D3D12_HEAP_PROPERTIES, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_DESC,
+        D3D12_RESOURCE_DIMENSION_BUFFER, D3D12_RESOURCE_FLAG_NONE,
+        D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+        D3D12_VERTEX_BUFFER_VIEW, ID3D12Resource,
     },
+    core::Result,
 };
 
-use windows::Win32::Graphics::Dxgi::Common::{
-    DXGI_FORMAT_UNKNOWN,
-    DXGI_SAMPLE_DESC,
-};
+use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC};
 
 use super::D3D12Device;
 
@@ -28,12 +20,8 @@ pub(crate) struct D3D12VertexBuffer {
 }
 
 impl D3D12VertexBuffer {
-    pub(crate) fn new(
-        device: &D3D12Device,
-        vertices: &[Vertex],
-    ) -> Result<Self> {
-        let size =
-            std::mem::size_of_val(vertices) as u64;
+    pub(crate) fn new(device: &D3D12Device, vertices: &[Vertex]) -> Result<Self> {
+        let size = std::mem::size_of_val(vertices) as u64;
 
         let heap_properties = D3D12_HEAP_PROPERTIES {
             Type: D3D12_HEAP_TYPE_UPLOAD,
@@ -69,18 +57,13 @@ impl D3D12VertexBuffer {
             )?;
         }
 
-        let resource = resource.expect(
-            "CreateCommittedResource succeeded but returned no resource"
-        );
+        let resource =
+            resource.expect("CreateCommittedResource succeeded but returned no resource");
 
         let mut mapped = std::ptr::null_mut();
 
         unsafe {
-            resource.Map(
-                0,
-                None,
-                Some(&mut mapped),
-            )?;
+            resource.Map(0, None, Some(&mut mapped))?;
         }
 
         unsafe {
@@ -96,9 +79,7 @@ impl D3D12VertexBuffer {
         }
 
         let view = D3D12_VERTEX_BUFFER_VIEW {
-            BufferLocation: unsafe {
-                resource.GetGPUVirtualAddress()
-            },
+            BufferLocation: unsafe { resource.GetGPUVirtualAddress() },
             SizeInBytes: size as u32,
             StrideInBytes: std::mem::size_of::<Vertex>() as u32,
         };

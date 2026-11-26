@@ -1,7 +1,4 @@
-use raw_window_handle::{
-    HasWindowHandle,
-    RawWindowHandle,
-};
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 use windows::Win32::Foundation::HWND;
 use winit::window::Window;
@@ -26,9 +23,7 @@ impl PlatformWindow {
             .expect("failed to retrieve native window handle");
 
         match handle.as_raw() {
-            RawWindowHandle::Win32(handle) => {
-                HWND(handle.hwnd.get() as *mut _)
-            }
+            RawWindowHandle::Win32(handle) => HWND(handle.hwnd.get() as *mut _),
 
             _ => panic!("D3D12 required a Win32 window"),
         }

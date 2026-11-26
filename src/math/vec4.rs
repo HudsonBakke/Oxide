@@ -1,5 +1,5 @@
-use std::ops::{Add, Div, Mul, Sub};
 use super::vec3::Vec3;
+use std::ops::{Add, Div, Mul, Sub};
 
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]

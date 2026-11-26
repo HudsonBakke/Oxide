@@ -10,16 +10,12 @@ use winit::{
 
 use std::time::Instant;
 
-use crate::platform::window::PlatformWindow;
 use crate::graphics::Graphics;
 use crate::input::{
-    advance_keyboard_frame,
-    advance_mouse_frame,
-    handle_cursor_moved,
-    handle_keyboard_input,
-    handle_mouse_input,
-    handle_mouse_wheel,
+    advance_keyboard_frame, advance_mouse_frame, handle_cursor_moved, handle_keyboard_input,
+    handle_mouse_input, handle_mouse_wheel,
 };
+use crate::platform::window::PlatformWindow;
 
 struct App<G: Game> {
     game: G,
@@ -94,8 +90,7 @@ impl<G: Game> ApplicationHandler for App<G> {
             ));
 
         #[cfg(target_os = "windows")]
-        let attributes =
-            attributes.with_drag_and_drop(false);
+        let attributes = attributes.with_drag_and_drop(false);
 
         let window = event_loop
             .create_window(attributes)
@@ -103,8 +98,8 @@ impl<G: Game> ApplicationHandler for App<G> {
 
         let platform_window = PlatformWindow::new(window);
 
-        let graphics = Graphics::new(&platform_window)
-            .expect("failed to initialize Oxide graphics");
+        let graphics =
+            Graphics::new(&platform_window).expect("failed to initialize Oxide graphics");
 
         self.window = Some(platform_window);
         self.graphics = Some(graphics);
@@ -141,39 +136,19 @@ impl<G: Game> ApplicationHandler for App<G> {
             }
 
             WindowEvent::KeyboardInput { event, .. } => {
-                handle_keyboard_input(
-                    event.physical_key,
-                    event.state,
-                );
+                handle_keyboard_input(event.physical_key, event.state);
             }
 
-            WindowEvent::MouseInput {
-                state,
-                button,
-                ..
-            } => {
-                handle_mouse_input(
-                    button,
-                    state,
-                );
+            WindowEvent::MouseInput { state, button, .. } => {
+                handle_mouse_input(button, state);
             }
 
-            WindowEvent::CursorMoved {
-                position,
-                ..
-            } => {
-                handle_cursor_moved(
-                    position,
-                );
+            WindowEvent::CursorMoved { position, .. } => {
+                handle_cursor_moved(position);
             }
 
-            WindowEvent::MouseWheel {
-                delta,
-                ..
-            } => {
-                handle_mouse_wheel(
-                    delta,
-                );
+            WindowEvent::MouseWheel { delta, .. } => {
+                handle_mouse_wheel(delta);
             }
 
             _ => {}
@@ -183,8 +158,7 @@ impl<G: Game> ApplicationHandler for App<G> {
 
 /// Runs an Oxide game using the given configuration.
 pub fn run<G: Game>(game: G, config: AppConfig) {
-    let event_loop = EventLoop::new()
-        .expect("failed to create event loop");
+    let event_loop = EventLoop::new().expect("failed to create event loop");
 
     let mut app = App {
         game,
