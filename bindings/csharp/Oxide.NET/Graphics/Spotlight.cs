@@ -5,8 +5,8 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Point light restricted to a directional cone, with inverse-square distance attenuation.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public struct SpotLight
 {
     private Vec3 _position;

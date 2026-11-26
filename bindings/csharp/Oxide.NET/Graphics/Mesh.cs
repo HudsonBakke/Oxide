@@ -12,6 +12,26 @@ public sealed class Mesh : IContentAsset
 {
     private readonly MeshSafeHandle _handle;
 
+    /// <summary>Copies vertices and triangle indices into a new mesh and computes its pivot and tangent frame.</summary>
+    public unsafe Mesh(Vertex[] vertices, uint[] indices)
+    {
+        ArgumentNullException.ThrowIfNull(vertices);
+
+        ArgumentNullException.ThrowIfNull(indices);
+
+        fixed(Vertex *vertexPointer = vertices) fixed(uint *indexPointer = indices)
+        {
+            NativeMethods.Check(NativeMethods.oxide_mesh_create(vertexPointer,
+                                                                (nuint)vertices.Length,
+
+                                                                indexPointer, (nuint)indices.Length,
+
+                                                                out NativeMeshHandle handle));
+
+            _handle = new MeshSafeHandle(handle);
+        }
+    }
+
     internal Mesh(NativeMeshHandle handle)
     {
         _handle = new MeshSafeHandle(handle);
@@ -173,23 +193,5 @@ public sealed class Mesh : IContentAsset
         }
     }
 
-    /// <summary>Copies vertices and triangle indices into a new mesh and computes its pivot and tangent frame.</summary>
-    public unsafe Mesh(Vertex[] vertices, uint[] indices)
-    {
-        ArgumentNullException.ThrowIfNull(vertices);
 
-        ArgumentNullException.ThrowIfNull(indices);
-
-        fixed(Vertex *vertexPointer = vertices) fixed(uint *indexPointer = indices)
-        {
-            NativeMethods.Check(NativeMethods.oxide_mesh_create(vertexPointer,
-                                                                (nuint)vertices.Length,
-
-                                                                indexPointer, (nuint)indices.Length,
-
-                                                                out NativeMeshHandle handle));
-
-            _handle = new MeshSafeHandle(handle);
-        }
-    }
 }

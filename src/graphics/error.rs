@@ -1,7 +1,7 @@
 use std::{error::Error, fmt, io};
 
-#[derive(Debug)]
 /// Error produced by graphics initialization or rendering operations.
+#[derive(Debug)]
 pub enum GraphicsError {
     /// A Windows or Direct3D operation failed.
     Windows(windows::core::Error),

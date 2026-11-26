@@ -19,8 +19,10 @@
 #include <stdint.h>
 
 #ifdef _WIN32
+/** Import visibility for declarations supplied by oxide.dll. */
 #define OXIDE_API __declspec(dllimport)
 #else
+/** Import visibility for declarations supplied by oxide.dll. */
 #define OXIDE_API
 #endif
 

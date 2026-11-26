@@ -3,8 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Rotation quaternion with XYZW components; normalize manually constructed values before rotating vectors.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct Quaternion : IEquatable<Quaternion>
 {
     /// <summary>X component.</summary>

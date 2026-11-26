@@ -5,8 +5,8 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Light whose rays travel in one world-space direction, with no distance attenuation.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public struct DirectionalLight
 {
     private Vec3 _direction;

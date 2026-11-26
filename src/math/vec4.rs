@@ -3,9 +3,9 @@
 use super::vec3::Vec3;
 use std::ops::{Add, Div, Mul, Sub};
 
+/// Four-component floating-point vector.
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-/// Four-component floating-point vector.
 pub struct Vec4 {
     /// X component.
     pub x: f32,

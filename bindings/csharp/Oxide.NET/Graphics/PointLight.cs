@@ -5,8 +5,8 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Omnidirectional point light with inverse-square distance attenuation.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public struct PointLight
 {
     private Vec3 _position;

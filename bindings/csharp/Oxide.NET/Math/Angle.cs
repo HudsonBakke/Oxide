@@ -3,8 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Angle stored in radians; construct from radians or degrees explicitly.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct Angle : IEquatable<Angle>
 {
     private readonly float _radians;

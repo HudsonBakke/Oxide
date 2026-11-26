@@ -6,8 +6,8 @@ use winit::event::{ElementState, MouseButton as WinitMouseButton, MouseScrollDel
 
 use crate::math::Vec2;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// Physical mouse button, including OS-specific additional button indices.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MouseButton {
     /// Left mouse button.
     Left,
@@ -23,8 +23,8 @@ pub enum MouseButton {
     Other(u16),
 }
 
-#[derive(Debug, Clone)]
 /// Snapshot of mouse buttons, cursor motion, and scroll motion for the current frame.
+#[derive(Debug, Clone)]
 pub struct MouseState {
     current: HashSet<MouseButton>,
     previous: HashSet<MouseButton>,

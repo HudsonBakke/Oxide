@@ -4,8 +4,8 @@ using Oxide.Native;
 
 namespace Oxide.Math;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>World-space position, quaternion orientation, and component-wise local scale. A default constructed transform has unit scale.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public struct Transform : IEquatable<Transform>
 {
     private Vec3 _position;

@@ -3,8 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Three-component floating-point vector for positions, directions, and scales.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public struct Vec3 : IEquatable<Vec3>
 {
     /// <summary>X component.</summary>

@@ -4,9 +4,9 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use winit::event::ElementState;
 use winit::keyboard::{KeyCode, PhysicalKey};
 
+/// Physical keyboard keys, independent of text input and keyboard layout.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-/// Physical keyboard keys, independent of text input and keyboard layout.
 pub enum Keys {
     /// Physical A key.
     A,
@@ -148,8 +148,8 @@ pub enum Keys {
     F12,
 }
 
-#[derive(Debug, Clone, Default)]
 /// Snapshot of current and previous keyboard state used for level and edge queries.
+#[derive(Debug, Clone, Default)]
 pub struct KeyboardState {
     current: HashSet<Keys>,
     previous: HashSet<Keys>,

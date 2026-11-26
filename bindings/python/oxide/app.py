@@ -164,7 +164,7 @@ class Game:
         self,
         config: AppConfig | None = None,
     ) -> None:
-        """Runs the blocking application event loop on the calling thread until the window closes or exit is requested."""
+        """Runs the blocking event loop on the calling thread; a Game instance can run only once."""
         if self._has_run:
             raise RuntimeError("An Oxide Game instance can only be run once.")
 

@@ -10,27 +10,6 @@ namespace Oxide.Content;
 public sealed class ContentManager
 {
     private readonly ContentManagerSafeHandle _handle;
-    /// <summary>Directory containing disposable compiled asset caches; relative paths use the working directory.</summary>
-    public unsafe string CacheDirectory
-    {
-        get {
-            NativeMethods.Check(NativeMethods.oxide_content_manager_cache_directory_length(
-                Handle, out nuint length));
-
-            int byteCount = checked((int)length);
-
-            // Include space for the terminating null.
-            var buffer = new byte[byteCount + 1];
-
-            fixed(byte *pointer = buffer)
-            {
-                NativeMethods.Check(NativeMethods.oxide_content_manager_copy_cache_directory(
-                    Handle, pointer, (nuint)buffer.Length));
-            }
-
-            return System.Text.Encoding.UTF8.GetString(buffer, 0, byteCount);
-        }
-    }
 
     /// <summary>Creates a loader using the default target/oxide-content cache, or a supplied cache directory.</summary>
     public ContentManager()
@@ -60,6 +39,31 @@ public sealed class ContentManager
             Marshal.FreeCoTaskMem(nativePath);
         }
     }
+    /// <summary>Directory containing disposable compiled asset caches; relative paths use the working directory.</summary>
+    public unsafe string CacheDirectory
+    {
+        get {
+            NativeMethods.Check(NativeMethods.oxide_content_manager_cache_directory_length(
+                Handle, out nuint length));
+
+            int byteCount = checked((int)length);
+
+            // Include space for the terminating null.
+            var buffer = new byte[byteCount + 1];
+
+            fixed(byte *pointer = buffer)
+            {
+                NativeMethods.Check(NativeMethods.oxide_content_manager_copy_cache_directory(
+                    Handle, pointer, (nuint)buffer.Length));
+            }
+
+            return System.Text.Encoding.UTF8.GetString(buffer, 0, byteCount);
+        }
+    }
+
+
+
+
 
     internal NativeContentManagerHandle Handle
     {

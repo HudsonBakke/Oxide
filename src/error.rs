@@ -1,7 +1,7 @@
 use std::{error::Error, fmt};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// Error returned by public Oxide operations.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxideError {
     InvalidArgument {
         /// Name of the invalid argument.

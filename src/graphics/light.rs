@@ -43,7 +43,7 @@ impl PointLight {
         self.position = position;
     }
 
-    /// Light or material color.
+    /// RGB light color; alpha is not used for lighting.
     pub fn color(&self) -> Color {
         self.color
     }
@@ -136,7 +136,7 @@ impl SpotLight {
         self.position = position;
     }
 
-    /// Normalized light or mesh direction.
+    /// Normalized world-space direction in which the light rays travel.
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
@@ -176,7 +176,7 @@ impl SpotLight {
         Ok(())
     }
 
-    /// Light or material color.
+    /// RGB light color; alpha is not used for lighting.
     pub fn color(&self) -> Color {
         self.color
     }
@@ -241,7 +241,7 @@ impl DirectionalLight {
         })
     }
 
-    /// Normalized light or mesh direction.
+    /// Normalized world-space direction in which the light rays travel.
     pub fn direction(&self) -> Vec3 {
         self.direction
     }
@@ -260,7 +260,7 @@ impl DirectionalLight {
         Ok(())
     }
 
-    /// Light or material color.
+    /// RGB light color; alpha is not used for lighting.
     pub fn color(&self) -> Color {
         self.color
     }
@@ -302,6 +302,7 @@ pub(crate) use private::LightSourceInternal;
 mod private {
     /// Internal dispatch from a sealed light type into the graphics subsystem.
     pub trait LightSourceInternal: Copy {
+        /// Adds this concrete light to the active graphics lighting state.
         fn add_to_graphics(&self, graphics: &mut crate::graphics::Graphics);
     }
 }

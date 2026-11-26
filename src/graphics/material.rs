@@ -77,7 +77,7 @@ impl Material {
         self.base_color = color;
     }
 
-    /// Metallic factor in [0, 1]: zero is dielectric and one is metallic.
+    /// Metallic factor in `[0, 1]`: zero is dielectric and one is metallic.
     pub fn metallic(&self) -> f32 {
         self.metallic
     }
@@ -89,7 +89,7 @@ impl Material {
         Ok(())
     }
 
-    /// Perceptual roughness in [0, 1]: zero is smooth and one is fully rough.
+    /// Perceptual roughness in `[0, 1]`: zero is smooth and one is fully rough.
     pub fn roughness(&self) -> f32 {
         self.roughness
     }

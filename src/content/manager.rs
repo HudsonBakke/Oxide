@@ -10,8 +10,8 @@ use super::{
     metadata::{self, DependencyMetadata},
 };
 
-#[derive(Debug)]
 /// Loads source assets and maintains Oxide's compiled-content cache.
+#[derive(Debug)]
 pub struct ContentManager {
     cache_directory: PathBuf,
 }

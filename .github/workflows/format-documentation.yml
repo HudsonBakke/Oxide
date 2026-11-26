@@ -42,13 +42,16 @@ jobs:
         run: |
           ./scripts/build-shaders.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo doc --locked --no-deps
+          cargo doc --locked --no-deps 2>&1 | Tee-Object -FilePath docs-check-output.txt
+          exit $LASTEXITCODE
       - name: Build C# XML documentation
+        if: always()
         shell: pwsh
         run: |
           cargo build --locked --lib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet build bindings/csharp/Oxide.NET/Oxide.NET.csproj -p:GenerateDocumentationFile=true -warnaserror:CS1591
+          dotnet build bindings/csharp/Oxide.NET/Oxide.NET.csproj -p:GenerateDocumentationFile=true -warnaserror:CS1591 2>&1 | Tee-Object -FilePath csharp-docs-check-output.txt
+          exit $LASTEXITCODE
       - name: Save formatting results
         if: always()
         shell: pwsh
@@ -56,6 +59,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- '*.rs' '*.py' '*.cs' '*.c' '*.h' '*.hlsl'
+          git add -- '*docs-check-output.txt'
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { exit 0 }
           git commit -m "Apply language formatters to documentation cleanup"

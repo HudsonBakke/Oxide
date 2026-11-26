@@ -4,8 +4,8 @@ using Oxide.Math;
 
 namespace Oxide.Graphics;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Model-space vertex with position, normal, UV coordinates, and tangent XYZ plus handedness W.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public struct Vertex : IEquatable<Vertex>
 {
     /// <summary>Vertex position in model space.</summary>

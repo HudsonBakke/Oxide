@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 
 namespace Oxide.Graphics;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Floating-point RGBA color; values are stored without clamping.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct Color : IEquatable<Color>
 {
     /// <summary>Red component.</summary>

@@ -2,8 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace Oxide.Math;
 
-[StructLayout(LayoutKind.Sequential)]
 /// <summary>Pixel rectangle with top-left X/Y coordinates and width/height extents.</summary>
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct Rect : IEquatable<Rect>
 {
     /// <summary>Left edge in physical pixels.</summary>

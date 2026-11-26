@@ -113,13 +113,13 @@ public abstract class Game : IDisposable
             NativeMethods.oxide_app_set_cursor_grabbed(grabbed ? (byte)1 : (byte)0));
     }
 
-    /// <summary>Runs the blocking application event loop on the calling thread until the window closes or exit is requested.</summary>
+    /// <summary>Runs the blocking event loop on the calling thread. A Game instance can run only once.</summary>
     public void Run()
     {
         Run(new AppConfig());
     }
 
-    /// <summary>Runs the blocking application event loop on the calling thread until the window closes or exit is requested.</summary>
+    /// <summary>Runs the blocking event loop on the calling thread. A Game instance can run only once.</summary>
     public void Run(AppConfig config)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -183,7 +183,7 @@ public abstract class Game : IDisposable
         }
     }
 
-    /// <summary>Releases the callback resources owned by this game; overriding implementations should call the base method.</summary>
+    /// <summary>Marks the game disposed and invokes the disposal hook; override Dispose(bool) to release game-owned resources.</summary>
     public void Dispose()
     {
         if (_disposed)
@@ -198,7 +198,7 @@ public abstract class Game : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>Releases the callback resources owned by this game; overriding implementations should call the base method.</summary>
+    /// <summary>Marks the game disposed and invokes the disposal hook; override Dispose(bool) to release game-owned resources.</summary>
     protected virtual void Dispose(bool disposing) {}
 
     private void OnInitialize(IntPtr userData)

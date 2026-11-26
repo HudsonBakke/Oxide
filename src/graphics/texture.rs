@@ -105,7 +105,11 @@ impl Texture {
         &self.pixels
     }
 
-    /// Creates a texture directly from RGBA8 pixel data.
+    /// Creates a texture from row-major RGBA8 data.
+    ///
+    /// Returns an error if byte length differs from width * height * 4 or the
+    /// dimensions overflow addressable storage. Color bytes are copied into GPU
+    /// storage when the texture is first used for drawing.
     pub fn rgba(width: u32, height: u32, pixels: Vec<u8>) -> crate::OxideResult<Self> {
         let expected = (width as usize)
             .checked_mul(height as usize)

@@ -24,6 +24,57 @@ use crate::input::{
 };
 use crate::platform::window::PlatformWindow;
 
+/// Initial window title and logical-pixel client size; defaults to Oxide at 1280 by 720.
+#[derive(Debug, Clone)]
+pub struct AppConfig {
+    /// Initial window title; defaults to Oxide.
+    pub title: String,
+    /// Initial client width in logical pixels; must be positive.
+    pub width: u32,
+    /// Initial client height in logical pixels; must be positive.
+    pub height: u32,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            title: String::from("Oxide"),
+            width: 1280,
+            height: 720,
+        }
+    }
+}
+
+/// Application lifecycle implemented by initialize, update, and draw callbacks.
+pub trait Game {
+    /// Called once after the window and graphics are ready; load persistent resources here.
+    fn initialize(&mut self) {}
+    /// Called once before drawing each frame with elapsed time in seconds; update game logic and read input here.
+    fn update(&mut self, _time: &GameTime) {}
+    /// Called each frame to bind cameras, set lighting, and submit draw calls.
+    fn draw(&mut self, _graphics: &mut Graphics) {}
+}
+
+/// Timing information for the current frame.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct GameTime {
+    delta_seconds: f64,
+    total_seconds: f64,
+}
+
+impl GameTime {
+    /// Seconds elapsed since the previous frame's update.
+    pub fn delta_seconds(&self) -> f64 {
+        self.delta_seconds
+    }
+
+    /// Seconds elapsed since the application clock started.
+    pub fn total_seconds(&self) -> f64 {
+        self.total_seconds
+    }
+}
+
 #[derive(Debug)]
 enum AppCommand {
     Exit,
@@ -381,53 +432,3 @@ pub fn run<G: Game>(game: G, config: AppConfig) {
         .expect("Oxide application failed");
 }
 
-#[derive(Debug, Clone)]
-/// Initial window title and logical-pixel client size; defaults to Oxide at 1280 by 720.
-pub struct AppConfig {
-    /// Initial window title; defaults to Oxide.
-    pub title: String,
-    /// Initial client width in logical pixels; must be positive.
-    pub width: u32,
-    /// Initial client height in logical pixels; must be positive.
-    pub height: u32,
-}
-
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            title: String::from("Oxide"),
-            width: 1280,
-            height: 720,
-        }
-    }
-}
-
-/// Application lifecycle implemented by initialize, update, and draw callbacks.
-pub trait Game {
-    /// Called once after the window and graphics are ready; load persistent resources here.
-    fn initialize(&mut self) {}
-    /// Called once before drawing each frame with elapsed time in seconds; update game logic and read input here.
-    fn update(&mut self, _time: &GameTime) {}
-    /// Called each frame to bind cameras, set lighting, and submit draw calls.
-    fn draw(&mut self, _graphics: &mut Graphics) {}
-}
-
-/// Timing information for the current frame.
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct GameTime {
-    delta_seconds: f64,
-    total_seconds: f64,
-}
-
-impl GameTime {
-    /// Seconds elapsed since the previous frame's update.
-    pub fn delta_seconds(&self) -> f64 {
-        self.delta_seconds
-    }
-
-    /// Seconds elapsed since the application clock started.
-    pub fn total_seconds(&self) -> f64 {
-        self.total_seconds
-    }
-}
