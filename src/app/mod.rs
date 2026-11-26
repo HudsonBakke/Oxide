@@ -431,4 +431,3 @@ pub fn run<G: Game>(game: G, config: AppConfig) {
         .run_app(&mut app)
         .expect("Oxide application failed");
 }
-

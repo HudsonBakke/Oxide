@@ -192,6 +192,4 @@ public sealed class Mesh : IContentAsset
                 NativeMethods.oxide_mesh_set_indices(Handle, pointer, (nuint)indices.Length));
         }
     }
-
-
 }

@@ -173,7 +173,7 @@ public abstract class Game : IDisposable
             // Managed exceptions are caught inside callbacks
             // so they never cross the native ABI. Rethrow
             // safely once native execution has returned.
-            _callbackException ?.Throw();
+            _callbackException?.Throw();
 
             NativeMethods.Check(status);
         }

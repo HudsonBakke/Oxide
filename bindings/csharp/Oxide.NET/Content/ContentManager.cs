@@ -39,6 +39,7 @@ public sealed class ContentManager
             Marshal.FreeCoTaskMem(nativePath);
         }
     }
+
     /// <summary>Directory containing disposable compiled asset caches; relative paths use the working directory.</summary>
     public unsafe string CacheDirectory
     {
@@ -60,10 +61,6 @@ public sealed class ContentManager
             return System.Text.Encoding.UTF8.GetString(buffer, 0, byteCount);
         }
     }
-
-
-
-
 
     internal NativeContentManagerHandle Handle
     {

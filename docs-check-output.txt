@@ -1,0 +1,338 @@
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded adler2 v2.0.1
+  Downloaded arg_enum_proc_macro v0.3.4
+  Downloaded aligned-vec v0.6.4
+  Downloaded arrayvec v0.7.8
+  Downloaded cursor-icon v1.2.0
+  Downloaded aligned v0.4.3
+  Downloaded as-slice v0.2.1
+  Downloaded crossbeam-deque v0.8.8
+  Downloaded autocfg v1.5.1
+  Downloaded crossbeam-epoch v0.9.21
+  Downloaded anyhow v1.0.104
+  Downloaded bit_field v0.10.3
+  Downloaded new_debug_unreachable v1.0.6
+  Downloaded cfg-if v1.0.5
+  Downloaded loop9 v0.1.5
+  Downloaded lebe v0.5.3
+  Downloaded stable_deref_trait v1.2.1
+  Downloaded lazy_static v1.5.1
+  Downloaded maybe-rayon v0.1.1
+  Downloaded quick-error v2.0.1
+  Downloaded pulp-wasm-simd-flag v0.1.1
+  Downloaded dpi v0.1.2
+  Downloaded noop_proc_macro v0.3.0
+  Downloaded itoa v1.0.18
+  Downloaded cfg_aliases v0.2.2
+  Downloaded gltf-derive v1.4.1
+  Downloaded profiling v1.0.18
+  Downloaded profiling-procmacros v1.0.18
+  Downloaded inflections v1.1.1
+  Downloaded num-derive v0.4.2
+  Downloaded windows-targets v0.52.6
+  Downloaded windows-strings v0.5.1
+  Downloaded windows-numerics v0.3.1
+  Downloaded windows-link v0.2.1
+  Downloaded smol_str v0.2.2
+  Downloaded pastey v0.1.1
+  Downloaded color_quant v1.1.0
+  Downloaded crossbeam-utils v0.8.23
+  Downloaded simd_helpers v0.1.0
+  Downloaded equator-macro v0.4.2
+  Downloaded reborrow v0.5.5
+  Downloaded byteorder-lite v0.1.0
+  Downloaded urlencoding v2.1.3
+  Downloaded byteorder v1.5.0
+  Downloaded ravif v0.13.0
+  Downloaded serde_core v1.0.229
+  Downloaded paste v1.0.15
+  Downloaded simd-adler32 v0.3.10
+  Downloaded pin-project-lite v0.2.17
+  Downloaded quote v1.0.47
+  Downloaded equator v0.4.2
+  Downloaded rustversion v1.0.23
+  Downloaded windows-collections v0.3.2
+  Downloaded wasm-bindgen-macro v0.2.129
+  Downloaded windows-threading v0.2.1
+  Downloaded y4m v0.8.0
+  Downloaded avif-serialize v0.8.9
+  Downloaded imgref v1.12.3
+  Downloaded fdeflate v0.3.7
+  Downloaded either v1.19.0
+  Downloaded num-complex v0.4.6
+  Downloaded rgb v0.8.53
+  Downloaded num-integer v0.1.47
+  Downloaded raw-window-handle v0.6.2
+  Downloaded fax v0.2.7
+  Downloaded no_std_io2 v0.9.4
+  Downloaded once_cell v1.21.4
+  Downloaded built v0.8.1
+  Downloaded smallvec v1.16.2
+  Downloaded gif v0.14.2
+  Downloaded gltf-json v1.4.1
+  Downloaded num-rational v0.4.2
+  Downloaded bitflags v2.13.2
+  Downloaded base64 v0.13.1
+  Downloaded bitstream-io v4.10.0
+  Downloaded num-traits v0.2.19
+  Downloaded log v0.4.34
+  Downloaded av1-grain v0.2.5
+  Downloaded bytemuck v1.25.2
+  Downloaded serde_derive v1.0.229
+  Downloaded crc32fast v1.5.4
+  Downloaded gltf v1.4.1
+  Downloaded image-webp v0.2.4
+  Downloaded proc-macro2 v1.0.107
+  Downloaded miniz_oxide v0.9.1
+  Downloaded windows-interface v0.59.3
+  Downloaded miniz_oxide v0.8.9
+  Downloaded version_check v0.9.5
+  Downloaded wasm-bindgen-shared v0.2.129
+  Downloaded qoi v0.4.1
+  Downloaded windows-implement v0.60.2
+  Downloaded flate2 v1.1.10
+  Downloaded rayon-core v1.13.0
+  Downloaded serde v1.0.229
+  Downloaded windows-future v0.3.2
+  Downloaded zmij v1.0.23
+  Downloaded windows-result v0.4.1
+  Downloaded zune-core v0.5.3
+  Downloaded thiserror v2.0.21
+  Downloaded v_frame v0.3.9
+  Downloaded memchr v2.8.3
+  Downloaded half v2.7.1
+  Downloaded bumpalo v3.20.3
+  Downloaded raw-cpuid v11.6.0
+  Downloaded zune-inflate v0.2.54
+  Downloaded num-bigint v0.4.8
+  Downloaded png v0.18.1
+  Downloaded nom v8.0.0
+  Downloaded pulp v0.22.3
+  Downloaded libm v0.2.16
+  Downloaded itertools v0.14.0
+  Downloaded rayon v1.12.0
+  Downloaded moxcms v0.8.1
+  Downloaded serde_json v1.0.154
+  Downloaded unicode-ident v1.0.26
+  Downloaded thiserror-impl v2.0.21
+  Downloaded windows-core v0.62.2
+  Downloaded weezl v0.1.12
+  Downloaded exr v1.74.2
+  Downloaded image v0.25.10
+  Downloaded syn v3.0.6
+  Downloaded av-scenechange v0.14.1
+  Downloaded tracing-core v0.1.36
+  Downloaded tracing v0.1.44
+  Downloaded wasm-bindgen v0.2.129
+  Downloaded zune-jpeg v0.5.15
+  Downloaded tiff v0.11.3
+  Downloaded libc v0.2.190
+  Downloaded pxfm v0.1.30
+  Downloaded rav1e v0.8.1
+  Downloaded unicode-segmentation v1.13.3
+  Downloaded wasm-bindgen-macro-support v0.2.129
+  Downloaded zerocopy-derive v0.8.62
+  Downloaded syn v2.0.119
+  Downloaded zlib-rs v0.6.8
+  Downloaded zerocopy v0.8.62
+  Downloaded winit v0.30.13
+  Downloaded windows_x86_64_msvc v0.52.6
+  Downloaded windows-sys v0.52.0
+  Downloaded windows v0.62.2
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.26
+   Compiling quote v1.0.47
+   Compiling autocfg v1.5.1
+   Compiling crossbeam-utils v0.8.23
+   Compiling num-traits v0.2.19
+    Checking cfg-if v1.0.5
+   Compiling crossbeam-epoch v0.9.21
+   Compiling crossbeam-deque v0.8.8
+    Checking simd-adler32 v0.3.10
+   Compiling rayon-core v1.13.0
+    Checking memchr v2.8.3
+   Compiling syn v2.0.119
+   Compiling syn v3.0.6
+    Checking num-integer v0.1.47
+   Compiling anyhow v1.0.104
+    Checking windows-link v0.2.1
+    Checking adler2 v2.0.1
+   Compiling paste v1.0.15
+    Checking either v1.19.0
+    Checking num-bigint v0.4.8
+   Compiling thiserror v2.0.21
+   Compiling zerocopy v0.8.62
+    Checking stable_deref_trait v1.2.1
+    Checking bitflags v2.13.2
+    Checking arrayvec v0.7.8
+   Compiling crc32fast v1.5.4
+    Checking num-rational v0.4.2
+    Checking as-slice v0.2.1
+    Checking rayon v1.12.0
+   Compiling thiserror-impl v2.0.21
+   Compiling libm v0.2.16
+   Compiling version_check v0.9.5
+   Compiling built v0.8.1
+   Compiling av-scenechange v0.14.1
+   Compiling libc v0.2.190
+    Checking log v0.4.34
+   Compiling serde_core v1.0.229
+    Checking bytemuck v1.25.2
+   Compiling rav1e v0.8.1
+   Compiling pulp v0.22.3
+    Checking aligned v0.4.3
+    Checking miniz_oxide v0.9.1
+    Checking windows-strings v0.5.1
+    Checking windows-result v0.4.1
+    Checking no_std_io2 v0.9.4
+    Checking nom v8.0.0
+   Compiling zmij v1.0.23
+   Compiling windows_x86_64_msvc v0.52.6
+   Compiling equator-macro v0.4.2
+   Compiling zerocopy-derive v0.8.62
+   Compiling arg_enum_proc_macro v0.3.4
+   Compiling windows-interface v0.59.3
+    Checking equator v0.4.2
+    Checking aligned-vec v0.6.4
+    Checking v_frame v0.3.9
+   Compiling windows-implement v0.60.2
+   Compiling profiling-procmacros v1.0.18
+    Checking quick-error v2.0.1
+    Checking y4m v0.8.0
+   Compiling pastey v0.1.1
+    Checking windows-core v0.62.2
+    Checking profiling v1.0.18
+   Compiling num-derive v0.4.2
+    Checking av1-grain v0.2.5
+    Checking flate2 v1.1.10
+    Checking bitstream-io v4.10.0
+    Checking num-complex v0.4.6
+    Checking maybe-rayon v0.1.1
+    Checking raw-cpuid v11.6.0
+    Checking itertools v0.14.0
+    Checking miniz_oxide v0.8.9
+   Compiling simd_helpers v0.1.0
+   Compiling serde v1.0.229
+    Checking weezl v0.1.12
+    Checking reborrow v0.5.5
+   Compiling serde_json v1.0.154
+    Checking pulp-wasm-simd-flag v0.1.1
+   Compiling noop_proc_macro v0.3.0
+    Checking new_debug_unreachable v1.0.6
+    Checking imgref v1.12.3
+    Checking zune-core v0.5.3
+    Checking loop9 v0.1.5
+    Checking half v2.7.1
+    Checking zune-jpeg v0.5.15
+    Checking avif-serialize v0.8.9
+    Checking fdeflate v0.3.7
+    Checking zune-inflate v0.2.54
+    Checking byteorder-lite v0.1.0
+    Checking color_quant v1.1.0
+    Checking rgb v0.8.53
+    Checking itoa v1.0.18
+    Checking bit_field v0.10.3
+    Checking pxfm v0.1.30
+    Checking fax v0.2.7
+   Compiling inflections v1.1.1
+    Checking smallvec v1.16.2
+   Compiling cfg_aliases v0.2.2
+    Checking lebe v0.5.3
+   Compiling winit v0.30.13
+   Compiling gltf-derive v1.4.1
+    Checking tiff v0.11.3
+    Checking moxcms v0.8.1
+    Checking exr v1.74.2
+    Checking ravif v0.13.0
+    Checking gif v0.14.2
+    Checking image-webp v0.2.4
+    Checking png v0.18.1
+    Checking windows-targets v0.52.6
+    Checking qoi v0.4.1
+   Compiling serde_derive v1.0.229
+    Checking windows-threading v0.2.1
+    Checking tracing-core v0.1.36
+    Checking pin-project-lite v0.2.17
+    Checking tracing v0.1.44
+    Checking windows-future v0.3.2
+    Checking windows-sys v0.52.0
+    Checking windows-collections v0.3.2
+    Checking image v0.25.10
+    Checking windows-numerics v0.3.1
+    Checking base64 v0.13.1
+    Checking lazy_static v1.5.1
+    Checking smol_str v0.2.2
+    Checking urlencoding v2.1.3
+    Checking cursor-icon v1.2.0
+    Checking raw-window-handle v0.6.2
+    Checking unicode-segmentation v1.13.3
+    Checking dpi v0.1.2
+    Checking byteorder v1.5.0
+    Checking windows v0.62.2
+    Checking gltf-json v1.4.1
+    Checking gltf v1.4.1
+ Documenting oxide v0.1.0 (D:\a\Oxide\Oxide)
+error: missing documentation for a variant
+ --> src\content\error.rs:6:5
+  |
+6 |     FileNotFound {
+  |     ^^^^^^^^^^^^
+  |
+  = note: requested on the command line with `-D missing-docs`
+
+error: missing documentation for a variant
+  --> src\content\error.rs:11:5
+   |
+11 |     UnsupportedFormat {
+   |     ^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> src\content\error.rs:18:5
+   |
+18 |     UnsupportedAssetType {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> src\content\error.rs:27:5
+   |
+27 |     ImportFailed {
+   |     ^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> src\content\error.rs:40:5
+   |
+40 |     SubObjectNotSupported {
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> src\content\error.rs:49:5
+   |
+49 |     SubObjectNotFound {
+   |     ^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> src\content\error.rs:58:5
+   |
+58 |     AmbiguousSubObject {
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> src\content\error.rs:65:5
+   |
+65 |     InvalidSubObject {
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+ --> src\error.rs:6:5
+  |
+6 |     InvalidArgument {
+  |     ^^^^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> src\error.rs:13:5
+   |
+13 |     InvalidOperation {
+   |     ^^^^^^^^^^^^^^^^
+
+error: could not document `oxide`
