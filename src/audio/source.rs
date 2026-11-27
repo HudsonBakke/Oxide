@@ -28,16 +28,16 @@ pub(crate) struct SourceState {
     pub position: Vec3, pub direction: Vec3, pub settings: AudioSettings,
     pub audio: Option<Audio>, pub state: PlaybackState, pub cone: Option<Cone>,
     pub cursor: f64, pub gain: [f32;2], pub pitch: f32, pub filtered: f32,
-    pub filter: f32, pub phase: f64,
+    pub filter: f32, pub phase: f64, pub modulation_frequency: f32, pub modulation_depth: f32,
 }
 impl SourceState {
     pub(crate) fn new(position: Vec3, settings: AudioSettings, direction: Vec3) -> Self {
         Self { position, direction, settings, audio: None, state: PlaybackState::Stopped,
-            cone: None, cursor: 0.0, gain: [0.0;2], pitch: 1.0, filtered: 0.0, filter: 1.0, phase: 0.0 }
+            cone: None, cursor: 0.0, gain: [0.0;2], pitch: 1.0, filtered: 0.0, filter: 1.0, phase: 0.0, modulation_frequency: 0.0, modulation_depth: 0.0 }
     }
     pub(crate) fn play(&mut self, audio: &Audio, cone: Option<Cone>) {
         self.audio = Some(audio.clone()); self.cone = cone; self.cursor = 0.0;
-        self.gain = [0.0;2]; self.pitch = self.settings.pitch(); self.filtered = 0.0; self.phase = 0.0;
+        self.gain = [0.0;2]; self.pitch = self.settings.pitch(); self.filtered = 0.0; self.phase = 0.0; self.modulation_frequency = 0.0; self.modulation_depth = 0.0;
         self.state = PlaybackState::Playing;
     }
     pub(crate) fn stop(&mut self) { self.audio = None; self.state = PlaybackState::Stopped; self.cursor = 0.0; self.gain = [0.0;2]; }

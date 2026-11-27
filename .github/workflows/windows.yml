@@ -85,7 +85,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
-      - name: Check C# shared light interface and native layouts
+      - name: Check C# audio bindings, light interface, and native layouts
         run: dotnet run --project tests/csharp/Oxide.Tests.csproj
 
       - name: Compile and link the C example against oxide.dll
@@ -109,3 +109,5 @@ jobs:
           python tests/python_math.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/python_shadows.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/python_audio.py

@@ -1,10 +1,10 @@
-use std::{collections::VecDeque, sync::{Arc, Mutex, OnceLock, Weak, atomic::{AtomicBool, Ordering}, mpsc}, thread::{self, JoinHandle}, time::Duration};
+use std::{collections::VecDeque, sync::{Arc, Mutex, OnceLock, Weak, atomic::{AtomicBool, Ordering}, mpsc}, thread::{self, JoinHandle}, time::{Duration, Instant}};
 use windows::{core::{Interface, HRESULT, PCWSTR}, Win32::{Media::Audio::{XAudio2::*, WAVEFORMATEX, AudioCategory_GameEffects}, System::Com::*}};
 use super::{AudioError, AudioResult, listener, lock, mixer::{BLOCK_FRAMES, SAMPLE_RATE, mix_source}, source::SourceState};
 
 // The SDK's XAudio2Create inline wrapper is absent from windows-rs. Import the
 // Windows 10+ system entry point directly; all voice methods use generated bindings.
-#[link(name = "xaudio2_9")]
+#[link(name = "xaudio2")]
 unsafe extern "system" { fn XAudio2Create(result: *mut *mut std::ffi::c_void, flags: u32, processor: u32) -> HRESULT; }
 
 struct ComApartment;
@@ -17,6 +17,7 @@ struct Output {
     engine: IXAudio2,
     master: Option<IXAudio2MasteringVoice>, voice: Option<IXAudio2SourceVoice>,
     pending: VecDeque<Box<[f32]>>, free: Vec<Box<[f32]>>,
+    last_progress: Instant, samples_played: u64,
 }
 impl Output {
     fn new() -> windows::core::Result<Self> {
@@ -24,6 +25,7 @@ impl Output {
         unsafe { XAudio2Create(&mut pointer, 0, XAUDIO2_DEFAULT_PROCESSOR).ok()?; }
         let engine: IXAudio2 = unsafe { Interface::from_raw(pointer) };
         let mut output = Self { engine, master: None, voice: None, pending: VecDeque::new(),
+            last_progress: Instant::now(), samples_played: 0,
             free: (0..3).map(|_| vec![0.0; BLOCK_FRAMES * 2].into_boxed_slice()).collect() };
         unsafe {
             output.engine.CreateMasteringVoice(&mut output.master, 2, SAMPLE_RATE, 0, PCWSTR::null(), None, AudioCategory_GameEffects)?;
@@ -34,13 +36,18 @@ impl Output {
         }
         Ok(output)
     }
-    fn next_buffer(&mut self) -> Option<Box<[f32]>> {
+    fn next_buffer(&mut self) -> windows::core::Result<Option<Box<[f32]>>> {
         let mut state = XAUDIO2_VOICE_STATE::default();
-        unsafe { self.voice.as_ref().unwrap().GetState(&mut state, XAUDIO2_VOICE_NOSAMPLESPLAYED); }
+        unsafe { self.voice.as_ref().unwrap().GetState(&mut state, 0); }
+        if state.SamplesPlayed != self.samples_played || state.BuffersQueued == 0 {
+            self.last_progress = Instant::now(); self.samples_played = state.SamplesPlayed;
+        } else if self.last_progress.elapsed() > Duration::from_secs(2) {
+            return Err(windows::core::Error::new(windows::Win32::Foundation::E_FAIL, "audio endpoint stopped consuming buffers; recreate sources after restoring the device"));
+        }
         // Completed buffers are returned in FIFO order. Never touch memory still
         // referenced by XAudio2; polling avoids allocating native callbacks.
         while self.pending.len() > state.BuffersQueued as usize { self.free.push(self.pending.pop_front().unwrap()); }
-        if state.BuffersQueued < 3 { self.free.pop() } else { None }
+        Ok(if state.BuffersQueued < 3 { self.free.pop() } else { None })
     }
     fn submit(&mut self, mut samples: Box<[f32]>) -> windows::core::Result<()> {
         for value in samples.iter_mut() { *value = value.clamp(-1.0,1.0); }
@@ -78,7 +85,7 @@ impl Engine {
                 let mut output = Output::new()?;
                 let _ = sender.send(Ok::<(), String>(()));
                 while !thread_shared.shutdown.load(Ordering::Acquire) {
-                    while let Some(mut buffer) = output.next_buffer() {
+                    while let Some(mut buffer) = output.next_buffer()? {
                         buffer.fill(0.0);
                         let listener = listener::snapshot();
                         let sources: Vec<_> = {

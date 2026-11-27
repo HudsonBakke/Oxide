@@ -83,9 +83,12 @@ fn low_pass_and_amplitude_modulation_change_the_mixed_signal() {
     wet.settings.set_low_pass_cutoff(100.0).unwrap();
     let mut a=vec![0.0;9600]; let mut b=vec![0.0;9600];
     mix_source(&mut dry,&listener(),&mut a); mix_source(&mut wet,&listener(),&mut b);
+    a.fill(0.0); b.fill(0.0);
+    mix_source(&mut dry,&listener(),&mut a); mix_source(&mut wet,&listener(),&mut b);
     assert!(energy(&b[4800..])<energy(&a[4800..])*0.01);
     let mut plain=source(&[0.5;9600],48_000); let mut modulated=source(&[0.5;9600],48_000);
     modulated.settings.set_modulation_frequency(20.0).unwrap(); modulated.settings.set_modulation_depth(1.0).unwrap();
+    a.fill(0.0); b.fill(0.0); mix_source(&mut plain,&listener(),&mut a); mix_source(&mut modulated,&listener(),&mut b);
     a.fill(0.0); b.fill(0.0); mix_source(&mut plain,&listener(),&mut a); mix_source(&mut modulated,&listener(),&mut b);
     assert!(energy(&b)<energy(&a)*0.6);
 }

@@ -40,6 +40,9 @@ pub(crate) fn mix_source(source: &mut SourceState, listener: &ListenerData, outp
     let old_gain = source.gain;
     let old_pitch = source.pitch;
     let old_filter = source.filter;
+    let old_frequency = source.modulation_frequency;
+    let old_depth = source.modulation_depth;
+    let target_depth = if settings.modulation_frequency == 0.0 { 0.0 } else { settings.modulation_depth };
     for (index, frame) in output.chunks_exact_mut(2).enumerate() {
         if source.cursor >= audio.samples.len() as f64 {
             if settings.looping != 0 { source.cursor %= audio.samples.len() as f64; }
@@ -51,13 +54,14 @@ pub(crate) fn mix_source(source: &mut SourceState, listener: &ListenerData, outp
         let fraction = source.cursor.fract() as f32;
         let sample = audio.samples[first] + (audio.samples[next] - audio.samples[first]) * fraction;
         source.filtered += (sample - source.filtered) * (old_filter + (target_filter - old_filter) * t);
-        let modulation = if settings.modulation_frequency == 0.0 || settings.modulation_depth == 0.0 { 1.0 }
-            else { 1.0 - settings.modulation_depth * (0.5 - 0.5 * (source.phase as f32).cos()) };
+        let depth = old_depth + (target_depth - old_depth) * t;
+        let modulation = 1.0 - depth * (0.5 - 0.5 * (source.phase as f32).cos());
         let value = source.filtered * modulation;
         for channel in 0..2 { frame[channel] += value * (old_gain[channel] + (target[channel] - old_gain[channel]) * t); }
         source.cursor += audio.sample_rate() as f64 / SAMPLE_RATE as f64 * (old_pitch + (settings.pitch - old_pitch) * t) as f64;
-        source.phase = (source.phase + std::f64::consts::TAU * settings.modulation_frequency as f64 / SAMPLE_RATE as f64) % std::f64::consts::TAU;
+        source.phase = (source.phase + std::f64::consts::TAU * (old_frequency + (settings.modulation_frequency - old_frequency) * t) as f64 / SAMPLE_RATE as f64) % std::f64::consts::TAU;
     }
+    source.modulation_frequency = settings.modulation_frequency; source.modulation_depth = target_depth;
     source.gain = target; source.pitch = settings.pitch; source.filter = target_filter;
     if settings.looping == 0 && source.cursor >= audio.samples.len() as f64 { source.state = PlaybackState::Stopped; }
     if source.state == PlaybackState::Stopped { source.audio = None; source.cursor = 0.0; source.gain = [0.0;2]; }

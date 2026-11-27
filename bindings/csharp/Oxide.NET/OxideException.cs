@@ -17,6 +17,8 @@ public enum OxideErrorKind
     Graphics = 4,
     /// <summary>An unexpected internal failure occurred.</summary>
     Internal = 5,
+    /// <summary>Audio output initialization or playback failed.</summary>
+    Audio = 6,
 }
 
 /// <summary>Exception raised when the native engine returns a non-success status.</summary>
