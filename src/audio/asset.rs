@@ -12,7 +12,7 @@ const MAX_SAMPLES: usize = 64 * 1024 * 1024;
 pub struct Audio { pub(crate) samples: Arc<[f32]>, sample_rate: u32 }
 impl Audio {
     /// Copies normalized mono samples at 8,000..192,000 Hz. Requires nonempty,
-    /// finite samples in [-1,1], with at most 64 million samples (256 MiB).
+    /// finite samples in `[-1,1]`, with at most 64 million samples (256 MiB).
     pub fn from_samples(samples: &[f32], sample_rate: u32) -> AudioResult<Self> {
         if !(8_000..=192_000).contains(&sample_rate) || samples.is_empty() || samples.len() > MAX_SAMPLES {
             return Err(invalid("audio needs 1..67108864 mono samples at 8000..192000 Hz"));

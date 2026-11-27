@@ -20,6 +20,8 @@ class OxideStatus(IntEnum):
     GRAPHICS_ERROR = 4
     #: An unexpected internal failure occurred.
     INTERNAL_ERROR = 5
+    #: Audio output initialization or playback failed.
+    AUDIO_ERROR = 6
 
 
 class OxideError(RuntimeError):
@@ -62,6 +64,10 @@ class GraphicsError(OxideError):
     pass
 
 
+class AudioError(OxideError):
+    """Raised when opening or operating the audio output device fails."""
+
+
 class InternalError(OxideError):
     """Raised when the native engine reports an unexpected internal failure."""
 
@@ -74,6 +80,7 @@ _ERROR_TYPES = {
     OxideStatus.CONTENT_ERROR: ContentError,
     OxideStatus.GRAPHICS_ERROR: GraphicsError,
     OxideStatus.INTERNAL_ERROR: InternalError,
+    OxideStatus.AUDIO_ERROR: AudioError,
 }
 
 

@@ -10,6 +10,7 @@ from .input import (
 )
 from .errors import (
     ContentError,
+    AudioError,
     GraphicsError,
     InternalError,
     InvalidArgumentError,
@@ -17,6 +18,7 @@ from .errors import (
     OxideError,
     OxideStatus,
 )
+from .audio import Audio, AudioSettings, AudioSource, AudioListener, PlaybackState
 from .collision import collides
 from .app import (
     AppConfig,
@@ -55,6 +57,7 @@ from .graphics import (
 )
 
 __all__ = [
+    "Audio", "AudioSettings", "AudioSource", "AudioListener", "PlaybackState", "AudioError",
     "Keyboard",
     "KeyboardState",
     "Keys",

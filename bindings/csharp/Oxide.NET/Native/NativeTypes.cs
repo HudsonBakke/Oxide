@@ -13,6 +13,8 @@ internal enum OxideStatus
     ContentError = 3,
     GraphicsError = 4,
     InternalError = 5,
+    /// <summary>Audio output initialization or playback failed.</summary>
+    AudioError = 6,
 }
 
 [StructLayout(LayoutKind.Sequential)]

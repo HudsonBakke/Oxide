@@ -8,6 +8,7 @@ from os import PathLike
 from typing import TypeVar
 
 from . import _native
+from .audio import Audio
 from .math import Vec2, Vec3, Vec4
 
 
@@ -566,6 +567,7 @@ ContentType = TypeVar(
     Mesh,
     Material,
     Texture,
+    Audio,
 )
 
 
@@ -630,7 +632,7 @@ class ContentManager(_OwnedResource):
         path: str | PathLike[str],
         subobject: str | None = None,
     ) -> ContentType:
-        """Loads a Mesh, Material, or Texture from a source path, optionally selecting a named glTF subobject.
+        """Loads Audio, Mesh, Material, or Texture from a source path, optionally selecting a named glTF subobject.
 
         Raises ContentError for import/I/O failures; unsupported asset types raise TypeError.
         """
@@ -648,8 +650,12 @@ class ContentManager(_OwnedResource):
             handle = _native.NativeTextureHandle()
             default_fn = _native.lib.oxide_content_load_texture
             sub_fn = _native.lib.oxide_content_load_texture_sub
+        elif asset_type is Audio:
+            handle = ctypes.c_uint64()
+            default_fn = _native.lib.oxide_content_load_audio
+            sub_fn = _native.lib.oxide_content_load_audio_sub
         else:
-            raise TypeError("asset_type must be Mesh, Material, or Texture")
+            raise TypeError("asset_type must be Audio, Mesh, Material, or Texture")
 
         if subobject is None or subobject == "":
             status = default_fn(

@@ -490,3 +490,94 @@ pub extern "C" fn oxide_content_manager_copy_cache_directory(
         OxideStatus::Ok
     })
 }
+
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_load_audio(
+    manager: OxideContentManagerHandle,
+    path: *const std::ffi::c_char,
+    result: *mut u64,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() {
+            set_last_error("result pointer cannot be null");
+
+            return OxideStatus::InvalidArgument;
+        }
+
+        let path = match read_path(path) {
+            Ok(path) => path,
+            Err(status) => return status,
+        };
+
+        let Some(load_result) = with_manager_mut(manager, |manager| manager.load::<crate::audio::Audio>(&path))
+        else {
+            return invalid_handle();
+        };
+
+        match load_result {
+            Ok(texture) => {
+                unsafe {
+                    *result = super::audio::insert_audio(texture);
+                }
+
+                OxideStatus::Ok
+            }
+
+            Err(error) => {
+                set_last_error(error.to_string());
+
+                OxideStatus::ContentError
+            }
+        }
+    })
+}
+
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_content_load_audio_sub(
+    manager: OxideContentManagerHandle,
+    path: *const std::ffi::c_char,
+    subobject: *const std::ffi::c_char,
+    result: *mut u64,
+) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() {
+            set_last_error("result pointer cannot be null");
+
+            return OxideStatus::InvalidArgument;
+        }
+
+        let path = match read_path(path) {
+            Ok(value) => value,
+            Err(status) => return status,
+        };
+
+        let subobject = match read_subobject(subobject) {
+            Ok(value) => value,
+            Err(status) => return status,
+        };
+
+        let Some(load_result) = with_manager_mut(manager, |manager| {
+            manager.load_sub::<crate::audio::Audio>(&path, &subobject)
+        }) else {
+            return invalid_handle();
+        };
+
+        match load_result {
+            Ok(texture) => {
+                unsafe {
+                    *result = super::audio::insert_audio(texture);
+                }
+
+                OxideStatus::Ok
+            }
+
+            Err(error) => {
+                set_last_error(error.to_string());
+
+                OxideStatus::ContentError
+            }
+        }
+    })
+}

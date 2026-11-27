@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 
 using Oxide.Graphics;
+using AudioAsset = Oxide.Audio.Audio;
+using Oxide.Audio;
 using Oxide.Native;
 
 namespace Oxide.Content;
@@ -73,7 +75,7 @@ public sealed class ContentManager
             return _handle.NativeHandle;
         }
     }
-    /// <summary>Loads a Mesh, Material, or Texture from a source path, optionally selecting a named glTF subobject.</summary>
+    /// <summary>Loads Audio, Mesh, Material, or Texture from a source path, optionally selecting a named glTF subobject.</summary>
     public T Load<T>(string path, string? subObject = null)
         where T : IContentAsset
     {
@@ -116,6 +118,11 @@ public sealed class ContentManager
                     Handle, nativePath, out NativeTextureHandle handle));
 
                 result = new Texture(handle);
+            }
+            else if (typeof(T) == typeof(AudioAsset))
+            {
+                NativeMethods.Check(AudioNative.oxide_content_load_audio(Handle, nativePath, out ulong handle));
+                result = new AudioAsset(handle);
             }
             else
             {
@@ -162,6 +169,11 @@ public sealed class ContentManager
                     Handle, nativePath, nativeSubObject, out NativeTextureHandle handle));
 
                 result = new Texture(handle);
+            }
+            else if (typeof(T) == typeof(AudioAsset))
+            {
+                NativeMethods.Check(AudioNative.oxide_content_load_audio_sub(Handle, nativePath, nativeSubObject, out ulong handle));
+                result = new AudioAsset(handle);
             }
             else
             {

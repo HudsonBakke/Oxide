@@ -1,3 +1,5 @@
+#[path = "../../src/ffi/audio.rs"]
+mod audio;
 #[path = "../../src/ffi/app.rs"]
 mod app;
 #[path = "../../src/ffi/app_control.rs"]

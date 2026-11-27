@@ -81,11 +81,11 @@ impl AudioSettings {
 }
 
 impl AudioSettings {
-    /// Linear gain in [0,16]; one preserves amplitude.
+    /// Linear gain in `[0,16]`; one preserves amplitude.
     pub fn volume(&self) -> f32 { self.snapshot().volume }
     /// Changes volume; invalid values leave the current settings unchanged.
     pub fn set_volume(&self, value: f32) -> AudioResult<()> { self.update(|v| v.volume = value) }
-    /// Playback-rate ratio in [1/16,16]; one preserves pitch and duration.
+    /// Playback-rate ratio in `[1/16,16]`; one preserves pitch and duration.
     pub fn pitch(&self) -> f32 { self.snapshot().pitch }
     /// Changes pitch; invalid values leave the current settings unchanged.
     pub fn set_pitch(&self, value: f32) -> AudioResult<()> { self.update(|v| v.pitch = value) }
@@ -97,19 +97,19 @@ impl AudioSettings {
     pub fn max_distance(&self) -> f32 { self.snapshot().max_distance }
     /// Changes max_distance; invalid values leave the current settings unchanged.
     pub fn set_max_distance(&self, value: f32) -> AudioResult<()> { self.update(|v| v.max_distance = value) }
-    /// Inverse-distance exponent in [0,16], combined with a fade to max_distance.
+    /// Inverse-distance exponent in `[0,16]`, combined with a fade to max_distance.
     pub fn rolloff(&self) -> f32 { self.snapshot().rolloff }
     /// Changes rolloff; invalid values leave the current settings unchanged.
     pub fn set_rolloff(&self, value: f32) -> AudioResult<()> { self.update(|v| v.rolloff = value) }
-    /// Low-pass cutoff in Hz, [20,24000]; 24000 bypasses filtering.
+    /// Low-pass cutoff in Hz, `[20,24000]`; 24000 bypasses filtering.
     pub fn low_pass_cutoff(&self) -> f32 { self.snapshot().low_pass_cutoff }
     /// Changes low_pass_cutoff; invalid values leave the current settings unchanged.
     pub fn set_low_pass_cutoff(&self, value: f32) -> AudioResult<()> { self.update(|v| v.low_pass_cutoff = value) }
-    /// Amplitude-modulation rate in Hz, [0,100]; zero disables modulation.
+    /// Amplitude-modulation rate in Hz, `[0,100]`; zero disables modulation.
     pub fn modulation_frequency(&self) -> f32 { self.snapshot().modulation_frequency }
     /// Changes modulation_frequency; invalid values leave the current settings unchanged.
     pub fn set_modulation_frequency(&self, value: f32) -> AudioResult<()> { self.update(|v| v.modulation_frequency = value) }
-    /// Amplitude-modulation depth in [0,1]; zero disables modulation.
+    /// Amplitude-modulation depth in `[0,1]`; zero disables modulation.
     pub fn modulation_depth(&self) -> f32 { self.snapshot().modulation_depth }
     /// Changes modulation_depth; invalid values leave the current settings unchanged.
     pub fn set_modulation_depth(&self, value: f32) -> AudioResult<()> { self.update(|v| v.modulation_depth = value) }

@@ -51,7 +51,9 @@ extern "C"
         /** Graphics initialization or rendering failure. */
         OXIDE_STATUS_GRAPHICS_ERROR = 4,
         /** Unexpected internal failure. */
-        OXIDE_STATUS_INTERNAL_ERROR = 5
+        OXIDE_STATUS_INTERNAL_ERROR = 5,
+        /** Audio output initialization or playback failure. */
+        OXIDE_STATUS_AUDIO_ERROR = 6
     } OxideStatus;
 
     /**
@@ -1409,6 +1411,120 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
  * @return OXIDE_STATUS_OK on success; otherwise a status code with a thread-local diagnostic.
  */
     OXIDE_API OxideStatus oxide_mouse_get_state(OxideMouseState *result);
+
+
+    /** Owned immutable decoded audio handle; destroy once. Playback retains its samples. */
+    typedef uint64_t OxideAudioHandle;
+    /** Owned shared live settings handle; sources retain their settings independently. */
+    typedef uint64_t OxideAudioSettingsHandle;
+    /** Owned single-playback source handle; destruction stops the source. */
+    typedef uint64_t OxideAudioSourceHandle;
+    /** Owned audio viewpoint handle; activation retains native listener state. */
+    typedef uint64_t OxideAudioListenerHandle;
+    /** Atomic settings snapshot. Start with oxide_audio_settings_create/get defaults.
+     * Set validates all fields before changing any value. No occlusion is performed.
+     */
+    typedef struct OxideAudioSettingsValues {
+        /** Linear gain in [0,16], default 1. */ float volume;
+        /** Playback-rate ratio in [1/16,16], default 1. */ float pitch;
+        /** Positive attenuation-start distance, default 1. */ float reference_distance;
+        /** Cutoff distance greater than reference_distance, default 50. */ float max_distance;
+        /** Inverse-distance exponent in [0,16], default 1. */ float rolloff;
+        /** Low-pass Hz in [20,24000]; default 24000 bypasses filtering. */ float low_pass_cutoff;
+        /** Amplitude-modulation Hz in [0,100], default 0. */ float modulation_frequency;
+        /** Amplitude-modulation depth in [0,1], default 0. */ float modulation_depth;
+        /** Exactly 0 or 1, default 0. */ uint32_t looping;
+    } OxideAudioSettingsValues;
+    /** Playback state returned by oxide_audio_source_get_state. */
+    typedef enum OxidePlaybackState {
+        /** No active clip, or nonlooping playback ended. */ OXIDE_PLAYBACK_STOPPED=0,
+        /** Cursor advances, even outside audible range. */ OXIDE_PLAYBACK_PLAYING=1,
+        /** Retains clip and cursor without advancing. */ OXIDE_PLAYBACK_PAUSED=2
+    } OxidePlaybackState;
+    /** Audio destroy. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_destroy(OxideAudioHandle handle);
+    /** Audio settings destroy. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_destroy(OxideAudioSettingsHandle handle);
+    /** Audio source destroy. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_destroy(OxideAudioSourceHandle handle);
+    /** Audio listener destroy. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_destroy(OxideAudioListenerHandle handle);
+    /** Copies 1..67108864 finite mono samples in [-1,1] at 8000..192000 Hz. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_create_samples(const float * samples, size_t count, uint32_t rate, OxideAudioHandle *result);
+    /** Returns decoded sample rate, mono sample count, and duration in seconds. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_metadata(OxideAudioHandle handle, uint32_t *rate, uint64_t *count, double *duration);
+    /** Audio settings create. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_create(OxideAudioSettingsHandle *result);
+    /** Audio settings get. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_get(OxideAudioSettingsHandle handle, OxideAudioSettingsValues *result);
+    /** Validates and replaces all controls atomically; sources sharing these settings update live. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set(OxideAudioSettingsHandle handle, OxideAudioSettingsValues values);
+    /** Changes both bounds atomically, with 0 < reference < maximum. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_distance_range(OxideAudioSettingsHandle handle, float reference, float maximum);
+    /** Audio settings set looping. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_looping(OxideAudioSettingsHandle handle, uint32_t looping);
+    /** Audio settings set volume. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_volume(OxideAudioSettingsHandle handle, float value);
+    /** Audio settings set pitch. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_pitch(OxideAudioSettingsHandle handle, float value);
+    /** Audio settings set reference distance. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_reference_distance(OxideAudioSettingsHandle handle, float value);
+    /** Audio settings set max distance. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_max_distance(OxideAudioSettingsHandle handle, float value);
+    /** Audio settings set rolloff. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_rolloff(OxideAudioSettingsHandle handle, float value);
+    /** Audio settings set low pass cutoff. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_low_pass_cutoff(OxideAudioSettingsHandle handle, float value);
+    /** Audio settings set modulation frequency. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_modulation_frequency(OxideAudioSettingsHandle handle, float value);
+    /** Audio settings set modulation depth. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_settings_set_modulation_depth(OxideAudioSettingsHandle handle, float value);
+    /** Creates a source, opening output lazily; position/direction must be finite and direction nonzero. Returns an audio error if no device is available. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_create(OxideVec3 position, OxideAudioSettingsHandle settings_handle, OxideVec3 direction, OxideAudioSourceHandle *result);
+    /** Replaces playback with omnidirectional distance attenuation. Retains clip samples. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_play(OxideAudioSourceHandle handle, OxideAudioHandle clip);
+    /** Replaces playback with distance and cone attenuation. Angles are half-angles, 0 <= inner <= outer <= pi; outer_volume is in [0,1]. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_play_directional(OxideAudioSourceHandle handle, OxideAudioHandle clip, OxideAngle inner, OxideAngle outer, float outer_volume);
+    /** Audio source set cone. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_set_cone(OxideAudioSourceHandle handle, OxideAngle inner, OxideAngle outer, float outer_volume);
+    /** Audio source set settings. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_set_settings(OxideAudioSourceHandle handle, OxideAudioSettingsHandle settings_handle);
+    /** Returns a new owned handle sharing this source's live settings; caller must destroy it. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_get_settings(OxideAudioSettingsHandle handle, OxideAudioSettingsHandle *result);
+    /** Writes 0=stopped, 1=playing, 2=paused; reports output failures. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_get_state(OxideAudioSourceHandle handle, uint32_t *result);
+    /** Audio source pause. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_pause(OxideAudioSourceHandle handle);
+    /** Audio source resume. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_resume(OxideAudioSourceHandle handle);
+    /** Audio source stop. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_stop(OxideAudioSourceHandle handle);
+    /** Audio listener create. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_create(OxideAudioListenerHandle *result);
+    /** Selects this listener. Later changes apply live; activation retains its native state. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_activate(OxideAudioListenerHandle handle);
+    /** Audio listener set orientation. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_set_orientation(OxideAudioListenerHandle handle, OxideVec3 forward, OxideVec3 up);
+    /** Audio source get position. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_get_position(OxideAudioSourceHandle handle, OxideVec3 *result);
+    /** Audio source set position. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_set_position(OxideAudioSourceHandle handle, OxideVec3 value);
+    /** Audio source get direction. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_get_direction(OxideAudioSourceHandle handle, OxideVec3 *result);
+    /** Audio source set direction. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_source_set_direction(OxideAudioSourceHandle handle, OxideVec3 value);
+    /** Audio listener get position. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_get_position(OxideAudioListenerHandle handle, OxideVec3 *result);
+    /** Audio listener set position. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_set_position(OxideAudioListenerHandle handle, OxideVec3 value);
+    /** Audio listener get direction. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_get_direction(OxideAudioListenerHandle handle, OxideVec3 *result);
+    /** Audio listener get up. Output pointers must be non-null. */
+    OXIDE_API OxideStatus oxide_audio_listener_get_up(OxideAudioListenerHandle handle, OxideVec3 *result);
+    /** Loads/cache-decodes WAV or MP3, averaging multichannel input to mono. Does not open output. */
+    OXIDE_API OxideStatus oxide_content_load_audio(OxideContentManagerHandle manager, const char *path, OxideAudioHandle *result);
+    /** Same loader; nonempty subobject names are unsupported and return a content error. */
+    OXIDE_API OxideStatus oxide_content_load_audio_sub(OxideContentManagerHandle manager, const char *path, const char *subobject, OxideAudioHandle *result);
 
 #ifdef __cplusplus
 }

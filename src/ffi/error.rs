@@ -13,6 +13,7 @@ pub enum OxideStatus {
     ContentError = 3,
     GraphicsError = 4,
     InternalError = 5,
+    AudioError = 6,
 }
 
 thread_local! {

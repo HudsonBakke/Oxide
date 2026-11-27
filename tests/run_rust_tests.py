@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 result = subprocess.run(
+    ["cargo", "doc", "--locked", "--no-deps"] if "--doc" in sys.argv else
     ["cargo", "check", "--locked", "--all-targets"] if "--check" in sys.argv else
     ["cargo", "test", "--locked", "--lib", "--tests", "--", "--test-threads=1", "--nocapture"],
     stdout=subprocess.PIPE,

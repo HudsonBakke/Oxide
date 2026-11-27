@@ -56,9 +56,14 @@ jobs:
         run: exit 1
 
       - name: Check public Rust documentation
+        id: rust_doc
         env:
           RUSTDOCFLAGS: '-D missing_docs -D rustdoc::broken_intra_doc_links'
-        run: cargo doc --locked --no-deps
+        run: python tests/run_rust_tests.py --doc
+
+      - name: 'Rust documentation failure: ${{ steps.rust_doc.outputs.detail }}'
+        if: failure() && steps.rust_doc.outcome == 'failure'
+        run: exit 1
 
       - name: Run Rust unit and integration tests
         id: rust_tests

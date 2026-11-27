@@ -1,4 +1,5 @@
 mod app;
+mod audio;
 mod app_control;
 mod attachment;
 mod camera;
