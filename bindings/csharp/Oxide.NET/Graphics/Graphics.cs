@@ -181,7 +181,7 @@ public sealed class Graphics
             _handle, mesh.Handle, material.Handle, transform, transparency));
     }
 
-    /// <summary>Submits a mesh with opaque shadows; captures draw state now for rendering at frame end.</summary>
+    /// <summary>Submits a mesh with opaque rendering and shadows; captures draw state now for rendering at frame end.</summary>
     public void DrawMesh(Mesh mesh, Material material, Transform transform)
     {
         ArgumentNullException.ThrowIfNull(mesh);

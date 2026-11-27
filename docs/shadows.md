@@ -40,7 +40,7 @@ begin/draw/end shadow-pass APIs have been removed.
 
 `transparency` must be finite and in [0, 1]:
 
-| Value | Shadow behavior |
+| Value | Rendering and shadow behavior |
 | --- | --- |
 | 0 | Opaque; blocks the selected light |
 | 0.5 | Half visible opacity; passes half the light at a front-facing surface |
@@ -49,8 +49,9 @@ begin/draw/end shadow-pass APIs have been removed.
 Overlapping transparent surfaces multiply transmission: two separate 0.5 panes
 pass 0.25 of the direct light. An opaque blocker still blocks it completely,
 regardless of whether it is before or behind transparent surfaces. Surfaces
-behind the receiver do not attenuate its lighting. The same scalar sets visible opacity to `1 - transparency`. The scalar is the
-opacity control; texture and base-color alpha do not provide extra alpha masks.
+behind the receiver do not attenuate its lighting. The same scalar sets visible
+opacity to `1 - transparency`. Texture and base-color alpha do not provide extra
+alpha masks.
 Shadow transmission is neutral, without color tint.
 
 There is one configured directional shadow light. Use the same unchanged light
@@ -78,13 +79,15 @@ volumetric absorption, refraction, or colored transmission.
 
 Each draw captures its camera/viewport, material values and textures, lights,
 environment, mesh geometry version, transform, and transparency when submitted.
-Later mutations or resource disposal do not alter an earlier draw. Camera/view ordering and background-only viewports are preserved. Within each
+Later mutations or resource disposal do not alter an earlier draw. Camera/view
+ordering and background-only viewports are preserved. Within each
 camera group, opaque meshes render first with depth writes enabled. Partially
 transparent meshes blend back to front in linear HDR, testing opaque depth
 without writing depth. Fully transparent meshes are skipped. Sorting uses each
 mesh's transformed bounds center in its captured camera. Intersecting or
 self-overlapping transparent meshes can need splitting for correct blending;
-this is mesh sorting rather than per-pixel order-independent transparency. GPU rendering failures can surface
+this is mesh sorting rather than per-pixel order-independent transparency.
+GPU rendering failures can surface
 at frame end; argument and resource-preparation errors are reported at submission.
 
 All submitted meshes can cast shadows, including off-camera objects. A mesh the
@@ -111,7 +114,8 @@ objects; insufficient bias can cause self-shadow speckling.
 ## Examples
 
 The matching Rust, C#, and Python scenes contain a moving orange box (initially
-0.5 transmission), an opaque blue pillar, a green box at 0.75 transparency, an opaque yellow marker behind the moving box, and two
+0.5 transparency), an opaque blue pillar, a green box at 0.75 transparency,
+an opaque yellow marker behind the moving box, and two
 cyan half-transmitting panels aligned to show overlapping transmission.
 **Space** toggles shadows; **T** cycles the orange box through opaque, half-transparent, and invisible.
 The title displays the current state. No external assets are required.

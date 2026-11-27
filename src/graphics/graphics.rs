@@ -83,7 +83,7 @@ impl Graphics {
         Ok(())
     }
 
-    /// Submits a mesh with opaque shadows, capturing its current draw state.
+    /// Submits a mesh with opaque rendering and shadows, capturing its current draw state.
     ///
     /// Geometry is rendered at frame end. A camera must be bound first.
     pub fn draw_mesh(

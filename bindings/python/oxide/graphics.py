@@ -724,7 +724,8 @@ class Graphics:
         transparency controls visibility and shadows: zero is opaque, one is invisible,
         and intermediate values transmit that fraction per front-facing surface.
         Must be finite and in [0,1]. Up to eight transparent depths are retained per
-        light ray. Visible opacity is one minus transparency; the same value controls shadow transmission.
+        light ray. Visible opacity is one minus transparency; the same value
+        controls shadow transmission.
         """
         self._require_valid()
 
