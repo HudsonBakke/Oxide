@@ -721,10 +721,10 @@ class Graphics:
     ) -> None:
         """Submits a mesh and captures current draw state for rendering at frame end.
 
-        transparency controls shadows only: zero blocks light, one casts no shadow,
+        transparency controls visibility and shadows: zero is opaque, one is invisible,
         and intermediate values transmit that fraction per front-facing surface.
         Must be finite and in [0,1]. Up to eight transparent depths are retained per
-        light ray. Does not change visible material opacity.
+        light ray. Visible opacity is one minus transparency; the same value controls shadow transmission.
         """
         self._require_valid()
 

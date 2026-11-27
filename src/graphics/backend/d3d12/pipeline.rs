@@ -45,6 +45,23 @@ impl D3D12Pipeline {
         vertex_shader: &D3D12Shader,
         pixel_shader: &D3D12Shader,
     ) -> Result<Self> {
+        Self::new_mesh_pipeline(device, vertex_shader, pixel_shader, false)
+    }
+
+    pub(crate) fn new_transparent(
+        device: &D3D12Device,
+        vertex_shader: &D3D12Shader,
+        pixel_shader: &D3D12Shader,
+    ) -> Result<Self> {
+        Self::new_mesh_pipeline(device, vertex_shader, pixel_shader, true)
+    }
+
+    fn new_mesh_pipeline(
+        device: &D3D12Device,
+        vertex_shader: &D3D12Shader,
+        pixel_shader: &D3D12Shader,
+        transparent: bool,
+    ) -> Result<Self> {
         let texture_range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 
@@ -247,14 +264,14 @@ impl D3D12Pipeline {
         };
 
         let render_target_blend = D3D12_RENDER_TARGET_BLEND_DESC {
-            BlendEnable: false.into(),
+            BlendEnable: transparent.into(),
             LogicOpEnable: false.into(),
-            SrcBlend: Default::default(),
-            DestBlend: Default::default(),
-            BlendOp: Default::default(),
-            SrcBlendAlpha: Default::default(),
-            DestBlendAlpha: Default::default(),
-            BlendOpAlpha: Default::default(),
+            SrcBlend: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_SRC_ALPHA,
+            DestBlend: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_INV_SRC_ALPHA,
+            BlendOp: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_OP_ADD,
+            SrcBlendAlpha: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_ONE,
+            DestBlendAlpha: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_INV_SRC_ALPHA,
+            BlendOpAlpha: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_OP_ADD,
             LogicOp: Default::default(),
             RenderTargetWriteMask: D3D12_COLOR_WRITE_ENABLE_ALL.0 as u8,
         };
@@ -267,7 +284,11 @@ impl D3D12Pipeline {
 
         let depth_stencil = D3D12_DEPTH_STENCIL_DESC {
             DepthEnable: true.into(),
-            DepthWriteMask: D3D12_DEPTH_WRITE_MASK_ALL,
+            DepthWriteMask: if transparent {
+                windows::Win32::Graphics::Direct3D12::D3D12_DEPTH_WRITE_MASK_ZERO
+            } else {
+                D3D12_DEPTH_WRITE_MASK_ALL
+            },
             DepthFunc: D3D12_COMPARISON_FUNC_LESS,
             StencilEnable: false.into(),
             StencilReadMask: 0,

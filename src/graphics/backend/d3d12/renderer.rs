@@ -46,7 +46,7 @@ use crate::{
         Camera, DirectionalLight, DirectionalShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight,
         SpotLight, mesh::MeshId, texture::TextureId,
     },
-    math::{Mat4, Rect, Transform},
+    math::{Mat4, Rect, Transform, Vec3},
 };
 
 const TRIANGLE_VERTEX_SHADER: &[u8] =
@@ -74,6 +74,7 @@ struct QueuedMesh {
     mesh: MeshKey,
     model: Mat4,
     transparency: f32,
+    sort_depth: f32,
     destination: Rect,
     view: u64,
     object: u64,
@@ -224,6 +225,7 @@ struct ObjectConstants {
     base_color: [f32; 4],
     material: [f32; 4],
     emissive: [f32; 4],
+    transparency: [f32; 4],
 }
 
 #[repr(C)]
@@ -245,13 +247,23 @@ struct ViewConstants {
 }
 
 struct CachedMesh {
+    center: Vec3,
     vertex_buffer: D3D12VertexBuffer,
     index_buffer: D3D12IndexBuffer,
 }
 
 impl CachedMesh {
     fn new(device: &D3D12Device, mesh: &Mesh) -> Result<Self> {
+        let (minimum, maximum) = mesh.vertices().iter().fold(
+            (Vec3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY), Vec3::new(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY)),
+            |(low, high), vertex| (
+                Vec3::new(low.x.min(vertex.position.x), low.y.min(vertex.position.y), low.z.min(vertex.position.z)),
+                Vec3::new(high.x.max(vertex.position.x), high.y.max(vertex.position.y), high.z.max(vertex.position.z)),
+            ),
+        );
+        let center = if mesh.vertices().is_empty() { Vec3::default() } else { (minimum + maximum) * 0.5 };
         Ok(Self {
+            center,
             vertex_buffer: D3D12VertexBuffer::new(device, mesh.vertices())?,
             index_buffer: D3D12IndexBuffer::new(device, mesh.indices())?,
         })
@@ -265,6 +277,8 @@ pub(crate) struct D3D12Renderer {
     command_list: ID3D12GraphicsCommandList,
 
     pipeline: D3D12Pipeline,
+    transparent_pipeline: D3D12Pipeline,
+    camera_view: Option<Mat4>,
     background_pipeline: D3D12Pipeline,
     display_pipeline: D3D12Pipeline,
     hdr_target: Option<HdrTarget>,
@@ -341,6 +355,7 @@ impl D3D12Renderer {
         let pixel_shader = D3D12Shader::from_bytes(TRIANGLE_PIXEL_SHADER);
 
         let pipeline = D3D12Pipeline::new(device, &vertex_shader, &pixel_shader)?;
+        let transparent_pipeline = D3D12Pipeline::new_transparent(device, &vertex_shader, &pixel_shader)?;
         let background_pipeline = D3D12Pipeline::new_fullscreen(
             device,
             &D3D12Shader::from_bytes(BACKGROUND_VERTEX_SHADER),
@@ -387,6 +402,8 @@ impl D3D12Renderer {
             command_list,
 
             pipeline,
+            transparent_pipeline,
+            camera_view: None,
             background_pipeline,
             display_pipeline,
             hdr_target: None,
@@ -436,6 +453,7 @@ impl D3D12Renderer {
         self.background_drawn = false;
         self.pending_background = None;
         self.view_address = None;
+        self.camera_view = None;
     }
 
     pub(crate) fn begin_frame(
@@ -631,41 +649,68 @@ impl D3D12Renderer {
         Ok(self.constant_buffer.write(&constants))
     }
 
-    fn render_scene(&mut self, shadow_address: u64) {
+    fn render_scene_mesh(&self, draw: &QueuedMesh, shadow_address: u64) {
+        let pipeline = if draw.transparency > 0.0 { &self.transparent_pipeline } else { &self.pipeline };
         let mut shadow = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
         shadow.ptr += self.texture_descriptor_size as u64;
-        for command in &self.commands {
-            match command {
-                SceneCommand::Background { constants, texture, destination } => {
-                    self.set_viewport(*destination);
-                    unsafe {
-                        self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
-                        self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
-                        self.command_list.SetGraphicsRootConstantBufferView(0, *constants);
-                        self.command_list.SetGraphicsRootDescriptorTable(1, *texture);
-                        self.command_list.DrawInstanced(3, 1, 0, 0);
-                    }
-                }
-                SceneCommand::Mesh(draw) => {
-                    self.set_viewport(draw.destination);
-                    let mesh = &self.mesh_cache[&draw.mesh];
-                    unsafe {
-                        self.command_list.SetGraphicsRootSignature(self.pipeline.root_signature());
-                        self.command_list.SetPipelineState(self.pipeline.pipeline_state());
-                        self.command_list.SetGraphicsRootConstantBufferView(0, draw.object);
-                        self.command_list.SetGraphicsRootConstantBufferView(1, draw.view);
-                        self.command_list.SetGraphicsRootConstantBufferView(2, draw.lights);
-                        self.command_list.SetGraphicsRootConstantBufferView(5, shadow_address);
-                        self.command_list.SetGraphicsRootDescriptorTable(3, draw.material);
-                        self.command_list.SetGraphicsRootDescriptorTable(4, draw.environment);
-                        self.command_list.SetGraphicsRootDescriptorTable(6, shadow);
-                        self.command_list.IASetVertexBuffers(0, Some(std::slice::from_ref(mesh.vertex_buffer.view())));
-                        self.command_list.IASetIndexBuffer(Some(mesh.index_buffer.view()));
-                        self.command_list.DrawIndexedInstanced(mesh.index_buffer.index_count(), 1, 0, 0, 0);
-                    }
+        self.set_viewport(draw.destination);
+        let mesh = &self.mesh_cache[&draw.mesh];
+        unsafe {
+            self.command_list.SetGraphicsRootSignature(pipeline.root_signature());
+            self.command_list.SetPipelineState(pipeline.pipeline_state());
+            self.command_list.SetGraphicsRootConstantBufferView(0, draw.object);
+            self.command_list.SetGraphicsRootConstantBufferView(1, draw.view);
+            self.command_list.SetGraphicsRootConstantBufferView(2, draw.lights);
+            self.command_list.SetGraphicsRootConstantBufferView(5, shadow_address);
+            self.command_list.SetGraphicsRootDescriptorTable(3, draw.material);
+            self.command_list.SetGraphicsRootDescriptorTable(4, draw.environment);
+            self.command_list.SetGraphicsRootDescriptorTable(6, shadow);
+            self.command_list.IASetVertexBuffers(0, Some(std::slice::from_ref(mesh.vertex_buffer.view())));
+            self.command_list.IASetIndexBuffer(Some(mesh.index_buffer.view()));
+            self.command_list.DrawIndexedInstanced(mesh.index_buffer.index_count(), 1, 0, 0, 0);
+        }
+    }
+
+    fn render_camera_meshes(&self, commands: &[SceneCommand], shadow_address: u64) {
+        // Opaque depth is established before blending; transparent geometry
+        // tests against it but never hides later transparent layers with a write.
+        let mut transparent = Vec::new();
+        for command in commands {
+            if let SceneCommand::Mesh(draw) = command {
+                if draw.transparency == 0.0 {
+                    self.render_scene_mesh(draw, shadow_address);
+                } else if draw.transparency < 1.0 {
+                    transparent.push(draw);
                 }
             }
         }
+        // Stable ties preserve submission order. Sort using each draw's captured
+        // camera-space bounds center, rather than the last camera bound.
+        transparent.sort_by(|a, b| b.sort_depth.total_cmp(&a.sort_depth));
+        for draw in transparent {
+            self.render_scene_mesh(draw, shadow_address);
+        }
+    }
+
+    fn render_scene(&self, shadow_address: u64) {
+        let mut start = 0;
+        for (index, command) in self.commands.iter().enumerate() {
+            if let SceneCommand::Background { constants, texture, destination } = command {
+                // A background marks the next camera's draw group. Never sort
+                // geometry across cameras or overwrite the previous viewport early.
+                self.render_camera_meshes(&self.commands[start..index], shadow_address);
+                self.set_viewport(*destination);
+                unsafe {
+                    self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
+                    self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
+                    self.command_list.SetGraphicsRootConstantBufferView(0, *constants);
+                    self.command_list.SetGraphicsRootDescriptorTable(1, *texture);
+                    self.command_list.DrawInstanced(3, 1, 0, 0);
+                }
+                start = index + 1;
+            }
+        }
+        self.render_camera_meshes(&self.commands[start..], shadow_address);
     }
 
     pub(crate) fn draw_mesh(
@@ -791,6 +836,7 @@ impl D3D12Renderer {
                 material.normal_strength(),
             ],
             emissive: [emissive.r, emissive.g, emissive.b, emissive.a],
+            transparency: [transparency, 0.0, 0.0, 0.0],
         };
 
         let model_address = self.constant_buffer.write(&object_constants);
@@ -903,8 +949,10 @@ impl D3D12Renderer {
 
         let light_address = self.constant_buffer.write(&light_constants);
 
+        let center = model_matrix.transform_point(self.mesh_cache[&mesh_key].center);
+        let sort_depth = -self.camera_view.unwrap().transform_point(center).z;
         self.commands.push(SceneCommand::Mesh(QueuedMesh {
-            mesh: mesh_key, model: model_matrix, transparency, destination,
+            mesh: mesh_key, model: model_matrix, transparency, sort_depth, destination,
             view: view_address, object: model_address, lights: light_address,
             material: gpu_handle, environment: environment_handle,
         }));
@@ -1044,6 +1092,7 @@ impl D3D12Renderer {
         );
 
         let view = camera.view_matrix();
+        self.camera_view = Some(view);
 
         let projection = camera.projection_matrix(destination.aspect_ratio());
 

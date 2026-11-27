@@ -1,6 +1,6 @@
 # Automatic directional shadows
 
-Every mesh draw carries its shadow behavior. Submit each object once, with the
+Every mesh draw carries its visible transparency and shadow behavior. Submit each object once, with the
 same camera/material/transform API used for ordinary rendering. Oxide collects
 the draws, builds the shadow maps internally, and renders camera views at frame
 end. The game continues to own its meshes, materials, lights, and cameras.
@@ -43,15 +43,15 @@ begin/draw/end shadow-pass APIs have been removed.
 | Value | Shadow behavior |
 | --- | --- |
 | 0 | Opaque; blocks the selected light |
-| 0.5 | Passes half that light at a front-facing surface |
-| 1 | No shadow contribution |
+| 0.5 | Half visible opacity; passes half the light at a front-facing surface |
+| 1 | Invisible; no color, depth, or shadow contribution |
 
 Overlapping transparent surfaces multiply transmission: two separate 0.5 panes
 pass 0.25 of the direct light. An opaque blocker still blocks it completely,
 regardless of whether it is before or behind transparent surfaces. Surfaces
-behind the receiver do not attenuate its lighting. The parameter changes shadow
-transmission only; it does not make the visible mesh see-through. Material alpha
-is not sampled by the shadow passes. Transmission is neutral, without color tint.
+behind the receiver do not attenuate its lighting. The same scalar sets visible opacity to `1 - transparency`. The scalar is the
+opacity control; texture and base-color alpha do not provide extra alpha masks.
+Shadow transmission is neutral, without color tint.
 
 There is one configured directional shadow light. Use the same unchanged light
 value in `add_light`: direction, color, and intensity identify it. Configuration
@@ -78,8 +78,13 @@ volumetric absorption, refraction, or colored transmission.
 
 Each draw captures its camera/viewport, material values and textures, lights,
 environment, mesh geometry version, transform, and transparency when submitted.
-Later mutations or resource disposal do not alter an earlier draw. Draw order
-and background-only viewports are preserved. GPU rendering failures can surface
+Later mutations or resource disposal do not alter an earlier draw. Camera/view ordering and background-only viewports are preserved. Within each
+camera group, opaque meshes render first with depth writes enabled. Partially
+transparent meshes blend back to front in linear HDR, testing opaque depth
+without writing depth. Fully transparent meshes are skipped. Sorting uses each
+mesh's transformed bounds center in its captured camera. Intersecting or
+self-overlapping transparent meshes can need splitting for correct blending;
+this is mesh sorting rather than per-pixel order-independent transparency. GPU rendering failures can surface
 at frame end; argument and resource-preparation errors are reported at submission.
 
 All submitted meshes can cast shadows, including off-camera objects. A mesh the
@@ -106,9 +111,9 @@ objects; insufficient bias can cause self-shadow speckling.
 ## Examples
 
 The matching Rust, C#, and Python scenes contain a moving orange box (initially
-0.5 transmission), an opaque blue pillar, a green box with no shadow, and two
+0.5 transmission), an opaque blue pillar, a green box at 0.75 transparency, an opaque yellow marker behind the moving box, and two
 cyan half-transmitting panels aligned to show overlapping transmission.
-**Space** toggles shadows; **T** cycles the orange box through 0, 0.5, and 1.
+**Space** toggles shadows; **T** cycles the orange box through opaque, half-transparent, and invisible.
 The title displays the current state. No external assets are required.
 
 From the repository root in PowerShell, rebuild once, then run examples individually:

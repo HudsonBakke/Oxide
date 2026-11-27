@@ -573,7 +573,7 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
     /** Disables automatic shadows; call before any mesh submission in this frame. */
     OXIDE_API OxideStatus oxide_graphics_clear_directional_shadows(OxideGraphicsHandle graphics);
 
-    /** Submits geometry with finite shadow transparency in [0,1]: zero blocks light, one casts no shadow. Does not change visible material opacity. State is captured now; rendering occurs at frame end. Up to eight transparent depths are retained per ray. */
+    /** Submits geometry with finite transparency in [0,1]: zero is opaque, one is invisible and casts no shadow. Visible opacity is one minus transparency; the same value controls shadow transmission. State is captured now; rendering occurs at frame end. Up to eight transparent depths are retained per ray. */
     OXIDE_API OxideStatus oxide_graphics_draw_mesh_with_transparency(OxideGraphicsHandle graphics,
         OxideMeshHandle mesh, OxideMaterialHandle material, OxideTransform transform, float transparency);
 

@@ -5,6 +5,7 @@ cbuffer ObjectConstants : register(b0)
     float4 base_color_factor;
     float4 material_factors; // x=metallic, y=roughness, z=emissive strength
     float4 emissive_color;
+    float4 draw_transparency; // x=shared visible/shadow transparency
 };
 
 cbuffer ViewConstants : register(b1)
@@ -306,5 +307,5 @@ float4 ps_main(VertexOutput input) : SV_TARGET
 
     float3 emissive = emissive_color.rgb * material_factors.z;
 
-    return float4(lighting + emissive, sampled.a * base_color_factor.a);
+    return float4(lighting + emissive, 1.0 - draw_transparency.x);
 }

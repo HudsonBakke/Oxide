@@ -44,7 +44,7 @@ class ShadowBindingsTests(unittest.TestCase):
             self.assertLess(names.index("bind_camera"), names.index("draw_mesh"))
             draws = graphics.draw_mesh.call_args_list
             self.assertEqual(len(draws), len(demo.transforms))
-            self.assertEqual([call.kwargs.get("transparency", 0.0) for call in draws], [0, 0.5, 0, 1, 0.5, 0.5])
+            self.assertEqual([call.kwargs.get("transparency", 0.0) for call in draws], [0, 0.5, 0, 0.75, 0.5, 0.5, 0])
             for call, transform in zip(draws, demo.transforms):
                 self.assertIs(call.args[0], demo.mesh)
                 self.assertIs(call.args[2], transform)

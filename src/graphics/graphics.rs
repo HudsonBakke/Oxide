@@ -95,12 +95,12 @@ impl Graphics {
         self.draw_mesh_with_transparency(mesh, material, transform, 0.0)
     }
 
-    /// Submits a mesh with finite shadow transparency in [0, 1].
+    /// Submits a mesh with finite transparency in [0, 1].
     ///
-    /// Zero blocks direct light, one casts no shadow, and intermediate values
+    /// Zero is opaque, one is invisible and casts no shadow, and intermediate values
     /// transmit that fraction of light at each front-facing surface. Up to eight
     /// distinct transparent depths are stored per ray; further layers are ignored.
-    /// Does not change the visible material's opacity. Camera, lights, material,
+    /// Visible opacity is one minus transparency. Camera, lights, material,
     /// geometry, and transform are captured at this call, before later mutations.
     pub fn draw_mesh_with_transparency(
         &mut self,

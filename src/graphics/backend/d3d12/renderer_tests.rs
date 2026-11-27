@@ -118,9 +118,9 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
             // Dropping CPU resources after submission must leave the GPU draw valid.
             let transient_mesh = quad();
             let transient_material = Material::solid(Color::WHITE);
-            renderer.draw_mesh(&device, &transient_mesh, &transient_material, &transform(0.0, 0.0, 4.0, 4.0), 1.0).unwrap();
+            renderer.draw_mesh(&device, &transient_mesh, &transient_material, &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
         } else {
-        renderer.draw_mesh(&device, &mesh, &material, &transform(0.0, 0.0, 4.0, 4.0), 1.0).unwrap();
+        renderer.draw_mesh(&device, &mesh, &material, &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
         }
         let count = renderer.commands.len();
         assert!(renderer.draw_mesh(&device, &mesh, &material, &Transform::new(), f32::NAN).is_err());
@@ -179,5 +179,110 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
     assert!(full > 0.05, "receiver must be lit: {samples:?}");
     for (index, expected) in [(1, 0.5), (2, 0.25), (3, 0.0), (4, 1.0), (5, 0.5), (6, 1.0), (7, 1.0)] {
         assert!((samples[index] / full - expected).abs() < 0.025, "wrong transmission in frame {index}: {samples:?}");
+    }
+}
+
+
+#[test]
+fn visible_transparency_blends_in_depth_order_per_camera() {
+    let device = D3D12Device::warp_for_test().unwrap();
+    let mut renderer = D3D12Renderer::new(&device).unwrap();
+    let cpu = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+    renderer.hdr_target = Some(HdrTarget::new(&device, 64, 64, cpu).unwrap());
+    let mut unused = cpu;
+    unused.ptr += (FIRST_TEXTURE_DESCRIPTOR - 1) as usize * renderer.texture_descriptor_size as usize;
+    let depth = ShadowMap::new(&device, 64, unused).unwrap();
+    renderer.set_environment(crate::graphics::Environment::new(Color::BLACK, 0.0, None, 0.0, None, Color::BLACK).unwrap());
+    let mut mesh = quad();
+    // Duplicate the winding to let opposing cameras see the same test planes.
+    // Back-face culling still selects just one copy for each camera.
+    mesh = Mesh::new(mesh.vertices().to_vec(), vec![0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3]);
+    let colors = [Color::RED, Color::GREEN, Color::BLUE];
+    let materials: Vec<_> = colors.into_iter().map(|color| {
+        let mut material = Material::solid(Color::BLACK);
+        material.set_emissive_color(color);
+        material.set_emissive_strength(1.0).unwrap();
+        material
+    }).collect();
+    let mut camera = Camera::new();
+    camera.set_position(Vec3::new(0.0, 0.0, 5.0));
+    for frame in 0..8 {
+        renderer.reset_frame_state();
+        unsafe {
+            renderer.command_allocators[0].Reset().unwrap();
+            renderer.command_list.Reset(&renderer.command_allocators[0], None).unwrap();
+            renderer.command_list.SetDescriptorHeaps(&[Some(renderer.texture_heap.clone())]);
+            renderer.command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        }
+        if frame == 0 {
+            transition_resource(&renderer.command_list, &depth.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        }
+        let hdr = renderer.hdr_target.as_ref().unwrap();
+        transition_resource(&renderer.command_list, &hdr.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        unsafe {
+            renderer.command_list.ClearDepthStencilView(depth.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+            renderer.command_list.ClearRenderTargetView(hdr.rtv, &[0.0; 4], None);
+        }
+        renderer.bind_camera(&device, &camera, Rect::new(0.0, 0.0, if frame == 6 { 32.0 } else { 64.0 }, 64.0)).unwrap();
+        let layers: Vec<(usize, f32, f32)> = match frame {
+            0 => vec![(0, 1.0, 0.5), (2, 0.0, 0.0)],
+            1 => vec![(2, 0.0, 0.0), (0, 1.0, 0.5)],
+            2 => vec![(0, 2.0, 0.5), (1, 1.0, 0.5), (2, 0.0, 0.0)],
+            3 => vec![(2, 0.0, 0.0), (1, 1.0, 0.5), (0, 2.0, 0.5)],
+            4 => vec![(0, 2.0, 1.0), (2, 0.0, 0.0)],
+            5 => vec![(0, 1.0, 0.5), (2, 0.0, 0.0), (1, 2.0, 0.0)],
+            6 => vec![(0, 1.0, 0.5), (1, -1.0, 0.5)],
+            _ => vec![(0, 2.0, 0.5)],
+        };
+        for (color, z, transparency) in layers {
+            renderer.draw_mesh(&device, &mesh, &materials[color], &transform(0.0, z, 4.0, 4.0), transparency).unwrap();
+        }
+        if frame == 6 {
+            let mut reverse = Camera::new();
+            reverse.set_position(Vec3::new(0.0, 0.0, -5.0));
+            reverse.set_rotation(crate::math::Quaternion::from_to(Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 0.0, 1.0)));
+            renderer.bind_camera(&device, &reverse, Rect::new(32.0, 0.0, 32.0, 64.0)).unwrap();
+            renderer.draw_mesh(&device, &mesh, &materials[0], &transform(0.0, 1.0, 4.0, 4.0), 0.5).unwrap();
+            renderer.draw_mesh(&device, &mesh, &materials[1], &transform(0.0, -1.0, 4.0, 4.0), 0.5).unwrap();
+        }
+        if frame == 7 {
+            renderer.bind_camera(&device, &camera, Rect::new(0.0, 0.0, 64.0, 64.0)).unwrap();
+            renderer.draw_mesh(&device, &mesh, &materials[2], &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
+        }
+        let shadow = renderer.render_shadows(&device).unwrap();
+        let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
+        unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
+        renderer.render_scene(shadow);
+        unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
+        let readback = copy_hdr(&renderer, &device);
+        unsafe {
+            renderer.command_list.Close().unwrap();
+            let list: ID3D12CommandList = renderer.command_list.cast().unwrap();
+            device.command_queue().ExecuteCommandLists(&[Some(list)]);
+        }
+        renderer.wait_for_gpu(&device).unwrap();
+        let mut pointer = std::ptr::null_mut();
+        unsafe {
+            readback.Map(0, None, Some(&mut pointer)).unwrap();
+            let sample = |x: usize| -> [f32; 3] {
+                [0, 1, 2].map(|channel| half_to_float(std::ptr::read_unaligned(
+                    (pointer as *const u8).add(32 * 512 + x * 8 + channel * 2) as *const u16,
+                )))
+            };
+            let expected = match frame {
+                0 | 1 => [0.5, 0.0, 0.5],
+                2 | 3 => [0.5, 0.25, 0.25],
+                4 | 7 => [0.0, 0.0, 1.0],
+                5 => [0.0, 1.0, 0.0],
+                _ => [0.5, 0.25, 0.0],
+            };
+            let actual = sample(if frame == 6 { 16 } else { 32 });
+            assert!(actual.into_iter().zip(expected).all(|(a, b)| (a - b).abs() < 0.003), "frame {frame}: {actual:?} != {expected:?}");
+            if frame == 6 {
+                let right = sample(48);
+                assert!((right[0] - 0.25).abs() < 0.003 && (right[1] - 0.5).abs() < 0.003 && right[2] == 0.0, "opposing camera sort: {right:?}");
+            }
+            readback.Unmap(0, None);
+        }
     }
 }

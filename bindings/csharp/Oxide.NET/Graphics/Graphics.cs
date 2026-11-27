@@ -170,8 +170,8 @@ public sealed class Graphics
         NativeMethods.Check(NativeMethods.oxide_graphics_clear_directional_shadows(_handle));
     }
 
-    /// <summary>Submits a mesh with shadow transparency from zero (opaque) to one (no shadow).</summary>
-    /// <remarks>Requires a finite value in [0,1]. Does not change visible material opacity. Captures draw state now for rendering at frame end. Up to eight transparent depths are retained per light ray.</remarks>
+    /// <summary>Submits a mesh with transparency from zero (opaque) to one (invisible and no shadow).</summary>
+    /// <remarks>Requires a finite value in [0,1]. Visible opacity is one minus transparency; the same value controls shadow transmission. Captures draw state now for rendering at frame end. Up to eight transparent depths are retained per light ray.</remarks>
     public void DrawMesh(Mesh mesh, Material material, Transform transform, float transparency)
     {
         ArgumentNullException.ThrowIfNull(mesh);

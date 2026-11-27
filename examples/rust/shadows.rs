@@ -1,4 +1,4 @@
-//! Automatic directional shadows. Space toggles shadows; T cycles box transmission.
+//! Automatic directional shadows. Space toggles shadows; T cycles box transparency.
 use oxide::{
     app::{AppConfig, Game, GameTime},
     graphics::{Camera, Color, DirectionalLight, DirectionalShadowSettings, Environment, Graphics, Material, Mesh, Vertex},
@@ -9,8 +9,8 @@ use oxide::{
 struct Shadows {
     camera: Camera,
     mesh: Mesh,
-    materials: [Material; 6],
-    transforms: [Transform; 6],
+    materials: [Material; 7],
+    transforms: [Transform; 7],
     light: DirectionalLight,
     settings: DirectionalShadowSettings,
     environment: Environment,
@@ -34,6 +34,7 @@ impl Shadows {
                 Material::solid(Color::rgb(0.2, 0.8, 0.2)),
                 Material::solid(Color::rgb(0.15, 0.7, 0.8)),
                 Material::solid(Color::rgb(0.15, 0.7, 0.8)),
+                Material::solid(Color::rgb(0.95, 0.75, 0.05)),
             ],
             transforms: [
                 instance(Vec3::new(0.0, -0.1, 0.0), Vec3::new(16.0, 0.2, 16.0)),
@@ -42,6 +43,7 @@ impl Shadows {
                 instance(Vec3::new(-3.5, 1.0, -3.0), Vec3::new(1.5, 2.0, 1.5)),
                 instance(Vec3::new(-3.0, 3.0, 2.0), Vec3::new(2.0, 0.1, 2.0)),
                 instance(Vec3::new(-2.5, 4.0, 2.35), Vec3::new(2.0, 0.1, 2.0)),
+                instance(Vec3::new(-1.2, 1.0, -1.8), Vec3::new(0.8, 0.8, 0.8)),
             ],
             light: DirectionalLight::new(Vec3::new(-0.5, -1.0, -0.35), Color::WHITE, 3.0).unwrap(),
             settings: DirectionalShadowSettings::default(),
@@ -63,7 +65,7 @@ impl Game for Shadows {
         if Keyboard::get_state().is_key_pressed(Keys::T) {
             self.transparency = if self.transparency < 1.0 { self.transparency + 0.5 } else { 0.0 };
         }
-        oxide::app::set_window_name(format!("Oxide Shadows | {} | box transmission {} | Space toggles, T cycles", if self.enabled { "on" } else { "off" }, self.transparency));
+        oxide::app::set_window_name(format!("Oxide Shadows | {} | box transparency {} | Space toggles, T cycles", if self.enabled { "on" } else { "off" }, self.transparency));
     }
 
     fn draw(&mut self, graphics: &mut Graphics) {
@@ -75,7 +77,7 @@ impl Game for Shadows {
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
         graphics.set_environment(&self.environment);
         graphics.add_light(&self.light);
-        let transmission = [0.0, self.transparency, 0.0, 1.0, 0.5, 0.5];
+        let transmission = [0.0, self.transparency, 0.0, 0.75, 0.5, 0.5, 0.0];
         for ((material, transform), transparency) in self.materials.iter().zip(&self.transforms).zip(transmission) {
             if transparency == 0.0 {
                 graphics.draw_mesh(&self.mesh, material, transform).unwrap();

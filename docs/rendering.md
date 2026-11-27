@@ -67,3 +67,12 @@ Directional lights can use automatic shadows from queued mesh draws, with
 configurable coverage, resolution, receiver bias, and per-draw transparency.
 See [directional shadows](shadows.md) for the submission API and examples. Shadows modulate direct lighting in
 linear HDR space before the shared display transform.
+
+## Visible transparency
+
+The per-draw `transparency` scalar controls both visible opacity and shadow
+transmission. Opaque meshes establish depth first; partially transparent meshes
+blend back to front per camera with depth testing and no depth writes. Blending
+happens in linear RGBA16F before exposure and tone mapping. A value of one is
+invisible and contributes no color or depth. See [shadows and transparency](shadows.md)
+for the shared API and the mesh-sorting limitations.

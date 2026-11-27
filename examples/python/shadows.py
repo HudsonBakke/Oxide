@@ -1,4 +1,4 @@
-"""Automatic shadows. Space toggles shadows; T cycles box transmission."""
+"""Automatic shadows. Space toggles shadows; T cycles box transparency."""
 import math
 
 from oxide.app import AppConfig, Game, GameTime
@@ -39,7 +39,7 @@ class Shadows(Game):
         self.mesh = cube()
         self.materials = [Material.solid(Color.rgb(*rgb)) for rgb in
                           [(0.55, 0.58, 0.62), (0.8, 0.18, 0.06), (0.08, 0.35, 0.8),
-                           (0.2, 0.8, 0.2), (0.15, 0.7, 0.8), (0.15, 0.7, 0.8)]]
+                           (0.2, 0.8, 0.2), (0.15, 0.7, 0.8), (0.15, 0.7, 0.8), (0.95, 0.75, 0.05)]]
         self.transforms = [
             Transform(position=Vec3(0, -0.1, 0), scale=Vec3(16, 0.2, 16)),
             Transform(position=Vec3(0, 1.5, 0), scale=Vec3(2, 2, 2)),
@@ -47,6 +47,7 @@ class Shadows(Game):
             Transform(position=Vec3(-3.5, 1, -3), scale=Vec3(1.5, 2, 1.5)),
             Transform(position=Vec3(-3, 3, 2), scale=Vec3(2, 0.1, 2)),
             Transform(position=Vec3(-2.5, 4, 2.35), scale=Vec3(2, 0.1, 2)),
+            Transform(position=Vec3(-1.2, 1, -1.8), scale=Vec3(0.8, 0.8, 0.8)),
         ]
         self.light = DirectionalLight(Vec3(-0.5, -1, -0.35), Color.WHITE, 3)
         self.settings = DirectionalShadowSettings()
@@ -63,7 +64,7 @@ class Shadows(Game):
         if Keyboard.get_state().is_key_pressed(Keys.T):
             self.transparency = self.transparency + 0.5 if self.transparency < 1 else 0.0
         self.set_window_name(
-            f"Oxide Shadows | {'on' if self.enabled else 'off'} | box transmission {self.transparency} | Space toggles, T cycles"
+            f"Oxide Shadows | {'on' if self.enabled else 'off'} | box transparency {self.transparency} | Space toggles, T cycles"
         )
 
     def draw(self, graphics: Graphics) -> None:
@@ -74,7 +75,7 @@ class Shadows(Game):
         graphics.bind_camera(self.camera, graphics.full_rect)
         graphics.set_environment(self.environment)
         graphics.add_light(self.light)
-        transmission = [0, self.transparency, 0, 1, 0.5, 0.5]
+        transmission = [0, self.transparency, 0, 0.75, 0.5, 0.5, 0]
         for material, transform, transparency in zip(self.materials, self.transforms, transmission):
             if transparency == 0:
                 graphics.draw_mesh(self.mesh, material, transform)
