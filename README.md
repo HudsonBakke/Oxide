@@ -34,7 +34,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-shaders.ps1
 
 The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus `vs_main` and `ps_main` in `shadow.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, `shadow_vs.dxil`, and `shadow_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
 
-Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, and `shadows`. Run from the repository root so relative asset paths resolve correctly.
+Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, `shadows`, and `audio`. Run from the repository root so relative asset paths resolve correctly.
 
 ### C#
 
@@ -45,7 +45,7 @@ cargo build --locked --lib
 dotnet run --project examples/csharp/Materials/Materials.csproj
 ```
 
-`HelloWindow`, `FirstPerson`, and `Shadows` are also available under `examples/csharp`.
+`HelloWindow`, `FirstPerson`, `Shadows`, and `Audio` are also available under `examples/csharp`.
 
 ### Python
 
@@ -101,6 +101,7 @@ python -m compileall -q bindings/python/oxide examples/python tests
 python -c "import oxide; import oxide.app; import oxide.collision; import oxide.content; import oxide.graphics; import oxide.input; import oxide.math"
 python tests/python_math.py
 python tests/python_shadows.py
+python tests/python_audio.py
 ```
 
 [Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all eight shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow rendering and HDR readback on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, math checks, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
@@ -119,3 +120,12 @@ See [light-owned shadows and transparency](docs/shadows.md) for automatic shadow
 
 See [GPU resource lifetime and capacity](docs/resources.md) for cache reclamation,
 reusable descriptors, upload pages, and renderer limits.
+
+## Audio
+
+Load WAV/MP3 as `Audio`, play through a positional `AudioSource`, select an
+independent `AudioListener`, and modify shared `AudioSettings` during playback.
+Both omnidirectional and cone emission use distance attenuation. Volume, pitch,
+looping, low-pass filtering, and amplitude modulation are supported. Occlusion
+is application-controlled. See [the audio guide](docs/audio.md) for API examples,
+ownership, limits, and matching Rust/C#/Python listening demos.

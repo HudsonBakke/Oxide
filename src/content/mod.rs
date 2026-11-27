@@ -1,4 +1,4 @@
-//! Source-asset import and disposable compiled caches for meshes, materials, and textures.
+//! Source-asset import and disposable compiled caches for audio, meshes, materials, and textures.
 
 mod asset;
 mod cache;

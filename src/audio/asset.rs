@@ -76,7 +76,12 @@ fn decode(path: &Path) -> Result<Audio, String> {
             MFStartup(MF_VERSION, MFSTARTUP_FULL)?;
             let _foundation = Foundation;
             let path: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
-            let reader = MFCreateSourceReaderFromURL(PCWSTR(path.as_ptr()), None)?;
+            // ContentManager canonicalizes to verbatim Windows paths (\\?\).
+            // A byte stream avoids URL resolution treating that prefix as a
+            // network server, and keeps Unicode/long filesystem paths intact.
+            let stream_file = MFCreateFile(MF_ACCESSMODE_READ, MF_OPENMODE_FAIL_IF_NOT_EXIST,
+                MF_FILEFLAGS_NONE, PCWSTR(path.as_ptr()))?;
+            let reader = MFCreateSourceReaderFromByteStream(&stream_file, None)?;
             let stream = MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32;
             reader.SetStreamSelection(MF_SOURCE_READER_ALL_STREAMS.0 as u32, false)?;
             reader.SetStreamSelection(stream, true)?;

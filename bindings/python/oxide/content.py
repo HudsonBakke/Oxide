@@ -1,4 +1,4 @@
-"""Native mesh, material, and texture resources and source-asset loading."""
+"""Native audio, mesh, material, and texture resources and source-asset loading."""
 
 from __future__ import annotations
 

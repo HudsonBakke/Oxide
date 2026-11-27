@@ -12,6 +12,7 @@ cargo build --locked --lib
 # An existing editable install needs no reinstall.
 python tests/python_math.py
 python tests/python_shadows.py
+python tests/python_audio.py
 dotnet run --project tests/csharp/Oxide.Tests.csproj
 ```
 
@@ -49,3 +50,12 @@ These open windows and require manual observation. CI runs the automated checks,
 builds every language example, and leaves interactive window/input checks to the
 developer. `run_rust_tests.py` captures the Rust runner's output for CI failure
 summaries; `--check` captures `cargo check --all-targets` instead.
+
+Audio coverage includes WAV/MP3 decoding and cache reuse/invalidation, corrupt
+cache recovery, settings validation, listener orientation, distance/cone gain,
+panning, sample-rate conversion, pitch, looping/completion, clip ownership,
+low-pass filtering, modulation, and native C#/Python layouts/handles. These
+checks need no playback endpoint. All listening checks are the audio examples;
+run them on a machine with an active Windows output device. The hex MP3 fixture
+is a generated sine wave, not third-party music. The Rust runner's --doc option
+captures documentation failures as well as --check compile failures.

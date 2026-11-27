@@ -33,7 +33,7 @@ impl ContentManager {
         }
     }
 
-    /// Loads a Mesh, Material, or Texture from a source path relative to the working directory.
+    /// Loads Audio, Mesh, Material, or Texture from a source path relative to the working directory.
     ///
     /// Multiple compatible glTF objects require load_sub. Missing or stale caches
     /// are rebuilt from source; cache-write failures do not prevent a valid load.
