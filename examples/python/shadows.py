@@ -52,7 +52,7 @@ class Shadows(Game):
     def update(self, time: GameTime) -> None:
         t = time.total_seconds
         self.transforms[1].position = Vec3(math.sin(t) * 2.5, 1.5 + math.cos(t) * 0.4, 0)
-        self.transforms[1].rotation = Quaternion.from_axis_angle(Vec3(0, 1, 0), Angle.radians(t * 0.5))
+        self.transforms[1].rotation = Quaternion.from_axis_angle(Vec3(0, 1, 0), Angle.from_radians(t * 0.5))
         if Keyboard.get_state().is_key_pressed(Keys.SPACE):
             self.enabled = not self.enabled
         self.set_window_name(f"Oxide Shadows | {'on' if self.enabled else 'off'} | Space toggles")

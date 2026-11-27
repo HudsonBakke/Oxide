@@ -98,11 +98,12 @@ python -m pip install --editable .\bindings\python
 python -m compileall -q bindings/python/oxide examples/python
 python -c "import oxide; import oxide.app; import oxide.collision; import oxide.content; import oxide.graphics; import oxide.input; import oxide.math"
 python examples/python/math_test.py
+python tests/python_shadows.py
 ```
 
-[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all six shaders, checks every Rust target, runs existing Rust tests, builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, and the existing math example against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
+[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all seven shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow-pipeline creation on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, the math example, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
 
-CI does not launch graphical examples or verify rendered output. Run the materials and first-person scenes locally to check rendering and input on a D3D12-capable GPU.
+CI does not launch graphical examples or verify rendered output. Run the materials, first-person, and shadows scenes locally to check rendering and input on a D3D12-capable GPU.
 
 ## Linear HDR rendering
 
