@@ -63,7 +63,7 @@ window resizing and the Rust split-screen example when validating a GPU backend.
 
 ## Shadows
 
-Directional lights can use an explicit depth pass with configurable coverage,
-resolution, and receiver bias. See [directional shadows](shadows.md) for the
-pass order, binding APIs, and examples. Shadows modulate direct lighting in
+Directional lights can use automatic shadows from queued mesh draws, with
+configurable coverage, resolution, receiver bias, and per-draw transparency.
+See [directional shadows](shadows.md) for the submission API and examples. Shadows modulate direct lighting in
 linear HDR space before the shared display transform.

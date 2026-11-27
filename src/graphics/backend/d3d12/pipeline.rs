@@ -66,7 +66,7 @@ impl D3D12Pipeline {
 
         let shadow_range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            NumDescriptors: 1,
+            NumDescriptors: 3,
             BaseShaderRegister: 5,
             ..Default::default()
         }];
@@ -375,15 +375,44 @@ impl D3D12Pipeline {
     }
 
     pub(crate) fn new_shadow(device: &D3D12Device, vertex_shader: &D3D12Shader) -> Result<Self> {
+        Self::new_shadow_pipeline(device, vertex_shader, None)
+    }
+
+    pub(crate) fn new_transmission(
+        device: &D3D12Device,
+        vertex_shader: &D3D12Shader,
+        pixel_shader: &D3D12Shader,
+    ) -> Result<Self> {
+        Self::new_shadow_pipeline(device, vertex_shader, Some(pixel_shader))
+    }
+
+    fn new_shadow_pipeline(
+        device: &D3D12Device,
+        vertex_shader: &D3D12Shader,
+        pixel_shader: Option<&D3D12Shader>,
+    ) -> Result<Self> {
+        let range = [D3D12_DESCRIPTOR_RANGE {
+            RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            NumDescriptors: 1,
+            ..Default::default()
+        }];
         let params = [D3D12_ROOT_PARAMETER {
             ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
             Anonymous: D3D12_ROOT_PARAMETER_0 {
                 Descriptor: D3D12_ROOT_DESCRIPTOR { ShaderRegister: 0, RegisterSpace: 0 },
             },
             ShaderVisibility: D3D12_SHADER_VISIBILITY_ALL,
+        }, D3D12_ROOT_PARAMETER {
+            ParameterType: D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            Anonymous: D3D12_ROOT_PARAMETER_0 {
+                DescriptorTable: D3D12_ROOT_DESCRIPTOR_TABLE {
+                    NumDescriptorRanges: 1, pDescriptorRanges: range.as_ptr(),
+                },
+            },
+            ShaderVisibility: D3D12_SHADER_VISIBILITY_PIXEL,
         }];
         let desc = D3D12_ROOT_SIGNATURE_DESC {
-            NumParameters: 1, pParameters: params.as_ptr(),
+            NumParameters: params.len() as u32, pParameters: params.as_ptr(),
             Flags: D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
             ..Default::default()
         };
@@ -401,11 +430,26 @@ impl D3D12Pipeline {
             InputSlotClass: D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
             ..Default::default()
         }];
+        let mut formats = [DXGI_FORMAT_UNKNOWN; 8];
+        if pixel_shader.is_some() {
+            formats[0] = windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R16_FLOAT;
+        }
         let mut desc = D3D12_GRAPHICS_PIPELINE_STATE_DESC {
             pRootSignature: std::mem::ManuallyDrop::new(Some(root_signature.clone())),
             VS: D3D12_SHADER_BYTECODE {
                 pShaderBytecode: vertex_shader.bytecode().as_ptr() as *const _,
                 BytecodeLength: vertex_shader.bytecode().len(),
+            },
+            PS: pixel_shader.map(|shader| D3D12_SHADER_BYTECODE {
+                pShaderBytecode: shader.bytecode().as_ptr() as *const _,
+                BytecodeLength: shader.bytecode().len(),
+            }).unwrap_or_default(),
+            BlendState: D3D12_BLEND_DESC {
+                RenderTarget: [D3D12_RENDER_TARGET_BLEND_DESC {
+                    RenderTargetWriteMask: D3D12_COLOR_WRITE_ENABLE_ALL.0 as u8,
+                    ..Default::default()
+                }; 8],
+                ..Default::default()
             },
             SampleMask: u32::MAX,
             RasterizerState: D3D12_RASTERIZER_DESC {
@@ -421,7 +465,8 @@ impl D3D12Pipeline {
             },
             InputLayout: D3D12_INPUT_LAYOUT_DESC { pInputElementDescs: input.as_ptr(), NumElements: 1 },
             PrimitiveTopologyType: D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-            NumRenderTargets: 0,
+            NumRenderTargets: pixel_shader.is_some() as u32,
+            RTVFormats: formats,
             DSVFormat: DXGI_FORMAT_D32_FLOAT,
             SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
             ..Default::default()

@@ -1,4 +1,4 @@
-//! Explicit directional shadow pass with moving opaque casters. Space toggles shadows.
+//! Automatic directional shadows. Space toggles shadows; T cycles box transmission.
 use oxide::{
     app::{AppConfig, Game, GameTime},
     graphics::{Camera, Color, DirectionalLight, DirectionalShadowSettings, Environment, Graphics, Material, Mesh, Vertex},
@@ -9,12 +9,13 @@ use oxide::{
 struct Shadows {
     camera: Camera,
     mesh: Mesh,
-    materials: [Material; 3],
-    transforms: [Transform; 3],
+    materials: [Material; 6],
+    transforms: [Transform; 6],
     light: DirectionalLight,
     settings: DirectionalShadowSettings,
     environment: Environment,
     enabled: bool,
+    transparency: f32,
 }
 
 impl Shadows {
@@ -30,16 +31,23 @@ impl Shadows {
                 Material::solid(Color::rgb(0.55, 0.58, 0.62)),
                 Material::solid(Color::rgb(0.8, 0.18, 0.06)),
                 Material::solid(Color::rgb(0.08, 0.35, 0.8)),
+                Material::solid(Color::rgb(0.2, 0.8, 0.2)),
+                Material::solid(Color::rgb(0.15, 0.7, 0.8)),
+                Material::solid(Color::rgb(0.15, 0.7, 0.8)),
             ],
             transforms: [
                 instance(Vec3::new(0.0, -0.1, 0.0), Vec3::new(16.0, 0.2, 16.0)),
                 instance(Vec3::new(0.0, 1.5, 0.0), Vec3::new(2.0, 2.0, 2.0)),
                 instance(Vec3::new(3.0, 1.5, -2.5), Vec3::new(1.5, 3.0, 1.5)),
+                instance(Vec3::new(-3.5, 1.0, -3.0), Vec3::new(1.5, 2.0, 1.5)),
+                instance(Vec3::new(-3.0, 3.0, 2.0), Vec3::new(2.0, 0.1, 2.0)),
+                instance(Vec3::new(-2.5, 4.0, 2.35), Vec3::new(2.0, 0.1, 2.0)),
             ],
             light: DirectionalLight::new(Vec3::new(-0.5, -1.0, -0.35), Color::WHITE, 3.0).unwrap(),
             settings: DirectionalShadowSettings::default(),
             environment: Environment::new(Color::WHITE, 0.12, None, 0.0, None, Color::rgb(0.04, 0.06, 0.09)).unwrap(),
             enabled: true,
+            transparency: 0.5,
         }
     }
 }
@@ -52,23 +60,28 @@ impl Game for Shadows {
         if Keyboard::get_state().is_key_pressed(Keys::Space) {
             self.enabled = !self.enabled;
         }
-        oxide::app::set_window_name(format!("Oxide Shadows | {} | Space toggles", if self.enabled { "on" } else { "off" }));
+        if Keyboard::get_state().is_key_pressed(Keys::T) {
+            self.transparency = if self.transparency < 1.0 { self.transparency + 0.5 } else { 0.0 };
+        }
+        oxide::app::set_window_name(format!("Oxide Shadows | {} | box transmission {} | Space toggles, T cycles", if self.enabled { "on" } else { "off" }, self.transparency));
     }
 
     fn draw(&mut self, graphics: &mut Graphics) {
         if self.enabled {
-            graphics.begin_shadow_pass(&self.light, &self.settings).unwrap();
-            // The game submits the same mesh and transforms to both passes.
-            for transform in &self.transforms {
-                graphics.draw_shadow_mesh(&self.mesh, transform).unwrap();
-            }
-            graphics.end_shadow_pass().unwrap();
+            graphics.set_directional_shadows(&self.light, &self.settings).unwrap();
+        } else {
+            graphics.clear_directional_shadows().unwrap();
         }
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
         graphics.set_environment(&self.environment);
         graphics.add_light(&self.light);
-        for (material, transform) in self.materials.iter().zip(&self.transforms) {
-            graphics.draw_mesh(&self.mesh, material, transform).unwrap();
+        let transmission = [0.0, self.transparency, 0.0, 1.0, 0.5, 0.5];
+        for ((material, transform), transparency) in self.materials.iter().zip(&self.transforms).zip(transmission) {
+            if transparency == 0.0 {
+                graphics.draw_mesh(&self.mesh, material, transform).unwrap();
+            } else {
+                graphics.draw_mesh_with_transparency(&self.mesh, material, transform, transparency).unwrap();
+            }
         }
     }
 }

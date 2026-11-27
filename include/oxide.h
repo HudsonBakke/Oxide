@@ -565,20 +565,20 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
     /** Initializes shadow settings to documented defaults; result must not be null. */
     OXIDE_API OxideStatus oxide_directional_shadow_settings_default(OxideDirectionalShadowSettings *result);
 
-    /** Begins the frame's single shadow pass before any camera is bound. Add the same unchanged directional light for scene draws. */
-    OXIDE_API OxideStatus oxide_graphics_begin_shadow_pass(OxideGraphicsHandle graphics,
-                                                         OxideDirectionalLight light,
-                                                         OxideDirectionalShadowSettings settings);
+    /** Configures automatic directional shadows before any mesh submission; persists across frames. Add the same unchanged light for scene draws. */
+    OXIDE_API OxideStatus oxide_graphics_set_directional_shadows(OxideGraphicsHandle graphics,
+                                                              OxideDirectionalLight light,
+                                                              OxideDirectionalShadowSettings settings);
 
-    /** Submits opaque geometry during an open shadow pass, using the same transform as the scene draw. */
-    OXIDE_API OxideStatus oxide_graphics_draw_shadow_mesh(OxideGraphicsHandle graphics,
-                                                        OxideMeshHandle mesh, OxideTransform transform);
+    /** Disables automatic shadows; call before any mesh submission in this frame. */
+    OXIDE_API OxideStatus oxide_graphics_clear_directional_shadows(OxideGraphicsHandle graphics);
 
-    /** Ends the shadow pass; bind a camera before scene draws. The map applies to all subsequent viewports this frame. */
-    OXIDE_API OxideStatus oxide_graphics_end_shadow_pass(OxideGraphicsHandle graphics);
+    /** Submits geometry with finite shadow transparency in [0,1]: zero blocks light, one casts no shadow. Does not change visible material opacity. State is captured now; rendering occurs at frame end. Up to eight transparent depths are retained per ray. */
+    OXIDE_API OxideStatus oxide_graphics_draw_mesh_with_transparency(OxideGraphicsHandle graphics,
+        OxideMeshHandle mesh, OxideMaterialHandle material, OxideTransform transform, float transparency);
 
     /**
- * @brief Draws a mesh with a material and world transform in the currently bound camera viewport.
+ * @brief Submits a mesh with opaque shadows and captures its material, transform, lighting, and camera state for rendering at frame end.
  * @param graphics Borrowed rendering handle, valid only during the current draw callback.
  * @param mesh Live mesh handle.
  * @param material Live material handle.

@@ -6,6 +6,7 @@ pub(crate) mod renderer;
 pub(crate) mod render_target;
 pub(crate) mod shader;
 pub(crate) mod shadow_map;
+pub(crate) mod transmission_map;
 pub(crate) mod swap_chain;
 pub(crate) mod texture;
 pub(crate) mod vertex_buffer;

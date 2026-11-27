@@ -106,6 +106,16 @@ impl DirectionalShadowSettings {
     }
 }
 
+pub(crate) fn validate_transparency(transparency: f32) -> OxideResult<()> {
+    if !transparency.is_finite() || !(0.0..=1.0).contains(&transparency) {
+        return Err(OxideError::InvalidArgument {
+            argument: "transparency",
+            message: "shadow transparency must be finite and between zero and one",
+        });
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,6 +164,16 @@ mod tests {
             assert!(defaults.light_matrix(direction).is_err());
         }
         assert!(DirectionalShadowSettings { size: f32::MIN_POSITIVE / 4.0, ..defaults }.light_matrix(Vec3::new(0.0, -1.0, 0.0)).is_err());
+    }
+
+    #[test]
+    fn shadow_transparency_rejects_invalid_values() {
+        for value in [0.0, 0.5, 1.0] {
+            assert!(validate_transparency(value).is_ok());
+        }
+        for value in [-0.01, 1.01, f32::NAN, f32::INFINITY] {
+            assert!(validate_transparency(value).is_err());
+        }
     }
 
     #[test]

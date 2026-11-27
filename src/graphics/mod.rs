@@ -13,7 +13,7 @@ mod environment;
 mod light;
 mod material;
 mod vertex;
-mod shadow;
+pub(crate) mod shadow;
 
 pub use attachment::from_attachment;
 pub use camera::Camera;

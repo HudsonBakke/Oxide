@@ -21,12 +21,15 @@ Texture2D irradiance_texture : register(t3);
 Texture2D background_texture : register(t4);
 SamplerState base_sampler : register(s0);
 Texture2D<float> directional_shadow_map : register(t5);
+Texture2DArray<float> transmission_depth : register(t6);
+Texture2DArray<float> transmission_values : register(t7);
 SamplerComparisonState shadow_sampler : register(s1);
 
 cbuffer ShadowConstants : register(b3)
 {
     float4x4 world_to_shadow;
     float4 shadow_parameters; // x=depth bias, y=normal bias, z=texel size, w=enabled
+    float4 transmission_parameters; // x=texel size, y=layer count, z=enabled
 };
 
 struct PointLight
@@ -202,16 +205,36 @@ float directional_visibility(float3 world_position, float3 geometric_normal)
     if (projected.z <= 0.0 || projected.z >= 1.0 || any(uv < 0.0) || any(uv > 1.0))
         return 1.0;
 
-    // Nine bilinear comparison samples soften the edge without blurring depths.
     float visibility = 0.0;
     [unroll]
     for (int y = -1; y <= 1; ++y)
     {
         [unroll]
         for (int x = -1; x <= 1; ++x)
-            visibility += directional_shadow_map.SampleCmpLevelZero(
+        {
+            float sample_visibility = directional_shadow_map.SampleCmpLevelZero(
                 shadow_sampler, uv + float2(x, y) * shadow_parameters.z,
                 projected.z - shadow_parameters.x);
+            if (sample_visibility > 0.0 && transmission_parameters.z > 0.5)
+            {
+                int resolution = int(round(1.0 / transmission_parameters.x));
+                int2 pixel = int2(floor(uv * resolution)) + int2(x, y);
+                if (all(pixel >= 0) && all(pixel < resolution))
+                {
+                    // Depth peeling records successive transparent surfaces.
+                    // Stop before the receiver, or at the first empty layer.
+                    [loop]
+                    for (int layer = 0; layer < int(transmission_parameters.y); ++layer)
+                    {
+                        float depth = transmission_depth.Load(int4(pixel, layer, 0));
+                        if (depth >= projected.z - shadow_parameters.x)
+                            break;
+                        sample_visibility *= transmission_values.Load(int4(pixel, layer, 0));
+                    }
+                }
+            }
+            visibility += sample_visibility;
+        }
     }
     return visibility / 9.0;
 }

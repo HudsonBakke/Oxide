@@ -32,7 +32,7 @@ If Windows blocks local PowerShell scripts, invoke it with a process-only policy
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-shaders.ps1
 ```
 
-The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus the depth-only `vs_main` in `shadow.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, and `shadow_vs.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
+The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus `vs_main` and `ps_main` in `shadow.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, `shadow_vs.dxil`, and `shadow_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
 
 Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, and `shadows`. Run from the repository root so relative asset paths resolve correctly.
 
@@ -101,7 +101,7 @@ python examples/python/math_test.py
 python tests/python_shadows.py
 ```
 
-[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all seven shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow-pipeline creation on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, the math example, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
+[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all eight shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow rendering and HDR readback on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, the math example, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
 
 CI does not launch graphical examples or verify rendered output. Run the materials, first-person, and shadows scenes locally to check rendering and input on a D3D12-capable GPU.
 
@@ -113,4 +113,4 @@ See [rendering and color conventions](docs/rendering.md) for texture semantics
 and the exposure API. In each materials example, **Q** halves exposure, **E**
 doubles it, and **R** resets it to one. The title shows the current multiplier.
 
-See [directional shadows](docs/shadows.md) for the explicit shadow-pass API, coverage and bias settings, and matching Rust, C#, and Python demos.
+See [directional shadows](docs/shadows.md) for automatic shadows through DrawMesh, scalar transparency, coverage and bias settings, and matching Rust, C#, and Python demos.

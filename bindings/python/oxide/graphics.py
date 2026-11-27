@@ -694,49 +694,38 @@ class Graphics:
             )
         )
 
-    def begin_shadow_pass(
-        self, light: DirectionalLight, settings: DirectionalShadowSettings
-    ) -> None:
-        """Begins the frame's single directional shadow pass before binding a camera.
+    def set_directional_shadows(self, light: DirectionalLight, settings: DirectionalShadowSettings) -> None:
+        """Configures automatic directional shadows; persists across frames.
 
-        Add the same unchanged light for scene draws. Submit opaque casters,
-        end the pass, then bind a camera. Invalid settings or order raise OxideError.
+        Call before submitting any meshes this frame. Add the same unchanged light
+        for scene lighting. All mesh submissions carry their own shadow transparency.
         """
         self._require_valid()
         if not isinstance(light, DirectionalLight):
             raise TypeError("light must be a DirectionalLight")
         if not isinstance(settings, DirectionalShadowSettings):
             raise TypeError("settings must be DirectionalShadowSettings")
-        _native.check(
-            _native.lib.oxide_graphics_begin_shadow_pass(self._handle, light, settings)
-        )
+        _native.check(_native.lib.oxide_graphics_set_directional_shadows(self._handle, light, settings))
 
-    def draw_shadow_mesh(self, mesh: Mesh, transform: Transform) -> None:
-        """Submits an opaque caster during an open shadow pass using its scene transform.
-
-        Materials are not sampled; transparent cutouts cast solid shadows.
-        """
+    def clear_directional_shadows(self) -> None:
+        """Disables automatic shadows; call before submitting any meshes this frame."""
         self._require_valid()
-        if not isinstance(mesh, Mesh):
-            raise TypeError("mesh must be a Mesh")
-        if not isinstance(transform, Transform):
-            raise TypeError("transform must be a Transform")
-        _native.check(
-            _native.lib.oxide_graphics_draw_shadow_mesh(self._handle, mesh._handle, transform)
-        )
-
-    def end_shadow_pass(self) -> None:
-        """Ends the shadow pass. Bind a camera before scene draws; all viewports share this frame's map."""
-        self._require_valid()
-        _native.check(_native.lib.oxide_graphics_end_shadow_pass(self._handle))
+        _native.check(_native.lib.oxide_graphics_clear_directional_shadows(self._handle))
 
     def draw_mesh(
         self,
         mesh: Mesh,
         material: Material,
         transform: Transform,
+        transparency: float = 0.0,
     ) -> None:
-        """Draws a mesh with a material and world transform in the currently bound camera viewport."""
+        """Submits a mesh and captures current draw state for rendering at frame end.
+
+        transparency controls shadows only: zero blocks light, one casts no shadow,
+        and intermediate values transmit that fraction per front-facing surface.
+        Must be finite and in [0,1]. Up to eight transparent depths are retained per
+        light ray. Does not change visible material opacity.
+        """
         self._require_valid()
 
         if not isinstance(mesh, Mesh):
@@ -745,12 +734,16 @@ class Graphics:
         if not isinstance(material, Material):
             raise TypeError("material must be a Material")
 
+        transparency = float(transparency)
+        if not math.isfinite(transparency) or not 0.0 <= transparency <= 1.0:
+            raise ValueError("transparency must be finite and between zero and one")
         _native.check(
-            _native.lib.oxide_graphics_draw_mesh(
+            _native.lib.oxide_graphics_draw_mesh_with_transparency(
                 self._handle,
                 mesh._handle,
                 material._handle,
                 transform,
+                transparency,
             )
         )
 
@@ -908,13 +901,14 @@ _native.lib.oxide_graphics_add_directional_light.argtypes = [
 ]
 _native.lib.oxide_graphics_add_directional_light.restype = ctypes.c_int
 
-_native.lib.oxide_graphics_begin_shadow_pass.argtypes = [
+_native.lib.oxide_graphics_set_directional_shadows.argtypes = [
     _native.NativeGraphicsHandle, DirectionalLight, DirectionalShadowSettings,
 ]
-_native.lib.oxide_graphics_begin_shadow_pass.restype = ctypes.c_int
-_native.lib.oxide_graphics_draw_shadow_mesh.argtypes = [
-    _native.NativeGraphicsHandle, _native.NativeMeshHandle, Transform,
+_native.lib.oxide_graphics_set_directional_shadows.restype = ctypes.c_int
+_native.lib.oxide_graphics_clear_directional_shadows.argtypes = [_native.NativeGraphicsHandle]
+_native.lib.oxide_graphics_clear_directional_shadows.restype = ctypes.c_int
+_native.lib.oxide_graphics_draw_mesh_with_transparency.argtypes = [
+    _native.NativeGraphicsHandle, _native.NativeMeshHandle, _native.NativeMaterialHandle,
+    Transform, ctypes.c_float,
 ]
-_native.lib.oxide_graphics_draw_shadow_mesh.restype = ctypes.c_int
-_native.lib.oxide_graphics_end_shadow_pass.argtypes = [_native.NativeGraphicsHandle]
-_native.lib.oxide_graphics_end_shadow_pass.restype = ctypes.c_int
+_native.lib.oxide_graphics_draw_mesh_with_transparency.restype = ctypes.c_int

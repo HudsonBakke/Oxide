@@ -25,9 +25,12 @@ use windows::{
     core::{Interface, Result},
 };
 
-use std::collections::HashMap;
-use super::{render_target::HdrTarget, shadow_map::ShadowMap};
-use windows::Win32::Graphics::Direct3D12::D3D12_RESOURCE_STATE_DEPTH_WRITE;
+use std::collections::{HashMap, HashSet};
+use super::{
+    render_target::HdrTarget, shadow_map::ShadowMap,
+    transmission_map::{TransmissionMap, TRANSMISSION_LAYERS, TRANSMISSION_MAX_RESOLUTION, FIRST_TEXTURE_DESCRIPTOR},
+};
+use windows::Win32::Graphics::Direct3D12::{D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_CPU_DESCRIPTOR_HANDLE};
 use windows::Win32::Graphics::Dxgi::Common::{
     DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM,
     DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
@@ -62,6 +65,38 @@ const TONEMAP_PIXEL_SHADER: &[u8] =
     include_bytes!("../../../../shaders/compiled/tonemap_ps.dxil");
 
 const SHADOW_VERTEX_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/shadow_vs.dxil");
+const SHADOW_PIXEL_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/shadow_ps.dxil");
+
+type MeshKey = (MeshId, u64, u64);
+
+#[derive(Clone, Copy)]
+struct QueuedMesh {
+    mesh: MeshKey,
+    model: Mat4,
+    transparency: f32,
+    destination: Rect,
+    view: u64,
+    object: u64,
+    lights: u64,
+    material: D3D12_GPU_DESCRIPTOR_HANDLE,
+    environment: D3D12_GPU_DESCRIPTOR_HANDLE,
+}
+
+#[derive(Clone, Copy)]
+enum SceneCommand {
+    Background { constants: u64, texture: D3D12_GPU_DESCRIPTOR_HANDLE, destination: Rect },
+    Mesh(QueuedMesh),
+}
+
+fn unique_casters(commands: &[SceneCommand]) -> Vec<QueuedMesh> {
+    let mut seen = HashSet::new();
+    commands.iter().filter_map(|command| {
+        let SceneCommand::Mesh(draw) = command else { return None; };
+        let bits = draw.model.as_array().map(|row| row.map(f32::to_bits));
+        let key = (draw.mesh, bits, draw.transparency.to_bits());
+        (draw.transparency < 1.0 && seen.insert(key)).then_some(*draw)
+    }).collect()
+}
 
 #[derive(Clone, Copy)]
 struct ShadowState {
@@ -75,6 +110,7 @@ struct ShadowState {
 struct ShadowConstants {
     world_to_shadow: [[f32; 4]; 4],
     parameters: [f32; 4],
+    transmission: [f32; 4],
 }
 
 fn invalid_shadow_order(message: &str) -> windows::core::Error {
@@ -94,13 +130,23 @@ fn transition_resource(
     before: D3D12_RESOURCE_STATES,
     after: D3D12_RESOURCE_STATES,
 ) {
+    transition_slice(command_list, resource, before, after, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES);
+}
+
+fn transition_slice(
+    command_list: &ID3D12GraphicsCommandList,
+    resource: &ID3D12Resource,
+    before: D3D12_RESOURCE_STATES,
+    after: D3D12_RESOURCE_STATES,
+    subresource: u32,
+) {
     let mut barrier = D3D12_RESOURCE_BARRIER {
         Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
         Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
         Anonymous: D3D12_RESOURCE_BARRIER_0 {
             Transition: std::mem::ManuallyDrop::new(D3D12_RESOURCE_TRANSITION_BARRIER {
                 pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
-                Subresource: D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                Subresource: subresource,
                 StateBefore: before,
                 StateAfter: after,
             }),
@@ -199,9 +245,6 @@ struct ViewConstants {
 }
 
 struct CachedMesh {
-    vertex_generation: u64,
-    index_generation: u64,
-
     vertex_buffer: D3D12VertexBuffer,
     index_buffer: D3D12IndexBuffer,
 }
@@ -209,29 +252,9 @@ struct CachedMesh {
 impl CachedMesh {
     fn new(device: &D3D12Device, mesh: &Mesh) -> Result<Self> {
         Ok(Self {
-            vertex_generation: mesh.vertex_generation(),
-            index_generation: mesh.index_generation(),
-
             vertex_buffer: D3D12VertexBuffer::new(device, mesh.vertices())?,
-
             index_buffer: D3D12IndexBuffer::new(device, mesh.indices())?,
         })
-    }
-
-    fn synchronize(&mut self, device: &D3D12Device, mesh: &Mesh) -> Result<()> {
-        if self.vertex_generation != mesh.vertex_generation() {
-            self.vertex_buffer = D3D12VertexBuffer::new(device, mesh.vertices())?;
-
-            self.vertex_generation = mesh.vertex_generation();
-        }
-
-        if self.index_generation != mesh.index_generation() {
-            self.index_buffer = D3D12IndexBuffer::new(device, mesh.indices())?;
-
-            self.index_generation = mesh.index_generation();
-        }
-
-        Ok(())
     }
 }
 
@@ -248,13 +271,15 @@ pub(crate) struct D3D12Renderer {
     shadow_pipeline: D3D12Pipeline,
     shadow_map: Option<ShadowMap>,
     shadow_state: Option<ShadowState>,
-    shadow_pass_active: bool,
-    shadow_ready: bool,
-    scene_started: bool,
+    transmission_pipeline: D3D12Pipeline,
+    transmission_map: Option<TransmissionMap>,
+    commands: Vec<SceneCommand>,
+    destination: Option<Rect>,
+    latest_mesh_versions: HashMap<MeshId, (u64, u64)>,
     exposure: f32,
     view_address: Option<u64>,
 
-    mesh_cache: HashMap<MeshId, CachedMesh>,
+    mesh_cache: HashMap<MeshKey, CachedMesh>,
 
     fence: ID3D12Fence,
     fence_value: u64,
@@ -330,6 +355,9 @@ impl D3D12Renderer {
             DXGI_FORMAT_R8G8B8A8_UNORM,
         )?;
         let shadow_pipeline = D3D12Pipeline::new_shadow(device, &D3D12Shader::from_bytes(SHADOW_VERTEX_SHADER))?;
+        let transmission_pipeline = D3D12Pipeline::new_transmission(
+            device, &D3D12Shader::from_bytes(SHADOW_VERTEX_SHADER), &D3D12Shader::from_bytes(SHADOW_PIXEL_SHADER),
+        )?;
         let constant_buffer = D3D12ConstantBuffer::new(device)?;
 
         let texture_heap_desc = D3D12_DESCRIPTOR_HEAP_DESC {
@@ -351,6 +379,8 @@ impl D3D12Renderer {
         let mut shadow_srv = unsafe { texture_heap.GetCPUDescriptorHandleForHeapStart() };
         shadow_srv.ptr += texture_descriptor_size as usize;
         ShadowMap::write_srv(device, None, shadow_srv);
+        shadow_srv.ptr += texture_descriptor_size as usize;
+        TransmissionMap::null_views(device, shadow_srv, texture_descriptor_size as usize);
 
         Ok(Self {
             command_allocators,
@@ -363,9 +393,11 @@ impl D3D12Renderer {
             shadow_pipeline,
             shadow_map: None,
             shadow_state: None,
-            shadow_pass_active: false,
-            shadow_ready: false,
-            scene_started: false,
+            transmission_pipeline,
+            transmission_map: None,
+            commands: Vec::new(),
+            destination: None,
+            latest_mesh_versions: HashMap::new(),
             exposure: 1.0,
             view_address: None,
 
@@ -390,10 +422,20 @@ impl D3D12Renderer {
             material_descriptor_cache: HashMap::new(),
             texture_heap,
             texture_descriptor_size,
-            next_texture_descriptor: 2, // Slots zero and one hold scene color and shadow depth.
+            next_texture_descriptor: FIRST_TEXTURE_DESCRIPTOR,
             pending_background: None,
             background_drawn: false,
         })
+    }
+
+    fn reset_frame_state(&mut self) {
+        self.commands.clear();
+        self.destination = None;
+        self.constant_buffer.reset();
+        self.active_lights.clear();
+        self.background_drawn = false;
+        self.pending_background = None;
+        self.view_address = None;
     }
 
     pub(crate) fn begin_frame(
@@ -401,18 +443,10 @@ impl D3D12Renderer {
         device: &D3D12Device,
         swap_chain: &D3D12SwapChain,
     ) -> Result<()> {
+        self.reset_frame_state();
         let frame_index = swap_chain.current_frame_index();
         let command_allocator = &self.command_allocators[frame_index];
 
-        self.shadow_state = None;
-        self.shadow_pass_active = false;
-        self.shadow_ready = false;
-        self.scene_started = false;
-        self.constant_buffer.reset();
-        self.active_lights.clear();
-        self.background_drawn = false;
-        self.pending_background = None;
-        self.view_address = None;
 
         unsafe {
             command_allocator.Reset()?;
@@ -476,82 +510,162 @@ impl D3D12Renderer {
         Ok(())
     }
 
-    pub(crate) fn begin_shadow_pass(
-        &mut self,
-        device: &D3D12Device,
-        light: &DirectionalLight,
-        settings: &DirectionalShadowSettings,
-    ) -> Result<()> {
-        if self.shadow_pass_active || self.shadow_ready || self.scene_started {
-            return Err(invalid_shadow_order("begin the single shadow pass before binding any scene camera"));
+    pub(crate) fn set_directional_shadows(&mut self, light: &DirectionalLight, settings: &DirectionalShadowSettings) -> Result<()> {
+        if self.commands.iter().any(|command| matches!(command, SceneCommand::Mesh(_))) {
+            return Err(invalid_shadow_order("configure shadows before submitting meshes"));
         }
         let matrix = settings.light_matrix(light.direction())
             .map_err(|error| invalid_shadow_order(&error.to_string()))?;
-        if self.shadow_map.as_ref().is_none_or(|map| map.resolution != settings.resolution) {
+        self.shadow_state = Some(ShadowState { light: *light, settings: *settings, matrix });
+        Ok(())
+    }
+
+    pub(crate) fn clear_directional_shadows(&mut self) -> Result<()> {
+        if self.commands.iter().any(|command| matches!(command, SceneCommand::Mesh(_))) {
+            return Err(invalid_shadow_order("configure shadows before submitting meshes"));
+        }
+        self.shadow_state = None;
+        Ok(())
+    }
+
+    fn set_viewport(&self, destination: Rect) {
+        unsafe {
+            self.command_list.RSSetViewports(&[D3D12_VIEWPORT {
+                TopLeftX: destination.x, TopLeftY: destination.y,
+                Width: destination.width, Height: destination.height,
+                MinDepth: 0.0, MaxDepth: 1.0,
+            }]);
+            self.command_list.RSSetScissorRects(&[RECT {
+                left: destination.x as i32, top: destination.y as i32,
+                right: (destination.x + destination.width) as i32,
+                bottom: (destination.y + destination.height) as i32,
+            }]);
+        }
+    }
+
+    fn record_caster(&mut self, draw: &QueuedMesh, matrix: Mat4, first_layer: bool) {
+        #[repr(C)]
+        #[derive(Clone, Copy)]
+        struct Constants { matrix: [[f32; 4]; 4], parameters: [f32; 4] }
+        let constants = Constants {
+            matrix: (matrix * draw.model).transposed().as_array(),
+            parameters: [draw.transparency, first_layer as u8 as f32, 0.0, 0.0],
+        };
+        let address = self.constant_buffer.write(&constants);
+        let mesh = &self.mesh_cache[&draw.mesh];
+        unsafe {
+            self.command_list.SetGraphicsRootConstantBufferView(0, address);
+            self.command_list.IASetVertexBuffers(0, Some(std::slice::from_ref(mesh.vertex_buffer.view())));
+            self.command_list.IASetIndexBuffer(Some(mesh.index_buffer.view()));
+            self.command_list.DrawIndexedInstanced(mesh.index_buffer.index_count(), 1, 0, 0, 0);
+        }
+    }
+
+    fn render_shadows(&mut self, device: &D3D12Device) -> Result<u64> {
+        let state = self.shadow_state;
+        let mut constants = ShadowConstants {
+            world_to_shadow: Mat4::identity().as_array(),
+            parameters: [0.0; 4], transmission: [0.0; 4],
+        };
+        let Some(state) = state else { return Ok(self.constant_buffer.write(&constants)); };
+        let casters = unique_casters(&self.commands);
+        if self.shadow_map.as_ref().is_none_or(|map| map.resolution != state.settings.resolution) {
             let mut srv = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
             srv.ptr += self.texture_descriptor_size as usize;
-            self.shadow_map = Some(ShadowMap::new(device, settings.resolution, srv)?);
+            self.shadow_map = Some(ShadowMap::new(device, state.settings.resolution, srv)?);
         }
         let map = self.shadow_map.as_ref().unwrap();
-        transition_resource(&self.command_list, &map.resource,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        transition_resource(&self.command_list, &map.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
         unsafe {
             self.command_list.ClearDepthStencilView(map.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
             self.command_list.OMSetRenderTargets(0, None, false, Some(&map.dsv));
-            self.command_list.RSSetViewports(&[D3D12_VIEWPORT {
-                Width: map.resolution as f32, Height: map.resolution as f32,
-                MinDepth: 0.0, MaxDepth: 1.0, ..Default::default()
-            }]);
-            self.command_list.RSSetScissorRects(&[RECT {
-                left: 0, top: 0, right: map.resolution as i32, bottom: map.resolution as i32,
-            }]);
             self.command_list.SetGraphicsRootSignature(self.shadow_pipeline.root_signature());
             self.command_list.SetPipelineState(self.shadow_pipeline.pipeline_state());
         }
-        self.shadow_state = Some(ShadowState { light: *light, settings: *settings, matrix });
-        self.shadow_pass_active = true;
-        Ok(())
-    }
-
-    pub(crate) fn draw_shadow_mesh(&mut self, device: &D3D12Device, mesh: &Mesh, transform: &Transform) -> Result<()> {
-        if !self.shadow_pass_active {
-            return Err(invalid_shadow_order("draw_shadow_mesh requires an open shadow pass"));
-        }
-        let matrix = self.shadow_state.unwrap().matrix * transform.matrix_around(mesh.pivot());
-        let address = self.constant_buffer.write(&matrix.transposed().as_array());
-        let id = mesh.id();
-        if !self.mesh_cache.contains_key(&id) {
-            self.mesh_cache.insert(id, CachedMesh::new(device, mesh)?);
-        }
-        let cached = self.mesh_cache.get_mut(&id).unwrap();
-        cached.synchronize(device, mesh)?;
-        unsafe {
-            self.command_list.SetGraphicsRootConstantBufferView(0, address);
-            self.command_list.IASetVertexBuffers(0, Some(std::slice::from_ref(cached.vertex_buffer.view())));
-            self.command_list.IASetIndexBuffer(Some(cached.index_buffer.view()));
-            self.command_list.DrawIndexedInstanced(cached.index_buffer.index_count(), 1, 0, 0, 0);
-        }
-        Ok(())
-    }
-
-    pub(crate) fn end_shadow_pass(&mut self, swap_chain: &D3D12SwapChain) -> Result<()> {
-        if !self.shadow_pass_active {
-            return Err(invalid_shadow_order("end_shadow_pass requires an open shadow pass"));
+        self.set_viewport(Rect::new(0.0, 0.0, state.settings.resolution as f32, state.settings.resolution as f32));
+        for draw in casters.iter().filter(|draw| draw.transparency == 0.0) {
+            self.record_caster(draw, state.matrix, true);
         }
         unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
         transition_resource(&self.command_list, &self.shadow_map.as_ref().unwrap().resource,
             D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        let rtv = self.hdr_target.as_ref().unwrap().rtv;
-        let dsv = swap_chain.current_dsv();
-        unsafe {
-            self.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&dsv));
-            self.command_list.SetGraphicsRootSignature(self.pipeline.root_signature());
-            self.command_list.SetPipelineState(self.pipeline.pipeline_state());
+
+        let transparent: Vec<_> = casters.iter().filter(|draw| draw.transparency > 0.0).collect();
+        if !transparent.is_empty() {
+            // Bound transmission memory independently of the opaque-map setting.
+            let resolution = state.settings.resolution.min(TRANSMISSION_MAX_RESOLUTION);
+            if self.transmission_map.as_ref().is_none_or(|map| map.resolution != resolution) {
+                let mut srv = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+                srv.ptr += 2 * self.texture_descriptor_size as usize;
+                self.transmission_map = Some(TransmissionMap::new(device, resolution, srv, self.texture_descriptor_size as usize)?);
+            }
+            self.set_viewport(Rect::new(0.0, 0.0, resolution as f32, resolution as f32));
+            for layer in 0..TRANSMISSION_LAYERS {
+                let map = self.transmission_map.as_ref().unwrap();
+                transition_slice(&self.command_list, &map.depth, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE, layer);
+                transition_slice(&self.command_list, &map.values, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET, layer);
+                let dsv = map.dsvs[layer as usize];
+                let rtv = map.rtvs[layer as usize];
+                let mut previous = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+                previous.ptr += (4 + layer) as u64 * self.texture_descriptor_size as u64;
+                unsafe {
+                    self.command_list.ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+                    self.command_list.ClearRenderTargetView(rtv, &[1.0; 4], None);
+                    self.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&dsv));
+                    self.command_list.SetGraphicsRootSignature(self.transmission_pipeline.root_signature());
+                    self.command_list.SetPipelineState(self.transmission_pipeline.pipeline_state());
+                    self.command_list.SetGraphicsRootDescriptorTable(1, previous);
+                }
+                for draw in &transparent {
+                    self.record_caster(draw, state.matrix, layer == 0);
+                }
+                unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
+                let map = self.transmission_map.as_ref().unwrap();
+                transition_slice(&self.command_list, &map.depth, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, layer);
+                transition_slice(&self.command_list, &map.values, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, layer);
+            }
+            constants.transmission = [1.0 / resolution as f32, TRANSMISSION_LAYERS as f32, 1.0, 0.0];
         }
-        self.shadow_pass_active = false;
-        self.shadow_ready = true;
-        self.view_address = None;
-        Ok(())
+        constants.world_to_shadow = state.matrix.transposed().as_array();
+        constants.parameters = [state.settings.depth_bias, state.settings.normal_bias, 1.0 / state.settings.resolution as f32, 1.0];
+        Ok(self.constant_buffer.write(&constants))
+    }
+
+    fn render_scene(&mut self, shadow_address: u64) {
+        let mut shadow = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+        shadow.ptr += self.texture_descriptor_size as u64;
+        for command in &self.commands {
+            match command {
+                SceneCommand::Background { constants, texture, destination } => {
+                    self.set_viewport(*destination);
+                    unsafe {
+                        self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
+                        self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
+                        self.command_list.SetGraphicsRootConstantBufferView(0, *constants);
+                        self.command_list.SetGraphicsRootDescriptorTable(1, *texture);
+                        self.command_list.DrawInstanced(3, 1, 0, 0);
+                    }
+                }
+                SceneCommand::Mesh(draw) => {
+                    self.set_viewport(draw.destination);
+                    let mesh = &self.mesh_cache[&draw.mesh];
+                    unsafe {
+                        self.command_list.SetGraphicsRootSignature(self.pipeline.root_signature());
+                        self.command_list.SetPipelineState(self.pipeline.pipeline_state());
+                        self.command_list.SetGraphicsRootConstantBufferView(0, draw.object);
+                        self.command_list.SetGraphicsRootConstantBufferView(1, draw.view);
+                        self.command_list.SetGraphicsRootConstantBufferView(2, draw.lights);
+                        self.command_list.SetGraphicsRootConstantBufferView(5, shadow_address);
+                        self.command_list.SetGraphicsRootDescriptorTable(3, draw.material);
+                        self.command_list.SetGraphicsRootDescriptorTable(4, draw.environment);
+                        self.command_list.SetGraphicsRootDescriptorTable(6, shadow);
+                        self.command_list.IASetVertexBuffers(0, Some(std::slice::from_ref(mesh.vertex_buffer.view())));
+                        self.command_list.IASetIndexBuffer(Some(mesh.index_buffer.view()));
+                        self.command_list.DrawIndexedInstanced(mesh.index_buffer.index_count(), 1, 0, 0, 0);
+                    }
+                }
+            }
+        }
     }
 
     pub(crate) fn draw_mesh(
@@ -560,39 +674,18 @@ impl D3D12Renderer {
         mesh: &Mesh,
         material: &Material,
         transform: &Transform,
+        transparency: f32,
     ) -> Result<()> {
-        if self.shadow_pass_active {
-            return Err(invalid_shadow_order("end the shadow pass before drawing the scene"));
-        }
+        crate::graphics::shadow::validate_transparency(transparency)
+            .map_err(|error| invalid_shadow_order(&error.to_string()))?;
+        let view_address = self.view_address.ok_or_else(|| invalid_shadow_order("bind a camera before drawing a mesh"))?;
+        let destination = self.destination.unwrap();
         if !self.background_drawn {
             self.draw_background(device)?;
             self.background_drawn = true;
         }
 
-        let view_address = self.view_address.ok_or_else(|| {
-            windows::core::Error::new(
-                windows::Win32::Foundation::E_INVALIDARG, "bind a camera before drawing a mesh",
-            )
-        })?;
-        unsafe {
-            self.command_list.SetGraphicsRootConstantBufferView(1, view_address);
-        }
-        let shadow = self.shadow_state.filter(|_| self.shadow_ready);
-        let constants = if let Some(state) = shadow {
-            ShadowConstants {
-                world_to_shadow: state.matrix.transposed().as_array(),
-                parameters: [state.settings.depth_bias, state.settings.normal_bias, 1.0 / state.settings.resolution as f32, 1.0],
-            }
-        } else {
-            ShadowConstants { world_to_shadow: Mat4::identity().as_array(), parameters: [0.0; 4] }
-        };
-        let shadow_address = self.constant_buffer.write(&constants);
-        let mut shadow_handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
-        shadow_handle.ptr += self.texture_descriptor_size as u64;
-        unsafe {
-            self.command_list.SetGraphicsRootConstantBufferView(5, shadow_address);
-            self.command_list.SetGraphicsRootDescriptorTable(6, shadow_handle);
-        }
+        let shadow = self.shadow_state;
         let model_matrix = transform.matrix_around(mesh.pivot());
 
         let normal_matrix = transform.normal_matrix();
@@ -702,20 +795,11 @@ impl D3D12Renderer {
 
         let model_address = self.constant_buffer.write(&object_constants);
 
-        let mesh_id = mesh.id();
-
-        if !self.mesh_cache.contains_key(&mesh_id) {
-            let cached = CachedMesh::new(device, mesh)?;
-
-            self.mesh_cache.insert(mesh_id, cached);
+        let mesh_key = (mesh.id(), mesh.vertex_generation(), mesh.index_generation());
+        if !self.mesh_cache.contains_key(&mesh_key) {
+            self.mesh_cache.insert(mesh_key, CachedMesh::new(device, mesh)?);
         }
-
-        let cached = self
-            .mesh_cache
-            .get_mut(&mesh_id)
-            .expect("mesh should be cached after insertion");
-
-        cached.synchronize(device, mesh)?;
+        self.latest_mesh_versions.insert(mesh.id(), (mesh.vertex_generation(), mesh.index_generation()));
 
         let mut light_constants = LightConstants {
             point_lights: [GpuPointLight::default(); MAX_POINT_LIGHTS],
@@ -819,28 +903,11 @@ impl D3D12Renderer {
 
         let light_address = self.constant_buffer.write(&light_constants);
 
-        unsafe {
-            self.command_list
-                .SetGraphicsRootConstantBufferView(2, light_address);
-
-            self.command_list
-                .IASetVertexBuffers(0, Some(std::slice::from_ref(cached.vertex_buffer.view())));
-
-            self.command_list
-                .IASetIndexBuffer(Some(cached.index_buffer.view()));
-
-            self.command_list
-                .SetGraphicsRootConstantBufferView(0, model_address);
-
-            self.command_list
-                .SetGraphicsRootDescriptorTable(3, gpu_handle);
-
-            self.command_list
-                .SetGraphicsRootDescriptorTable(4, environment_handle);
-
-            self.command_list
-                .DrawIndexedInstanced(cached.index_buffer.index_count(), 1, 0, 0, 0);
-        }
+        self.commands.push(SceneCommand::Mesh(QueuedMesh {
+            mesh: mesh_key, model: model_matrix, transparency, destination,
+            view: view_address, object: model_address, lights: light_address,
+            material: gpu_handle, environment: environment_handle,
+        }));
 
         Ok(())
     }
@@ -850,12 +917,14 @@ impl D3D12Renderer {
         device: &D3D12Device,
         swap_chain: &D3D12SwapChain,
     ) -> Result<()> {
-        if self.shadow_pass_active {
-            return Err(invalid_shadow_order("end the shadow pass before the frame ends"));
-        }
         if !self.background_drawn {
             self.draw_background(device)?;
         }
+        let shadow_address = self.render_shadows(device)?;
+        let scene_rtv = self.hdr_target.as_ref().unwrap().rtv;
+        let scene_dsv = swap_chain.current_dsv();
+        unsafe { self.command_list.OMSetRenderTargets(1, Some(&scene_rtv), false, Some(&scene_dsv)); }
+        self.render_scene(shadow_address);
         let target = self.hdr_target.as_ref().unwrap();
         let render_target = swap_chain.current_render_target();
         let rtv = swap_chain.current_rtv();
@@ -907,6 +976,11 @@ impl D3D12Renderer {
         swap_chain.present()?;
 
         self.wait_for_gpu(device)?;
+        self.commands.clear();
+        self.mesh_cache.retain(|(id, vertices, indices), _| {
+            self.latest_mesh_versions.get(id) == Some(&(*vertices, *indices))
+        });
+
 
         Ok(())
     }
@@ -959,10 +1033,6 @@ impl D3D12Renderer {
         camera: &Camera,
         destination: Rect,
     ) -> Result<()> {
-        if self.shadow_pass_active {
-            return Err(invalid_shadow_order("end the shadow pass before binding a camera"));
-        }
-        self.scene_started = true;
         // Flush a background-only viewport before replacing its camera and scissor.
         if !self.background_drawn {
             self.draw_background(device)?;
@@ -1004,30 +1074,7 @@ impl D3D12Renderer {
         let view_address = self.constant_buffer.write(&view_constants);
         self.view_address = Some(view_address);
 
-        let viewport = D3D12_VIEWPORT {
-            TopLeftX: destination.x,
-            TopLeftY: destination.y,
-            Width: destination.width,
-            Height: destination.height,
-            MinDepth: 0.0,
-            MaxDepth: 1.0,
-        };
-
-        let scissor = RECT {
-            left: destination.x as i32,
-            top: destination.y as i32,
-            right: (destination.x + destination.width) as i32,
-            bottom: (destination.y + destination.height) as i32,
-        };
-
-        unsafe {
-            self.command_list
-                .SetGraphicsRootConstantBufferView(1, view_address);
-
-            self.command_list.RSSetViewports(&[viewport]);
-
-            self.command_list.RSSetScissorRects(&[scissor]);
-        }
+        self.destination = Some(destination);
 
         Ok(())
     }
@@ -1082,21 +1129,9 @@ impl D3D12Renderer {
         handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
         let address = self.constant_buffer.write(&constants);
 
-        unsafe {
-            self.command_list
-                .SetGraphicsRootSignature(self.background_pipeline.root_signature());
-            self.command_list
-                .SetPipelineState(self.background_pipeline.pipeline_state());
-            self.command_list
-                .SetGraphicsRootConstantBufferView(0, address);
-            self.command_list.SetGraphicsRootDescriptorTable(1, handle);
-            self.command_list.DrawInstanced(3, 1, 0, 0);
-
-            self.command_list
-                .SetGraphicsRootSignature(self.pipeline.root_signature());
-            self.command_list
-                .SetPipelineState(self.pipeline.pipeline_state());
-        }
+        self.commands.push(SceneCommand::Background {
+            constants: address, texture: handle, destination: self.destination.unwrap(),
+        });
         Ok(())
     }
 
@@ -1306,15 +1341,15 @@ mod tests {
             assert_eq!(unsafe { map.resource.GetDesc() }.Width, resolution as u64);
         }
         let light = DirectionalLight::new(crate::math::Vec3::new(0.0, -1.0, 0.0), crate::graphics::Color::WHITE, 1.0).unwrap();
-        let settings = DirectionalShadowSettings::default();
-        // These errors must be raised before recording any GPU commands.
-        renderer.scene_started = true;
-        assert!(renderer.begin_shadow_pass(&device, &light, &settings).is_err());
-        renderer.scene_started = false;
-        renderer.shadow_ready = true;
-        assert!(renderer.begin_shadow_pass(&device, &light, &settings).is_err());
-        renderer.shadow_ready = false;
-        let mesh = Mesh::new(Vec::new(), Vec::new());
-        assert!(renderer.draw_shadow_mesh(&device, &mesh, &Transform::new()).is_err());
+        renderer.set_directional_shadows(&light, &DirectionalShadowSettings::default()).unwrap();
+        renderer.clear_directional_shadows().unwrap();
+        let mut srv = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        srv.ptr += 2 * renderer.texture_descriptor_size as usize;
+        let layers = TransmissionMap::new(&device, 128, srv, renderer.texture_descriptor_size as usize).unwrap();
+        assert_eq!(layers.dsvs.len(), TRANSMISSION_LAYERS as usize);
     }
 }
+
+#[cfg(test)]
+#[path = "renderer_tests.rs"]
+mod render_tests;

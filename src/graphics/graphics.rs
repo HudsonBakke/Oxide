@@ -63,47 +63,53 @@ impl Graphics {
         Ok(())
     }
 
-    /// Begins the frame's single directional shadow pass, before binding a camera.
+    /// Configures automatic shadows for one directional light; persists across frames.
     ///
-    /// The light is copied; add the same unchanged light with `add_light` for
-    /// subsequent scene draws to receive shadows. Submit opaque casters with
-    /// `draw_shadow_mesh`, then call `end_shadow_pass` and bind a scene camera.
-    /// Returns an error for invalid settings or pass order.
-    pub fn begin_shadow_pass(
+    /// Call before submitting any meshes this frame. Add the same unchanged
+    /// light with `add_light`. All submitted meshes cast opaque shadows unless
+    /// a transparency is supplied with `draw_mesh_with_transparency`.
+    pub fn set_directional_shadows(
         &mut self,
         light: &DirectionalLight,
         settings: &DirectionalShadowSettings,
     ) -> GraphicsResult<()> {
-        self.renderer.begin_shadow_pass(&self.device, light, settings)?;
+        self.renderer.set_directional_shadows(light, settings)?;
         Ok(())
     }
 
-    /// Submits an opaque caster during an open shadow pass, using its scene transform.
+    /// Disables automatic shadows; call before submitting any meshes this frame.
+    pub fn clear_directional_shadows(&mut self) -> GraphicsResult<()> {
+        self.renderer.clear_directional_shadows()?;
+        Ok(())
+    }
+
+    /// Submits a mesh with opaque shadows, capturing its current draw state.
     ///
-    /// No material is sampled; transparent cutouts are treated as solid geometry.
-    pub fn draw_shadow_mesh(&mut self, mesh: &Mesh, transform: &Transform) -> GraphicsResult<()> {
-        self.renderer.draw_shadow_mesh(&self.device, mesh, transform)?;
-        Ok(())
-    }
-
-    /// Ends an open shadow pass. Bind a camera before drawing the scene.
-    ///
-    /// The map is shared by all subsequent camera viewports this frame.
-    pub fn end_shadow_pass(&mut self) -> GraphicsResult<()> {
-        self.renderer.end_shadow_pass(&self.swap_chain)?;
-        Ok(())
-    }
-
-    /// Draws a mesh during the current frame.
+    /// Geometry is rendered at frame end. A camera must be bound first.
     pub fn draw_mesh(
         &mut self,
         mesh: &Mesh,
         material: &Material,
         transform: &Transform,
     ) -> GraphicsResult<()> {
-        self.renderer
-            .draw_mesh(&self.device, mesh, material, transform)?;
+        self.draw_mesh_with_transparency(mesh, material, transform, 0.0)
+    }
 
+    /// Submits a mesh with finite shadow transparency in [0, 1].
+    ///
+    /// Zero blocks direct light, one casts no shadow, and intermediate values
+    /// transmit that fraction of light at each front-facing surface. Up to eight
+    /// distinct transparent depths are stored per ray; further layers are ignored.
+    /// Does not change the visible material's opacity. Camera, lights, material,
+    /// geometry, and transform are captured at this call, before later mutations.
+    pub fn draw_mesh_with_transparency(
+        &mut self,
+        mesh: &Mesh,
+        material: &Material,
+        transform: &Transform,
+        transparency: f32,
+    ) -> GraphicsResult<()> {
+        self.renderer.draw_mesh(&self.device, mesh, material, transform, transparency)?;
         Ok(())
     }
 

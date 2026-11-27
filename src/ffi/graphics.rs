@@ -67,7 +67,22 @@ pub extern "C" fn oxide_graphics_draw_mesh(
     material: OxideMaterialHandle,
     transform: Transform,
 ) -> OxideStatus {
+    oxide_graphics_draw_mesh_with_transparency(graphics, mesh, material, transform, 0.0)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_draw_mesh_with_transparency(
+    graphics: OxideGraphicsHandle,
+    mesh: OxideMeshHandle,
+    material: OxideMaterialHandle,
+    transform: Transform,
+    transparency: f32,
+) -> OxideStatus {
     ffi_boundary(|| {
+        if let Err(error) = crate::graphics::shadow::validate_transparency(transparency) {
+            set_last_error(error.to_string());
+            return OxideStatus::InvalidArgument;
+        }
         let Some(graphics) = graphics_from_handle(graphics) else {
             set_last_error("graphics handle is null");
 
@@ -76,7 +91,7 @@ pub extern "C" fn oxide_graphics_draw_mesh(
 
         let Some(result) = with_mesh(mesh, |mesh| {
             with_material(material, |material| {
-                graphics.draw_mesh(mesh, material, &transform)
+                graphics.draw_mesh_with_transparency(mesh, material, &transform, transparency)
             })
         }) else {
             set_last_error("mesh handle is invalid");
@@ -313,7 +328,7 @@ pub extern "C" fn oxide_directional_shadow_settings_default(result: *mut Directi
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_begin_shadow_pass(
+pub extern "C" fn oxide_graphics_set_directional_shadows(
     graphics: OxideGraphicsHandle,
     light: DirectionalLight,
     settings: DirectionalShadowSettings,
@@ -327,7 +342,7 @@ pub extern "C" fn oxide_graphics_begin_shadow_pass(
             set_last_error(error.to_string());
             return OxideStatus::InvalidArgument;
         }
-        match graphics.begin_shadow_pass(&light, &settings) {
+        match graphics.set_directional_shadows(&light, &settings) {
             Ok(()) => OxideStatus::Ok,
             Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
         }
@@ -335,35 +350,13 @@ pub extern "C" fn oxide_graphics_begin_shadow_pass(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_draw_shadow_mesh(
-    graphics: OxideGraphicsHandle,
-    mesh: OxideMeshHandle,
-    transform: Transform,
-) -> OxideStatus {
+pub extern "C" fn oxide_graphics_clear_directional_shadows(graphics: OxideGraphicsHandle) -> OxideStatus {
     ffi_boundary(|| {
         let Some(graphics) = graphics_from_handle(graphics) else {
             set_last_error("graphics handle is null");
             return OxideStatus::InvalidArgument;
         };
-        let Some(result) = with_mesh(mesh, |mesh| graphics.draw_shadow_mesh(mesh, &transform)) else {
-            set_last_error("mesh handle is invalid");
-            return OxideStatus::InvalidArgument;
-        };
-        match result {
-            Ok(()) => OxideStatus::Ok,
-            Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
-        }
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_end_shadow_pass(graphics: OxideGraphicsHandle) -> OxideStatus {
-    ffi_boundary(|| {
-        let Some(graphics) = graphics_from_handle(graphics) else {
-            set_last_error("graphics handle is null");
-            return OxideStatus::InvalidArgument;
-        };
-        match graphics.end_shadow_pass() {
+        match graphics.clear_directional_shadows() {
             Ok(()) => OxideStatus::Ok,
             Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
         }

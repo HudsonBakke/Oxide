@@ -155,31 +155,33 @@ public sealed class Graphics
         NativeMethods.Check(NativeMethods.oxide_graphics_add_directional_light(_handle, light));
     }
 
-    /// <summary>Begins the frame's single directional shadow pass, before binding any camera.</summary>
-    /// <remarks>Add the same unchanged light for scene draws. Submit opaque casters, end the pass, then bind a camera.</remarks>
-    public void BeginShadowPass(DirectionalLight light, DirectionalShadowSettings settings)
+    /// <summary>Configures automatic shadows for one directional light; persists across frames.</summary>
+    /// <remarks>Call before submitting any meshes this frame. Add the same unchanged light for scene draws.</remarks>
+    public void SetDirectionalShadows(DirectionalLight light, DirectionalShadowSettings settings)
     {
         EnsureValid();
-        NativeMethods.Check(NativeMethods.oxide_graphics_begin_shadow_pass(_handle, light, settings));
+        NativeMethods.Check(NativeMethods.oxide_graphics_set_directional_shadows(_handle, light, settings));
     }
 
-    /// <summary>Submits an opaque caster during an open shadow pass, using its scene transform.</summary>
-    /// <remarks>Materials are not sampled; transparent cutouts cast solid shadows.</remarks>
-    public void DrawShadowMesh(Mesh mesh, Transform transform)
+    /// <summary>Disables automatic shadows; call before submitting any meshes this frame.</summary>
+    public void ClearDirectionalShadows()
+    {
+        EnsureValid();
+        NativeMethods.Check(NativeMethods.oxide_graphics_clear_directional_shadows(_handle));
+    }
+
+    /// <summary>Submits a mesh with shadow transparency from zero (opaque) to one (no shadow).</summary>
+    /// <remarks>Requires a finite value in [0,1]. Does not change visible material opacity. Captures draw state now for rendering at frame end. Up to eight transparent depths are retained per light ray.</remarks>
+    public void DrawMesh(Mesh mesh, Material material, Transform transform, float transparency)
     {
         ArgumentNullException.ThrowIfNull(mesh);
+        ArgumentNullException.ThrowIfNull(material);
         EnsureValid();
-        NativeMethods.Check(NativeMethods.oxide_graphics_draw_shadow_mesh(_handle, mesh.Handle, transform));
+        NativeMethods.Check(NativeMethods.oxide_graphics_draw_mesh_with_transparency(
+            _handle, mesh.Handle, material.Handle, transform, transparency));
     }
 
-    /// <summary>Ends the shadow pass. Bind a camera before drawing the scene; all viewports share this map for the frame.</summary>
-    public void EndShadowPass()
-    {
-        EnsureValid();
-        NativeMethods.Check(NativeMethods.oxide_graphics_end_shadow_pass(_handle));
-    }
-
-    /// <summary>Draws a mesh with a material and world transform in the currently bound camera viewport.</summary>
+    /// <summary>Submits a mesh with opaque shadows; captures draw state now for rendering at frame end.</summary>
     public void DrawMesh(Mesh mesh, Material material, Transform transform)
     {
         ArgumentNullException.ThrowIfNull(mesh);
