@@ -464,8 +464,14 @@ fn texture_clones_and_environment_owners_keep_resources_until_the_last_owner_dro
     let material = Material::new(texture);
     renderer.draw_mesh(&device, &quad(), &material, &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
     drop(material);
+    assert!(renderer.texture_cache[&id].upload_pending());
+    assert!(renderer.specular_cache[&id].upload_pending());
+    assert!(renderer.irradiance_cache[&id].upload_pending());
     finish_headless_frame(&mut renderer, &device, &depth);
     assert!(renderer.texture_cache.contains_key(&id));
+    assert!(!renderer.texture_cache[&id].upload_pending());
+    assert!(!renderer.specular_cache[&id].upload_pending());
+    assert!(!renderer.irradiance_cache[&id].upload_pending());
     assert!(renderer.specular_cache.contains_key(&id));
     assert!(renderer.irradiance_cache.contains_key(&id));
     drop(clone);
@@ -521,4 +527,27 @@ fn excess_lights_are_rejected_before_preparing_a_draw_and_can_be_cleared() {
     renderer.clear_lights();
     renderer.draw_mesh(&device, &quad(), &emissive_red(), &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
     assert!((finish_headless_frame(&mut renderer, &device, &depth) - 1.0).abs() < 0.003);
+}
+
+#[test]
+fn shadow_maps_and_transmission_storage_retire_after_the_last_using_frame() {
+    let device = D3D12Device::warp_for_test().unwrap();
+    let (mut renderer, depth) = headless_renderer(&device);
+    let mesh = quad();
+    let material = emissive_red();
+    let mut light = DirectionalLight::new(Vec3::new(0.0, -1.0, -1.0), Color::WHITE, 1.0).unwrap();
+    light.set_shadow_settings(ShadowSettings { resolution: 128, ..Default::default() }).unwrap();
+    light.set_casts_shadows(true);
+    for frame in 0..3 {
+        start_headless_frame(&mut renderer, &device, &depth, frame == 0);
+        if frame < 2 { renderer.add_directional_light(&light); }
+        renderer.draw_mesh(&device, &mesh, &material, &transform(0.0, 0.0, 4.0, 4.0), if frame == 0 { 0.5 } else { 0.0 }).unwrap();
+        finish_headless_frame(&mut renderer, &device, &depth);
+        if frame < 2 {
+            assert_eq!(renderer.shadow_resources.len(), 1);
+            assert_eq!(renderer.shadow_resources[0].as_ref().unwrap().transmission.is_some(), frame == 0);
+        } else {
+            assert!(renderer.shadow_resources.is_empty());
+        }
+    }
 }

@@ -92,9 +92,10 @@ faces so wide cones retain their lighting semantics.
 
 Several lights can cast shadows simultaneously. The renderer supports eight
 lights of each type per draw and 32 distinct shadow projections/settings per
-frame; exceeding the latter returns a draw error. Changing only intensity/color
+frame; exceeding either limit returns a descriptive draw error. Changing only intensity/color
 reuses a projection. Lights allocate maps lazily and reuse GPU storage. Disabled
-lights create no shadow requests. Shadow state is never inferred by comparing
+lights create no shadow requests. Maps unused by the completed frame are released;
+transmission storage is released when that frame has no partial casters. Shadow state is never inferred by comparing
 a scene light's color/intensity with a separately configured graphics light.
 
 Each opaque map uses four bytes per texel per face. Partial transmission adds

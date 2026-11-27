@@ -83,27 +83,29 @@ for the documentation-build and formatting commands.
 
 ## Automated checks
 
-After compiling the shaders:
+All test code and runners live under [`tests/`](tests/README.md). After compiling the shaders:
 
 ```powershell
+python tests/check_test_layout.py
 cargo check --locked --all-targets
 cargo test --locked --lib --tests
 cargo build --locked --lib --examples
 dotnet build bindings/csharp/Oxide.NET/Oxide.NET.csproj
+dotnet run --project tests/csharp/Oxide.Tests.csproj
 Get-ChildItem examples/csharp -Recurse -Filter *.csproj | ForEach-Object {
     dotnet build $_.FullName
     if ($LASTEXITCODE -ne 0) { throw "C# build failed: $($_.FullName)" }
 }
 python -m pip install --editable .\bindings\python
-python -m compileall -q bindings/python/oxide examples/python
+python -m compileall -q bindings/python/oxide examples/python tests
 python -c "import oxide; import oxide.app; import oxide.collision; import oxide.content; import oxide.graphics; import oxide.input; import oxide.math"
-python examples/python/math_test.py
+python tests/python_math.py
 python tests/python_shadows.py
 ```
 
-[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all eight shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow rendering and HDR readback on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, the math example, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
+[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all eight shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow rendering and HDR readback on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, math checks, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
 
-CI does not launch graphical examples or verify rendered output. Run the materials, first-person, and shadows scenes locally to check rendering and input on a D3D12-capable GPU.
+CI checks rendered HDR output through headless WARP readbacks; it does not launch interactive windows. Run the materials, first-person, and shadows scenes locally to check rendering and input on a D3D12-capable GPU.
 
 ## Linear HDR rendering
 
@@ -114,3 +116,6 @@ and the exposure API. In each materials example, **Q** halves exposure, **E**
 doubles it, and **R** resets it to one. The title shows the current multiplier.
 
 See [light-owned shadows and transparency](docs/shadows.md) for automatic shadows through DrawMesh, scalar transparency, coverage and bias settings, and matching Rust, C#, and Python demos.
+
+See [GPU resource lifetime and capacity](docs/resources.md) for cache reclamation,
+reusable descriptors, upload pages, and renderer limits.

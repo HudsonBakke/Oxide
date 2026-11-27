@@ -66,6 +66,7 @@ impl Graphics {
     /// Submits a mesh with opaque rendering and shadows, capturing its current draw state.
     ///
     /// Geometry is rendered at frame end. A camera must be bound first.
+    /// See [`Self::draw_mesh_with_transparency`] for ownership and capacity errors.
     pub fn draw_mesh(
         &mut self,
         mesh: &Mesh,
@@ -82,6 +83,14 @@ impl Graphics {
     /// distinct transparent depths are stored per ray; further layers are ignored.
     /// Visible opacity is one minus transparency. Camera, lights, material,
     /// geometry, and transform are captured at this call, before later mutations.
+    /// Submitted meshes/materials can be dropped before the frame completes.
+    ///
+    /// # Errors
+    /// Returns an error for invalid transparency, a missing camera, more than
+    /// eight active lights of any type, more than 32 shadow projections per frame,
+    /// or GPU allocation/descriptor exhaustion. Earlier successful draws remain
+    /// queued. Release unused assets and finish the frame before retrying a
+    /// descriptor allocation that exceeded the available contiguous capacity.
     pub fn draw_mesh_with_transparency(
         &mut self,
         mesh: &Mesh,

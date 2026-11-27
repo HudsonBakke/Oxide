@@ -20,7 +20,7 @@ pub(crate) mod shadow_map;
 pub(crate) mod transmission_map;
 #[path = "../../src/graphics/backend/d3d12/swap_chain.rs"]
 pub(crate) mod swap_chain;
-#[path = "../../src/graphics/backend/d3d12/texture.rs"]
+#[path = "gpu_texture.rs"]
 pub(crate) mod texture;
 #[path = "../../src/graphics/backend/d3d12/vertex_buffer.rs"]
 pub(crate) mod vertex_buffer;

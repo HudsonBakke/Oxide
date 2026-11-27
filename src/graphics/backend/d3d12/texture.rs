@@ -216,8 +216,8 @@ impl D3D12Texture {
 
         unsafe {
             command_list.CopyTextureRegion(&destination, 0, 0, 0, &source, None);
-                std::mem::ManuallyDrop::drop(&mut source.pResource);
-                std::mem::ManuallyDrop::drop(&mut destination.pResource);
+            std::mem::ManuallyDrop::drop(&mut source.pResource);
+            std::mem::ManuallyDrop::drop(&mut destination.pResource);
         }
 
         let mut barrier = D3D12_RESOURCE_BARRIER {

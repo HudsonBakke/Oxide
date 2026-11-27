@@ -8,7 +8,7 @@ for path in (ROOT / "src").rglob("*"):
     if not path.is_file():
         continue
     text = path.read_text(encoding="utf-8")
-    if re.search(r"#\s*\[\s*(?:test\b|cfg\s*\(\s*test\b)|\bmod\s+\w*tests\b|\bwarp_for_test\b", text):
+    if re.search(r"#\s*\[[^\]]*\btest\b|\bmod\s+\w*tests\b|\bwarp_for_test\b", text):
         violations.append(str(path.relative_to(ROOT)))
 for directory in ("src", "examples", "scripts"):
     for path in (ROOT / directory).rglob("*"):

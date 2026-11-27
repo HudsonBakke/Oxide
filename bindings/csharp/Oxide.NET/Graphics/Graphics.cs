@@ -169,7 +169,7 @@ public sealed class Graphics
     }
 
     /// <summary>Submits a mesh with transparency from zero (opaque) to one (invisible and no shadow).</summary>
-    /// <remarks>Requires a finite value in [0,1]. Visible opacity is one minus transparency; the same value controls shadow transmission. Captures draw state now for rendering at frame end. Up to eight transparent depths are retained per light ray.</remarks>
+    /// <remarks>Requires a finite value in [0,1]. Visible opacity is one minus transparency; the same value controls shadow transmission. Captures draw state now for rendering at frame end. Up to eight transparent depths are retained per light ray. Assets may be disposed after submission. More than eight active lights of any type, 32 shadow projections per frame, or exhausted GPU descriptor capacity produces an exception; earlier queued draws remain valid.</remarks>
     public void DrawMesh(Mesh mesh, Material material, Transform transform, float transparency)
     {
         ArgumentNullException.ThrowIfNull(mesh);

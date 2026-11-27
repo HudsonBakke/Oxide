@@ -15,10 +15,6 @@ impl DescriptorAllocator {
         Self { start, end, free: vec![start..end], allocated: BTreeMap::new() }
     }
 
-    pub(crate) fn used(&self) -> u32 {
-        self.allocated.values().sum()
-    }
-
     pub(crate) fn allocate(&mut self, count: u32) -> Result<u32> {
         if count == 0 {
             return Err(Error::new(E_INVALIDARG, "descriptor allocation must be nonzero"));

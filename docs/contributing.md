@@ -24,8 +24,8 @@ python -m pip install black==25.1.0 clang-format==19.1.7
 
 ```powershell
 cargo fmt --all
-python -m black bindings/python examples/python
-Get-ChildItem include, examples/c, bindings/csharp, examples/csharp, shaders -Recurse -File |
+python -m black bindings/python examples/python tests
+Get-ChildItem include, examples/c, bindings/csharp, examples/csharp, tests/csharp, shaders -Recurse -File |
     Where-Object { $_.Extension -in '.h', '.c', '.cs', '.hlsl' } |
     Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
     ForEach-Object { clang-format -i $_.FullName }
@@ -48,3 +48,8 @@ Run the commands in the root README to validate builds and tests. For a
 documentation or style change, also compare Python syntax trees with docstrings
 removed and compare non-comment tokens in native source. Review any formatter
 changes to imports, optional trailing commas, or numeric spellings separately.
+
+All tests, fixtures, test helpers, and test runners belong under `tests/`.
+Do not add test modules, `#[cfg(test)]` branches, or test-only helpers to `src/`.
+See [the test guide](../tests/README.md) for the private integration harness and
+language-specific commands. CI enforces this layout before building.

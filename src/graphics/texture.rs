@@ -18,6 +18,10 @@ fn next_texture_id() -> TextureId {
 }
 
 /// A 2D texture containing RGBA image data.
+///
+/// Clones preserve immutable resource identity and share the GPU cache entry.
+/// GPU storage is reclaimed at a completed-frame boundary after the last CPU
+/// owner is dropped; materials and configured environments also count as owners.
 #[derive(Debug)]
 pub struct Texture {
     id: TextureId,
@@ -563,7 +567,7 @@ impl ContentAssetInternal for Texture {
             reader.read_exact(&mut pixels)?;
             Ok(Self {
                 id: next_texture_id(),
-            lifetime: Arc::new(()),
+                lifetime: Arc::new(()),
                 width,
                 height,
                 pixels,

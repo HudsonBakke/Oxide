@@ -602,6 +602,8 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
  * @param mesh Live mesh handle.
  * @param material Live material handle.
  * @param transform World-space placement, applied around the mesh's model-space pivot.
+ * Submitted mesh/material handles can be released after this call. More than eight lights of any type,
+ * 32 shadow projections per frame, or GPU descriptor exhaustion returns an error without discarding earlier draws.
  * @return OXIDE_STATUS_OK on success; otherwise a status code with a thread-local diagnostic.
  */
     OXIDE_API OxideStatus oxide_graphics_draw_mesh(OxideGraphicsHandle graphics,

@@ -771,7 +771,10 @@ class Graphics:
         and intermediate values transmit that fraction per front-facing surface.
         Must be finite and in [0,1]. Up to eight transparent depths are retained per
         light ray. Visible opacity is one minus transparency; the same value
-        controls shadow transmission.
+        controls shadow transmission. Submitted assets may be released after this
+        call. More than eight lights of any type, 32 distinct shadow projections
+        per frame, or exhausted GPU descriptor capacity raises a renderer error.
+        Earlier successful draws remain queued.
         """
         self._require_valid()
 
