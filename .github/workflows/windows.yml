@@ -53,7 +53,12 @@ jobs:
         run: cargo doc --locked --no-deps
 
       - name: Run Rust unit and integration tests
-        run: cargo test --locked --lib --tests
+        id: rust_tests
+        run: python scripts/check-rust-tests.py
+
+      - name: 'Rust test failure: ${{ steps.rust_tests.outputs.detail }}'
+        if: failure() && steps.rust_tests.outcome == 'failure'
+        run: exit 1
 
       - name: Build native DLL and every Rust example
         run: cargo build --locked --lib --examples
