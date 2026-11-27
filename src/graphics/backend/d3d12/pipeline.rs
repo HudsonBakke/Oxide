@@ -497,12 +497,15 @@ impl D3D12Pipeline {
         Ok(Self { root_signature, pipeline_state: result? })
     }
 
-    pub(crate) fn new_fullscreen(
-        device: &D3D12Device,
-        vertex_shader: &D3D12Shader,
-        pixel_shader: &D3D12Shader,
-        output_format: DXGI_FORMAT,
-    ) -> Result<Self> {
+    pub(crate) fn new_fullscreen(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader, output_format: DXGI_FORMAT) -> Result<Self> {
+        Self::new_fullscreen_pipeline(device, vertex_shader, pixel_shader, output_format, false)
+    }
+
+    pub(crate) fn new_camera_surface(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader) -> Result<Self> {
+        Self::new_fullscreen_pipeline(device, vertex_shader, pixel_shader, DXGI_FORMAT_R16G16B16A16_FLOAT, true)
+    }
+
+    fn new_fullscreen_pipeline(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader, output_format: DXGI_FORMAT, surface: bool) -> Result<Self> {
         let range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
             NumDescriptors: 1,
@@ -510,7 +513,7 @@ impl D3D12Pipeline {
             RegisterSpace: 0,
             OffsetInDescriptorsFromTableStart: 0,
         }];
-        let params = [
+        let mut params = vec![
             D3D12_ROOT_PARAMETER {
                 ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
                 Anonymous: D3D12_ROOT_PARAMETER_0 {
@@ -532,9 +535,16 @@ impl D3D12Pipeline {
                 ShaderVisibility: D3D12_SHADER_VISIBILITY_PIXEL,
             },
         ];
+        if surface {
+            params.push(D3D12_ROOT_PARAMETER {
+                ParameterType: D3D12_ROOT_PARAMETER_TYPE_CBV,
+                Anonymous: D3D12_ROOT_PARAMETER_0 { Descriptor: D3D12_ROOT_DESCRIPTOR { ShaderRegister: 1, RegisterSpace: 0 } },
+                ShaderVisibility: D3D12_SHADER_VISIBILITY_ALL,
+            });
+        }
         let sampler = [D3D12_STATIC_SAMPLER_DESC {
             Filter: D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-            AddressU: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            AddressU: if surface { windows::Win32::Graphics::Direct3D12::D3D12_TEXTURE_ADDRESS_MODE_CLAMP } else { D3D12_TEXTURE_ADDRESS_MODE_WRAP },
             AddressV: windows::Win32::Graphics::Direct3D12::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             AddressW: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             MipLODBias: 0.0,
@@ -596,11 +606,14 @@ impl D3D12Pipeline {
                 ..Default::default()
             },
             DepthStencilState: D3D12_DEPTH_STENCIL_DESC {
-                DepthEnable: false.into(),
+                DepthEnable: surface.into(),
+                DepthWriteMask: D3D12_DEPTH_WRITE_MASK_ALL,
+                DepthFunc: D3D12_COMPARISON_FUNC_LESS_EQUAL,
                 StencilEnable: false.into(),
                 ..Default::default()
             },
             PrimitiveTopologyType: D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+            DSVFormat: if surface { DXGI_FORMAT_D32_FLOAT } else { DXGI_FORMAT_UNKNOWN },
             NumRenderTargets: 1,
             RTVFormats: rtv,
             SampleDesc: DXGI_SAMPLE_DESC {

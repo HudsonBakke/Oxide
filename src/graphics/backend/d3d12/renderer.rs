@@ -28,7 +28,7 @@ use windows::{
 use std::{collections::{HashMap, HashSet}, sync::Weak};
 use super::descriptor_allocator::DescriptorAllocator;
 use super::{
-    render_target::HdrTarget, shadow_map::ShadowMap,
+    render_target::HdrTarget, shadow_map::ShadowMap, camera_surface::CameraSurfaceTarget,
     transmission_map::{TransmissionMap, TRANSMISSION_LAYERS, TRANSMISSION_MAX_RESOLUTION, FIRST_TEXTURE_DESCRIPTOR, MAX_SHADOW_LIGHTS, PREVIOUS_VIEWS_PER_LIGHT, array_srv},
 };
 use windows::Win32::Graphics::Direct3D12::{D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_CPU_DESCRIPTOR_HANDLE};
@@ -47,7 +47,7 @@ use crate::{
         Camera, DirectionalLight, ShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight,
         SpotLight, mesh::MeshId, texture::TextureId,
     },
-    math::{Mat4, Rect, Transform, Vec3},
+    math::{Mat4, Rect, Rect3D, Transform, Vec3},
 };
 
 const TRIANGLE_VERTEX_SHADER: &[u8] =
@@ -68,6 +68,20 @@ const TONEMAP_PIXEL_SHADER: &[u8] =
 const SHADOW_VERTEX_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/shadow_vs.dxil");
 const SHADOW_PIXEL_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/shadow_ps.dxil");
 
+const CAMERA_SURFACE_VERTEX_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/camera_surface_vs.dxil");
+const CAMERA_SURFACE_PIXEL_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/camera_surface_ps.dxil");
+const MAX_CAMERA_SURFACES: usize = 16;
+const MAX_CAMERA_SURFACE_RESOLUTION: u32 = 2048;
+
+#[derive(Clone, Copy)]
+struct SurfaceBinding { rectangle: Rect3D, constants: u64 }
+
+#[derive(Clone, Copy)]
+struct CameraGroup {
+    constants: u64, texture: D3D12_GPU_DESCRIPTOR_HANDLE, destination: Rect,
+    view: u64, position: Vec3, target: Option<usize>,
+}
+
 type MeshKey = (MeshId, u64, u64);
 
 #[derive(Clone, Copy)]
@@ -86,7 +100,7 @@ struct QueuedMesh {
 
 #[derive(Clone, Copy)]
 enum SceneCommand {
-    Background { constants: u64, texture: D3D12_GPU_DESCRIPTOR_HANDLE, destination: Rect },
+    Background(CameraGroup),
     Mesh(QueuedMesh),
 }
 
@@ -337,6 +351,11 @@ pub(crate) struct D3D12Renderer {
     background_pipeline: D3D12Pipeline,
     display_pipeline: D3D12Pipeline,
     hdr_target: Option<HdrTarget>,
+    surface_pipeline: D3D12Pipeline,
+    camera_surfaces: Vec<CameraSurfaceTarget>,
+    surface_bindings: Vec<SurfaceBinding>,
+    camera_target: Option<usize>,
+    camera_position: Vec3,
     shadow_pipeline: D3D12Pipeline,
     shadow_requests: Vec<ShadowRequest>,
     shadow_resources: Vec<Option<ShadowResources>>,
@@ -429,6 +448,9 @@ impl D3D12Renderer {
         let transmission_pipeline = D3D12Pipeline::new_transmission(
             device, &D3D12Shader::from_bytes(SHADOW_VERTEX_SHADER), &D3D12Shader::from_bytes(SHADOW_PIXEL_SHADER),
         )?;
+        let surface_pipeline = D3D12Pipeline::new_camera_surface(device,
+            &D3D12Shader::from_bytes(CAMERA_SURFACE_VERTEX_SHADER),
+            &D3D12Shader::from_bytes(CAMERA_SURFACE_PIXEL_SHADER))?;
         let constant_buffer = D3D12ConstantBuffer::new(device)?;
 
         let texture_heap_desc = D3D12_DESCRIPTOR_HEAP_DESC {
@@ -473,6 +495,11 @@ impl D3D12Renderer {
             background_pipeline,
             display_pipeline,
             hdr_target: None,
+            surface_pipeline,
+            camera_surfaces: Vec::new(),
+            surface_bindings: Vec::new(),
+            camera_target: None,
+            camera_position: Vec3::default(),
             shadow_pipeline,
             shadow_requests: Vec::new(),
             shadow_resources: Vec::new(),
@@ -514,6 +541,8 @@ impl D3D12Renderer {
 
     fn reset_frame_state(&mut self) {
         self.commands.clear();
+        self.surface_bindings.clear();
+        self.camera_target = None;
         self.shadow_requests.clear();
         self.destination = None;
         self.constant_buffer.reset();
@@ -747,7 +776,7 @@ impl D3D12Renderer {
         }
     }
 
-    fn render_camera_meshes(&self, commands: &[SceneCommand], shadow_address: u64) {
+    fn render_camera_meshes(&self, commands: &[SceneCommand], shadow_address: u64, camera: Option<CameraGroup>) {
         // Opaque depth is established before blending; transparent geometry
         // tests against it but never hides later transparent layers with a write.
         let mut transparent = Vec::new();
@@ -760,6 +789,7 @@ impl D3D12Renderer {
                 }
             }
         }
+        if let Some(camera) = camera { self.render_monitor_surfaces(camera); }
         // Stable ties preserve submission order. Sort using each draw's captured
         // camera-space bounds center, rather than the last camera bound.
         transparent.sort_by(|a, b| b.sort_depth.total_cmp(&a.sort_depth));
@@ -768,25 +798,91 @@ impl D3D12Renderer {
         }
     }
 
-    fn render_scene(&self, shadow_address: u64) {
+    fn render_monitor_surfaces(&self, camera: CameraGroup) {
+        self.set_viewport(camera.destination);
+        for (index, binding) in self.surface_bindings.iter().enumerate() {
+            if binding.rectangle.normal().dot(&(camera.position - binding.rectangle.top_left())) <= 0.0 { continue; }
+            let mut texture = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+            texture.ptr += self.camera_surfaces[index].descriptor as u64 * self.texture_descriptor_size as u64;
+            unsafe {
+                self.command_list.SetGraphicsRootSignature(self.surface_pipeline.root_signature());
+                self.command_list.SetPipelineState(self.surface_pipeline.pipeline_state());
+                self.command_list.SetGraphicsRootConstantBufferView(0, camera.view);
+                self.command_list.SetGraphicsRootDescriptorTable(1, texture);
+                self.command_list.SetGraphicsRootConstantBufferView(2, binding.constants);
+                self.command_list.DrawInstanced(6, 1, 0, 0);
+            }
+        }
+    }
+
+    fn render_camera_surfaces(&self, device: &D3D12Device, shadow_address: u64) {
+        unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
+        for index in 0..self.surface_bindings.len() {
+            let target = &self.camera_surfaces[index];
+            transition_resource(&self.command_list, &target.color.resource,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            unsafe { self.command_list.OMSetRenderTargets(1, Some(&target.color.rtv), false, Some(&target.dsv)); }
+            // Feed cameras omit every monitor surface. This makes the dependency
+            // graph acyclic and prevents sampling a target while writing to it.
+            self.render_scene_target(shadow_address, Some(index), None);
+            unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
+            transition_resource(&self.command_list, &target.color.resource,
+                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
+        let _ = device;
+    }
+
+    fn render_scene(&self, shadow_address: u64, depth: D3D12_CPU_DESCRIPTOR_HANDLE) { self.render_scene_target(shadow_address, None, Some(depth)); }
+
+    fn render_scene_target(&self, shadow_address: u64, target: Option<usize>, screen_depth: Option<D3D12_CPU_DESCRIPTOR_HANDLE>) {
         let mut start = 0;
+        let mut current: Option<CameraGroup> = None;
         for (index, command) in self.commands.iter().enumerate() {
-            if let SceneCommand::Background { constants, texture, destination } = command {
-                // A background marks the next camera's draw group. Never sort
-                // geometry across cameras or overwrite the previous viewport early.
-                self.render_camera_meshes(&self.commands[start..index], shadow_address);
-                self.set_viewport(*destination);
+            if let SceneCommand::Background(camera) = command {
+                if let Some(group) = current {
+                    if group.target == target {
+                        self.render_camera_meshes(&self.commands[start..index], shadow_address, if target.is_none() { Some(group) } else { None });
+                    }
+                }
+                current = Some(*camera);
+                start = index + 1;
+                if camera.target != target { continue; }
+                if let Some(index) = target {
+                    let surface = &self.camera_surfaces[index];
+                    unsafe {
+                        self.command_list.ClearDepthStencilView(surface.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+                        self.command_list.ClearRenderTargetView(surface.color.rtv, &[0.0;4], None);
+                    }
+                }
+                if let Some(depth) = screen_depth {
+                    // Camera groups have independent depth, including overlapping
+                    // screen viewports and background-only groups with monitors.
+                    let size = self.hdr_target.as_ref().unwrap();
+                    let rect = RECT {
+                        left: camera.destination.x.max(0.0) as i32,
+                        top: camera.destination.y.max(0.0) as i32,
+                        right: (camera.destination.x + camera.destination.width).min(size.width as f32) as i32,
+                        bottom: (camera.destination.y + camera.destination.height).min(size.height as f32) as i32,
+                    };
+                    if rect.right > rect.left && rect.bottom > rect.top {
+                        unsafe { self.command_list.ClearDepthStencilView(depth, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, Some(&[rect])); }
+                    }
+                }
+                self.set_viewport(camera.destination);
                 unsafe {
                     self.command_list.SetGraphicsRootSignature(self.background_pipeline.root_signature());
                     self.command_list.SetPipelineState(self.background_pipeline.pipeline_state());
-                    self.command_list.SetGraphicsRootConstantBufferView(0, *constants);
-                    self.command_list.SetGraphicsRootDescriptorTable(1, *texture);
+                    self.command_list.SetGraphicsRootConstantBufferView(0, camera.constants);
+                    self.command_list.SetGraphicsRootDescriptorTable(1, camera.texture);
                     self.command_list.DrawInstanced(3, 1, 0, 0);
                 }
-                start = index + 1;
             }
         }
-        self.render_camera_meshes(&self.commands[start..], shadow_address);
+        if let Some(group) = current {
+            if group.target == target {
+                self.render_camera_meshes(&self.commands[start..], shadow_address, if target.is_none() { Some(group) } else { None });
+            }
+        }
     }
 
     pub(crate) fn draw_mesh(
@@ -993,10 +1089,11 @@ impl D3D12Renderer {
             self.draw_background(device)?;
         }
         let shadow_address = self.render_shadows(device)?;
+        self.render_camera_surfaces(device, shadow_address);
         let scene_rtv = self.hdr_target.as_ref().unwrap().rtv;
         let scene_dsv = swap_chain.current_dsv();
         unsafe { self.command_list.OMSetRenderTargets(1, Some(&scene_rtv), false, Some(&scene_dsv)); }
-        self.render_scene(shadow_address);
+        self.render_scene(shadow_address, scene_dsv);
         let target = self.hdr_target.as_ref().unwrap();
         let render_target = swap_chain.current_render_target();
         let rtv = swap_chain.current_rtv();
@@ -1096,26 +1193,64 @@ impl D3D12Renderer {
         Ok(())
     }
 
-    pub(crate) fn bind_camera(
-        &mut self,
-        device: &D3D12Device,
-        camera: &Camera,
-        destination: Rect,
-    ) -> Result<()> {
+    pub(crate) fn bind_camera(&mut self, device: &D3D12Device, camera: &Camera, destination: Rect) -> Result<()> {
+        if [destination.x, destination.y, destination.width, destination.height].iter().any(|v| !v.is_finite()) || destination.width <= 0.0 || destination.height <= 0.0 {
+            return Err(invalid_shadow_order("camera destination must have finite coordinates and positive dimensions"));
+        }
+        self.bind_camera_target(device, camera, destination, destination.aspect_ratio(), None)
+    }
+
+    pub(crate) fn bind_camera_3d(&mut self, device: &D3D12Device, camera: &Camera, rectangle: Rect3D, width: u32, height: u32) -> Result<()> {
+        let rectangle = rectangle.validated().map_err(|e| invalid_shadow_order(&e.to_string()))?;
+        let aspect = rectangle.aspect_ratio();
+        let (width, height) = if width == 0 && height == 0 {
+            if aspect >= 1.0 { (512, (512.0 / aspect).round().clamp(1.0,512.0) as u32) }
+            else { ((512.0 * aspect).round().clamp(1.0,512.0) as u32, 512) }
+        } else { (width, height) };
+        if width == 0 || height == 0 || width > MAX_CAMERA_SURFACE_RESOLUTION || height > MAX_CAMERA_SURFACE_RESOLUTION {
+            return Err(invalid_shadow_order("camera surface width and height must both be 1..2048, or both zero for automatic size"));
+        }
+        let index = if let Some(index) = self.surface_bindings.iter().position(|binding| binding.rectangle == rectangle) {
+            let target = &self.camera_surfaces[index];
+            if target.color.width != width || target.color.height != height {
+                return Err(invalid_shadow_order("the same Rect3D cannot use different resolutions within one frame"));
+            }
+            index
+        } else {
+            let index = self.surface_bindings.len();
+            if index >= MAX_CAMERA_SURFACES { return Err(invalid_shadow_order("frame exceeds 16 distinct Rect3D camera surfaces")); }
+            if index >= self.camera_surfaces.len() {
+                let descriptor = self.descriptors.allocate(1)?;
+                let target = match CameraSurfaceTarget::new(device, width, height, self.shadow_cpu(descriptor as usize), descriptor) {
+                    Ok(target) => target,
+                    Err(error) => { self.descriptors.release(descriptor,1); return Err(error); }
+                };
+                self.camera_surfaces.push(target);
+            } else if self.camera_surfaces[index].color.width != width || self.camera_surfaces[index].color.height != height {
+                let descriptor = self.camera_surfaces[index].descriptor;
+                self.camera_surfaces[index] = CameraSurfaceTarget::new(device, width, height, self.shadow_cpu(descriptor as usize), descriptor)?;
+            }
+            let corners = rectangle.corners().map(|v| [v.x,v.y,v.z,1.0]);
+            let constants = self.constant_buffer.write(device, &corners)?;
+            self.surface_bindings.push(SurfaceBinding { rectangle, constants });
+            index
+        };
+        self.bind_camera_target(device, camera, Rect::new(0.0,0.0,width as f32,height as f32), aspect, Some(index))
+    }
+
+    fn bind_camera_target(&mut self, device: &D3D12Device, camera: &Camera, destination: Rect, aspect: f32, target: Option<usize>) -> Result<()> {
         // Flush a background-only viewport before replacing its camera and scissor.
         if !self.background_drawn {
             self.draw_background(device)?;
         }
         self.background_drawn = false;
-        assert!(
-            destination.width > 0.0 && destination.height > 0.0,
-            "camera destination must have positive dimensions"
-        );
+        self.camera_target = target;
+        self.camera_position = camera.position();
 
         let view = camera.view_matrix();
         self.camera_view = Some(view);
 
-        let projection = camera.projection_matrix(destination.aspect_ratio());
+        let projection = camera.projection_matrix(aspect);
 
         let position = camera.position();
         let rotation = camera.rotation();
@@ -1129,7 +1264,7 @@ impl D3D12Renderer {
             camera_forward: [forward.x, forward.y, forward.z, 0.0],
             projection_params: [
                 (camera.field_of_view().as_radians() * 0.5).tan(),
-                destination.aspect_ratio(),
+                aspect,
                 0.0,
                 0.0,
             ],
@@ -1228,7 +1363,10 @@ impl D3D12Renderer {
         let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
         handle.ptr += index as u64 * self.texture_descriptor_size as u64;
         let address = self.constant_buffer.write(device, &constants)?;
-        self.commands.push(SceneCommand::Background { constants: address, texture: handle, destination: self.destination.unwrap() });
+        self.commands.push(SceneCommand::Background(CameraGroup {
+            constants: address, texture: handle, destination: self.destination.unwrap(),
+            view: self.view_address.unwrap(), position: self.camera_position, target: self.camera_target,
+        }));
         Ok(())
     }
 
@@ -1331,6 +1469,8 @@ impl D3D12Renderer {
         let transmission_used = self.commands.iter().any(|command| matches!(command, SceneCommand::Mesh(draw) if draw.transparency > 0.0 && draw.transparency < 1.0));
         self.commands.clear();
         self.reclaim_unused_assets();
+        let used = self.surface_bindings.len().min(self.camera_surfaces.len());
+        for surface in self.camera_surfaces.drain(used..) { self.descriptors.release(surface.descriptor, 1); }
         for index in 0..self.shadow_resources.len() {
             if index >= self.shadow_requests.len() {
                 self.shadow_resources[index] = None;

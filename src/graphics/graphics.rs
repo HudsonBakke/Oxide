@@ -1,4 +1,4 @@
-use crate::{math::Rect, math::Transform, platform::window::PlatformWindow};
+use crate::{math::{Rect, Rect3D}, math::Transform, platform::window::PlatformWindow};
 
 use super::{
     Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
@@ -133,6 +133,27 @@ impl Graphics {
     /// Requests a new backbuffer/window height.
     pub fn set_preferred_backbuffer_height(&mut self, height: u32) {
         crate::app::set_preferred_backbuffer_size(crate::app::window_width(), height);
+    }
+
+    /// Binds a camera to a world-space display surface for subsequent draws.
+    ///
+    /// Oxide creates an HDR image (512 pixels on its longest edge), then displays
+    /// it on the rectangle in every screen-bound camera. Its normal selects the
+    /// visible side. Feed cameras omit monitor surfaces, preventing recursion.
+    /// Bind each visible surface every frame; at most 16 distinct surfaces are
+    /// supported per frame. Equal rectangles share a feed; the last binding wins.
+    pub fn bind_camera_3d(&mut self, camera: &Camera, destination: Rect3D) -> GraphicsResult<()> {
+        self.bind_camera_3d_with_resolution(camera, destination, 0, 0)
+    }
+
+    /// Binds a world-space camera surface with an explicit image width/height.
+    ///
+    /// Both dimensions must be 1..2048, or both zero for automatic size. The
+    /// camera aspect is determined by the world rectangle, independent of pixel
+    /// resolution. One rectangle cannot use different sizes within a frame.
+    pub fn bind_camera_3d_with_resolution(&mut self, camera: &Camera, destination: Rect3D, width: u32, height: u32) -> GraphicsResult<()> {
+        self.renderer.bind_camera_3d(&self.device, camera, destination, width, height)?;
+        Ok(())
     }
 
     /// Binds a camera and destination rectangle for subsequent draw calls.

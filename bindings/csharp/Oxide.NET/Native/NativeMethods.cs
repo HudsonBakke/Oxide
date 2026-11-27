@@ -8,6 +8,13 @@ namespace Oxide.Native;
 
 internal static class NativeMethods
 {
+    [DllImport("oxide", CallingConvention=CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_rect3d_create(Vec3 topLeft, Vec3 topRight, Vec3 bottomRight, Vec3 bottomLeft, Vec3 normal, out Rect3D result);
+    [DllImport("oxide", CallingConvention=CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_bind_camera_3d(NativeGraphicsHandle graphics, NativeCameraHandle camera, Rect3D destination);
+    [DllImport("oxide", CallingConvention=CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_bind_camera_3d_with_resolution(NativeGraphicsHandle graphics, NativeCameraHandle camera, Rect3D destination, uint width, uint height);
+
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
     internal static extern OxideStatus oxide_graphics_draw_mesh_with_transparency(NativeGraphicsHandle graphics, NativeMeshHandle mesh, NativeMaterialHandle material, Transform transform, float transparency);
 

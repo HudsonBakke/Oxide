@@ -43,7 +43,7 @@ $outputDirectory = Join-Path $shaderDirectory 'compiled'
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
 Write-Host "Using DXC: $DxcPath"
-foreach ($shader in @('triangle', 'background', 'tonemap', 'shadow')) {
+foreach ($shader in @('triangle', 'background', 'tonemap', 'shadow', 'camera_surface')) {
     $stages = @('vs', 'ps')
     foreach ($stage in $stages) {
         $source = Join-Path $shaderDirectory "$shader.hlsl"

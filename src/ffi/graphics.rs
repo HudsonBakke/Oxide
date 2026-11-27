@@ -1,6 +1,6 @@
 use crate::{
     graphics::{ShadowSettings, DirectionalLight, Environment, Graphics, PointLight, SpotLight},
-    math::{Rect, Transform},
+    math::{Rect, Rect3D, Transform},
 };
 
 use super::{
@@ -382,5 +382,24 @@ pub extern "C" fn oxide_directional_light_init(direction: crate::math::Vec3, col
             Ok(light) => { unsafe { *result = light; } OxideStatus::Ok }
             Err(error) => { set_last_error(error.to_string()); OxideStatus::InvalidArgument }
         }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_bind_camera_3d(graphics: OxideGraphicsHandle, camera: OxideCameraHandle, destination: Rect3D) -> OxideStatus {
+    oxide_graphics_bind_camera_3d_with_resolution(graphics, camera, destination, 0, 0)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_bind_camera_3d_with_resolution(graphics: OxideGraphicsHandle, camera: OxideCameraHandle, destination: Rect3D, width: u32, height: u32) -> OxideStatus {
+    ffi_boundary(|| {
+        let destination = match destination.validated() {
+            Ok(rectangle) => rectangle,
+            Err(error) => { set_last_error(error.to_string()); return OxideStatus::InvalidArgument; }
+        };
+        let Some(graphics) = graphics_from_handle(graphics) else { set_last_error("graphics handle is null"); return OxideStatus::InvalidArgument; };
+        let Some(result) = with_camera(camera, |camera| graphics.bind_camera_3d_with_resolution(camera, destination, width, height))
+        else { set_last_error("camera handle is invalid"); return OxideStatus::InvalidArgument; };
+        match result { Ok(()) => OxideStatus::Ok, Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError } }
     })
 }

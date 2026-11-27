@@ -1526,6 +1526,30 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
     /** Same loader; nonempty subobject names are unsupported and return a content error. */
     OXIDE_API OxideStatus oxide_content_load_audio_sub(OxideContentManagerHandle manager, const char *path, const char *subobject, OxideAudioHandle *result);
 
+    /** World-space image corners and a unit normal selecting the visible front side.
+     * Construct with oxide_rect3d_create; raw values are revalidated when bound.
+     */
+    typedef struct OxideRect3D {
+        /** Image top-left world corner. */ OxideVec3 top_left;
+        /** Image top-right world corner. */ OxideVec3 top_right;
+        /** Image bottom-right world corner. */ OxideVec3 bottom_right;
+        /** Image bottom-left world corner. */ OxideVec3 bottom_left;
+        /** Unit normal selecting the visible front. */ OxideVec3 normal;
+    } OxideRect3D;
+    /** Validates a rectangle and normalizes its perpendicular normal. Output must be non-null. */
+    OXIDE_API OxideStatus oxide_rect3d_create(OxideVec3 top_left, OxideVec3 top_right, OxideVec3 bottom_right, OxideVec3 bottom_left, OxideVec3 normal, OxideRect3D *result);
+    /** Binds a world-space camera surface, automatically visible in screen-bound cameras.
+     * Bind visible surfaces every frame; at most 16 distinct rectangles. Feed cameras
+     * omit all monitor surfaces. Default image size is 512 pixels on the longest edge.
+     * Equal rectangles share an image; the last binding wins.
+     */
+    OXIDE_API OxideStatus oxide_graphics_bind_camera_3d(OxideGraphicsHandle graphics, OxideCameraHandle camera, OxideRect3D destination);
+    /** Explicit width/height must both be 1..2048, or both zero for automatic size.
+     * The camera aspect follows the world rectangle. A rectangle cannot use different
+     * resolutions in one frame. Rendering and resource transitions are automatic.
+     */
+    OXIDE_API OxideStatus oxide_graphics_bind_camera_3d_with_resolution(OxideGraphicsHandle graphics, OxideCameraHandle camera, OxideRect3D destination, uint32_t width, uint32_t height);
+
 #ifdef __cplusplus
 }
 #endif

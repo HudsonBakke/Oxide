@@ -3,7 +3,7 @@ use super::*;
 use windows::Win32::Graphics::Direct3D12::*;
 use crate::{graphics::{Color, Vertex}, math::{Vec2, Vec3}};
 
-fn quad() -> Mesh {
+pub(super) fn quad() -> Mesh {
     Mesh::new(
         [(-0.5, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5)]
             .into_iter().map(|(x, y)| Vertex::new(Vec3::new(x, y, 0.0), Vec3::new(0.0, 0.0, 1.0), Vec2::new(x + 0.5, y + 0.5))).collect(),
@@ -11,7 +11,7 @@ fn quad() -> Mesh {
     )
 }
 
-fn transform(x: f32, z: f32, width: f32, height: f32) -> Transform {
+pub(super) fn transform(x: f32, z: f32, width: f32, height: f32) -> Transform {
     let mut result = Transform::new();
     result.set_position(Vec3::new(x, 0.0, z));
     result.set_scale(Vec3::new(width, height, 1.0));
@@ -172,7 +172,7 @@ fn check_light_transmission(kind: usize) {
         let shadow = renderer.render_shadows(&device).unwrap();
         let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
         unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
-        renderer.render_scene(shadow);
+        renderer.render_scene(shadow, depth.dsv);
         unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
         let readback = copy_hdr(&renderer, &device);
         unsafe {
@@ -282,7 +282,7 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
         let shadow = renderer.render_shadows(&device).unwrap();
         let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
         unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
-        renderer.render_scene(shadow);
+        renderer.render_scene(shadow, depth.dsv);
         unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
         let readback = copy_hdr(&renderer, &device);
         unsafe {
@@ -349,7 +349,7 @@ fn point_shadow_projection_faces_cover_all_axes() {
     }
 }
 
-fn headless_renderer(device: &D3D12Device) -> (D3D12Renderer, ShadowMap) {
+pub(super) fn headless_renderer(device: &D3D12Device) -> (D3D12Renderer, ShadowMap) {
     let mut renderer = D3D12Renderer::new(device).unwrap();
     let cpu = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
     renderer.hdr_target = Some(HdrTarget::new(device, 64, 64, cpu).unwrap());
@@ -360,7 +360,7 @@ fn headless_renderer(device: &D3D12Device) -> (D3D12Renderer, ShadowMap) {
     (renderer, depth)
 }
 
-fn start_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap, first: bool) {
+pub(super) fn start_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap, first: bool) {
     renderer.reclaim_unused_assets();
     renderer.reset_frame_state();
     unsafe {
@@ -383,11 +383,13 @@ fn start_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, dept
     renderer.bind_camera(device, &camera, Rect::new(0.0, 0.0, 64.0, 64.0)).unwrap();
 }
 
-fn finish_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap) -> f32 {
+pub(super) fn finish_headless_frame_samples(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap, points: &[(usize,usize)]) -> Vec<[f32;3]> {
+    if !renderer.background_drawn { renderer.draw_background(device).unwrap(); }
     let shadow = renderer.render_shadows(device).unwrap();
+    renderer.render_camera_surfaces(device, shadow);
     let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
     unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
-    renderer.render_scene(shadow);
+    renderer.render_scene(shadow, depth.dsv);
     unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
     let readback = copy_hdr(renderer, device);
     unsafe {
@@ -410,14 +412,19 @@ fn finish_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, dep
     }
     renderer.wait_for_gpu(device).unwrap();
     let mut pointer = std::ptr::null_mut();
-    let red = unsafe {
+    let samples = unsafe {
         readback.Map(0, None, Some(&mut pointer)).unwrap();
-        let red = half_to_float(std::ptr::read_unaligned((pointer as *const u8).add(32 * 512 + 32 * 8) as *const u16));
+        let values = points.iter().map(|(x,y)| [0,1,2].map(|channel| half_to_float(std::ptr::read_unaligned(
+            (pointer as *const u8).add(y*512+x*8+channel*2) as *const u16)))).collect();
         readback.Unmap(0, None);
-        red
+        values
     };
     renderer.finish_completed_frame(device);
-    red
+    samples
+}
+
+fn finish_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap) -> f32 {
+    finish_headless_frame_samples(renderer,device,depth,&[(32,32)])[0][0]
 }
 
 fn emissive_red() -> Material {

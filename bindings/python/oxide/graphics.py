@@ -11,6 +11,7 @@ from .math import (
     Angle,
     Quaternion,
     Rect,
+    Rect3D,
     Transform,
     Vec3,
 )
@@ -741,6 +742,24 @@ class Graphics:
         )
 
         return result
+
+    def bind_camera_3d(self, camera: Camera, destination: Rect3D, width: int = 0, height: int = 0) -> None:
+        """Binds a world-space monitor surface for subsequent draws.
+
+        The camera image appears automatically in screen-bound cameras. Feed
+        cameras omit all monitor surfaces. The normal selects the visible side.
+        Bind visible surfaces each frame, at most 16. Equal rectangles share a
+        feed; the last binding wins. Both image dimensions must be 1..2048, or
+        both zero for automatic size (512 pixels on the longest edge). Camera
+        aspect follows the world rectangle. A rectangle cannot change image
+        resolution within a frame.
+        """
+        self._require_valid()
+        if not isinstance(camera, Camera) or not isinstance(destination, Rect3D):
+            raise TypeError("camera must be Camera and destination must be Rect3D")
+        if not isinstance(width, int) or not isinstance(height, int) or not 0 <= width <= 2048 or not 0 <= height <= 2048 or (width == 0) != (height == 0):
+            raise ValueError("image dimensions must both be 1..2048, or both zero")
+        _native.check(_native.lib.oxide_graphics_bind_camera_3d_with_resolution(self._handle, camera._handle, destination, width, height))
 
     def bind_camera(
         self,

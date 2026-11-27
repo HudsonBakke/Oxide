@@ -9,6 +9,7 @@ from .math import (
     Angle,
     Quaternion,
     Rect,
+    Rect3D,
     Transform,
     Vec2,
     Vec3,
@@ -524,3 +525,10 @@ def check(
         typed_status,
         last_error_message(),
     )
+
+lib.oxide_rect3d_create.argtypes = [Vec3,Vec3,Vec3,Vec3,Vec3,ctypes.POINTER(Rect3D)]
+lib.oxide_rect3d_create.restype = ctypes.c_int
+lib.oxide_graphics_bind_camera_3d.argtypes = [NativeGraphicsHandle,NativeCameraHandle,Rect3D]
+lib.oxide_graphics_bind_camera_3d.restype = ctypes.c_int
+lib.oxide_graphics_bind_camera_3d_with_resolution.argtypes = [NativeGraphicsHandle,NativeCameraHandle,Rect3D,ctypes.c_uint32,ctypes.c_uint32]
+lib.oxide_graphics_bind_camera_3d_with_resolution.restype = ctypes.c_int

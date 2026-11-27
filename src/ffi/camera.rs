@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     graphics::Camera,
-    math::{Angle, Quaternion, Vec3},
+    math::{Angle, Quaternion, Vec3, Rect3D},
 };
 
 use super::{
@@ -409,5 +409,16 @@ pub extern "C" fn oxide_camera_get_far_plane(
         }
 
         OxideStatus::Ok
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_rect3d_create(top_left: Vec3, top_right: Vec3, bottom_right: Vec3, bottom_left: Vec3, normal: Vec3, result: *mut Rect3D) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() { set_last_error("rectangle result pointer is null"); return OxideStatus::InvalidArgument; }
+        match Rect3D::new(top_left, top_right, bottom_right, bottom_left, normal) {
+            Ok(rectangle) => { unsafe { *result = rectangle; } OxideStatus::Ok },
+            Err(error) => { set_last_error(error.to_string()); OxideStatus::InvalidArgument }
+        }
     })
 }

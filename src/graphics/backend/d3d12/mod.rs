@@ -1,3 +1,4 @@
+pub(crate) mod camera_surface;
 pub(crate) mod constant_buffer;
 pub(crate) mod descriptor_allocator;
 pub(crate) mod device;

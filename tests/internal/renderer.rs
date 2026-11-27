@@ -5,3 +5,6 @@ mod checks;
 
 #[path = "renderer_readback.rs"]
 mod readback;
+
+#[path = "renderer_surfaces.rs"]
+mod surfaces;

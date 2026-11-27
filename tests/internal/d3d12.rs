@@ -1,3 +1,5 @@
+#[path = "../../src/graphics/backend/d3d12/camera_surface.rs"]
+pub(crate) mod camera_surface;
 #[path = "constant_buffer.rs"]
 pub(crate) mod constant_buffer;
 #[path = "descriptor_allocator.rs"]

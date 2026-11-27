@@ -120,6 +120,24 @@ public sealed class Graphics
         }
     }
 
+    /// <summary>Binds a world-space camera surface, automatically displayed in screen-bound cameras.</summary>
+    /// <remarks>Default image size is 512 pixels on the longest edge. The normal selects the front; feed cameras omit monitor surfaces. Bind visible surfaces each frame, at most 16 distinct rectangles. Equal rectangles share a feed and the last binding wins.</remarks>
+    public void BindCamera(Camera camera, Rect3D destination)
+    {
+        ArgumentNullException.ThrowIfNull(camera);
+        EnsureValid();
+        NativeMethods.Check(NativeMethods.oxide_graphics_bind_camera_3d(_handle, camera.Handle, destination));
+    }
+
+    /// <summary>Binds a world-space camera surface with image dimensions 1..2048, or both zero for automatic size.</summary>
+    /// <remarks>Camera aspect follows the world rectangle. One rectangle cannot use different resolutions in the same frame.</remarks>
+    public void BindCamera(Camera camera, Rect3D destination, uint width, uint height)
+    {
+        ArgumentNullException.ThrowIfNull(camera);
+        EnsureValid();
+        NativeMethods.Check(NativeMethods.oxide_graphics_bind_camera_3d_with_resolution(_handle, camera.Handle, destination, width, height));
+    }
+
     /// <summary>Binds a camera and a positive-size pixel viewport for subsequent draw calls.</summary>
     public void BindCamera(Camera camera, Rect destination)
     {

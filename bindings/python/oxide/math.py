@@ -947,3 +947,53 @@ class Transform(ctypes.Structure):
             f"scale={self.scale!r}"
             ")"
         )
+
+
+class Rect3D(ctypes.Structure):
+    """World-space image corners and a unit normal selecting the visible front.
+
+    Corners are top-left, top-right, bottom-right, bottom-left. Construction
+    validates a nondegenerate rectangle and a perpendicular nonzero normal.
+    Fields are revalidated when bound; a zero-initialized value cannot be bound.
+    """
+    _fields_ = [("top_left", Vec3), ("top_right", Vec3), ("bottom_right", Vec3), ("bottom_left", Vec3), ("normal", Vec3)]
+
+    def __init__(self, top_left=None, top_right=None, bottom_right=None, bottom_left=None, normal=None):
+        """Normalizes the normal; rejects nonfinite or nonrectangular geometry.
+
+        Edge lengths must exceed 0.00001; relative tolerance is 0.0001.
+        No arguments produces a zero value for use as a native output buffer.
+        """
+        super().__init__()
+        values = (top_left, top_right, bottom_right, bottom_left, normal)
+        if all(value is None for value in values):
+            return
+        if not all(isinstance(value, Vec3) for value in values):
+            raise TypeError("all four corners and normal must be Vec3")
+        from . import _native
+        _native.check(_native.lib.oxide_rect3d_create(*values, ctypes.byref(self)))
+
+    @property
+    def width(self) -> float:
+        """Horizontal world-space extent."""
+        return (self.top_right-self.top_left).length
+
+    @property
+    def height(self) -> float:
+        """Vertical world-space extent."""
+        return (self.bottom_left-self.top_left).length
+
+    @property
+    def aspect_ratio(self) -> float:
+        """World-space width divided by height."""
+        return self.width/self.height
+
+    def __eq__(self, other):
+        """Tests exact corner and normal equality."""
+        if not isinstance(other, Rect3D):
+            return NotImplemented
+        return all(getattr(self,name)==getattr(other,name) for name,_ in self._fields_)
+
+    def __repr__(self):
+        """Returns a representation of the rectangle geometry."""
+        return f"Rect3D({self.top_left!r}, {self.top_right!r}, {self.bottom_right!r}, {self.bottom_left!r}, {self.normal!r})"
