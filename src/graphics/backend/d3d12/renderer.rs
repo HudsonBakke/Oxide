@@ -1045,12 +1045,13 @@ impl D3D12Renderer {
                 .ExecuteCommandLists(&[Some(command_list)]);
         }
 
-        swap_chain.present()?;
-
+        // Work has already been submitted. Even if presentation fails, wait
+        // before allowing resources to be reclaimed or the renderer to drop.
+        let present_result = swap_chain.present();
         self.wait_for_gpu(device)?;
         self.finish_completed_frame(device);
 
-        Ok(())
+        present_result
     }
 
     pub(crate) fn wait_for_gpu(&mut self, device: &D3D12Device) -> Result<()> {
