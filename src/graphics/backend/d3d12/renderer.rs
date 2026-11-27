@@ -311,6 +311,7 @@ pub(crate) struct D3D12Renderer {
     texture_cache: HashMap<TextureId, D3D12Texture>,
     material_descriptor_cache: HashMap<(TextureId, TextureId), u32>,
     texture_heap: ID3D12DescriptorHeap,
+    texture_staging_heap: ID3D12DescriptorHeap,
     texture_descriptor_size: u32,
     next_texture_descriptor: u32,
     pending_background: Option<BackgroundConstants>,
@@ -385,6 +386,14 @@ impl D3D12Renderer {
         let texture_heap: ID3D12DescriptorHeap =
             unsafe { device.device().CreateDescriptorHeap(&texture_heap_desc)? };
 
+        let texture_staging_heap: ID3D12DescriptorHeap = unsafe {
+            device.device().CreateDescriptorHeap(&D3D12_DESCRIPTOR_HEAP_DESC {
+                Type: D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                NumDescriptors: MAX_TEXTURES,
+                Flags: windows::Win32::Graphics::Direct3D12::D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+                NodeMask: 0,
+            })?
+        };
         let texture_descriptor_size = unsafe {
             device
                 .device()
@@ -438,6 +447,7 @@ impl D3D12Renderer {
             texture_cache: HashMap::new(),
             material_descriptor_cache: HashMap::new(),
             texture_heap,
+            texture_staging_heap,
             texture_descriptor_size,
             next_texture_descriptor: FIRST_TEXTURE_DESCRIPTOR,
             pending_background: None,
@@ -1299,13 +1309,22 @@ impl D3D12Renderer {
     ) {
         use windows::Win32::Graphics::Direct3D12::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
-        let mut source = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        // Shader-visible heaps are CPU write-only and cannot be copy sources.
+        // Keep readable originals and stable descriptor pairs in a CPU-only heap.
+        let mut source = unsafe { self.texture_staging_heap.GetCPUDescriptorHandleForHeapStart() };
         source.ptr += source_index as usize * self.texture_descriptor_size as usize;
 
         let mut destination = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
         destination.ptr += destination_index as usize * self.texture_descriptor_size as usize;
 
         unsafe {
+            if source_index != destination_index {
+                let mut cpu_destination = self.texture_staging_heap.GetCPUDescriptorHandleForHeapStart();
+                cpu_destination.ptr += destination_index as usize * self.texture_descriptor_size as usize;
+                device.device().CopyDescriptorsSimple(
+                    1, cpu_destination, source, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                );
+            }
             device.device().CopyDescriptorsSimple(
                 1,
                 destination,
@@ -1334,7 +1353,7 @@ impl D3D12Renderer {
         index: u32,
         format: windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT,
     ) {
-        let mut handle = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        let mut handle = unsafe { self.texture_staging_heap.GetCPUDescriptorHandleForHeapStart() };
         handle.ptr += index as usize * self.texture_descriptor_size as usize;
 
         let desc = D3D12_SHADER_RESOURCE_VIEW_DESC {
@@ -1359,6 +1378,7 @@ impl D3D12Renderer {
                 .device()
                 .CreateShaderResourceView(Some(texture.resource()), Some(&desc), handle);
         }
+        self.copy_texture_descriptor(device, index, index);
     }
 }
 
