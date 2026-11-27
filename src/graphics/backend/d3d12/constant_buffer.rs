@@ -1,127 +1,88 @@
 use windows::{
-    Win32::Graphics::{
-        Direct3D12::{
-            D3D12_HEAP_PROPERTIES, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_DESC,
-            D3D12_RESOURCE_DIMENSION_BUFFER, D3D12_RESOURCE_FLAG_NONE,
-            D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, ID3D12Resource,
-        },
-        Dxgi::Common::{DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
-    },
-    core::Result,
+    core::{Error, Result},
+    Win32::{Foundation::{E_INVALIDARG, E_OUTOFMEMORY}, Graphics::{
+        Direct3D12::*, Dxgi::Common::{DXGI_FORMAT_UNKNOWN, DXGI_SAMPLE_DESC},
+    }},
 };
 
 use super::D3D12Device;
 
 const CONSTANT_BUFFER_ALIGNMENT: usize = 256;
+const PAGE_SIZE: usize = 4 * 1024 * 1024;
+const MAX_CONSTANT_SIZE: usize = 64 * 1024;
 
-// Per-frame upload arena. The renderer currently waits for the GPU at the
-// end of each frame, so this arena can be safely reused after reset().
-// 16K aligned allocations = 4 MiB of upload memory.
-const MAX_CONSTANTS_PER_FRAME: usize = 16 * 1024;
-
-pub(crate) struct D3D12ConstantBuffer {
+struct UploadPage {
     resource: ID3D12Resource,
     mapped: *mut u8,
+}
+
+impl UploadPage {
+    fn new(device: &D3D12Device) -> Result<Self> {
+        let mut resource = None;
+        unsafe {
+            device.device().CreateCommittedResource(
+                &D3D12_HEAP_PROPERTIES { Type: D3D12_HEAP_TYPE_UPLOAD, ..Default::default() },
+                D3D12_HEAP_FLAG_NONE,
+                &D3D12_RESOURCE_DESC {
+                    Dimension: D3D12_RESOURCE_DIMENSION_BUFFER,
+                    Width: PAGE_SIZE as u64, Height: 1, DepthOrArraySize: 1, MipLevels: 1,
+                    Format: DXGI_FORMAT_UNKNOWN,
+                    SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+                    Layout: D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+                    ..Default::default()
+                }, D3D12_RESOURCE_STATE_GENERIC_READ, None, &mut resource,
+            )?;
+        }
+        let resource: ID3D12Resource = resource.ok_or_else(|| Error::new(E_OUTOFMEMORY, "constant-buffer allocation returned no resource"))?;
+        let mut mapped = std::ptr::null_mut();
+        unsafe { resource.Map(0, None, Some(&mut mapped))?; }
+        if mapped.is_null() { return Err(Error::new(E_OUTOFMEMORY, "constant-buffer mapping returned null")); }
+        Ok(Self { resource, mapped: mapped as *mut u8 })
+    }
+}
+
+impl Drop for UploadPage {
+    fn drop(&mut self) { unsafe { self.resource.Unmap(0, None); } }
+}
+
+/// Stable GPU addresses for every allocation until the completed frame is reset.
+pub(crate) struct D3D12ConstantBuffer {
+    pages: Vec<UploadPage>,
+    page: usize,
     next_offset: usize,
 }
 
 impl D3D12ConstantBuffer {
     pub(crate) fn new(device: &D3D12Device) -> Result<Self> {
-        let size = CONSTANT_BUFFER_ALIGNMENT * MAX_CONSTANTS_PER_FRAME;
-
-        let resource_desc = D3D12_RESOURCE_DESC {
-            Dimension: D3D12_RESOURCE_DIMENSION_BUFFER,
-            Alignment: 0,
-            Width: size as u64,
-            Height: 1,
-            DepthOrArraySize: 1,
-            MipLevels: 1,
-            Format: DXGI_FORMAT_UNKNOWN,
-            SampleDesc: DXGI_SAMPLE_DESC {
-                Count: 1,
-                Quality: 0,
-            },
-            Layout: D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            Flags: D3D12_RESOURCE_FLAG_NONE,
-        };
-
-        let heap_properties = D3D12_HEAP_PROPERTIES {
-            Type: D3D12_HEAP_TYPE_UPLOAD,
-            ..Default::default()
-        };
-
-        let mut resource: Option<ID3D12Resource> = None;
-
-        unsafe {
-            device.device().CreateCommittedResource(
-                &heap_properties,
-                Default::default(),
-                &resource_desc,
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                None,
-                &mut resource,
-            )?;
-        }
-
-        let resource =
-            resource.expect("CreateCommittedResource succeeded but returned no constant buffer");
-
-        let mut mapped = std::ptr::null_mut();
-
-        unsafe {
-            resource.Map(0, None, Some(&mut mapped))?;
-        }
-
-        Ok(Self {
-            resource,
-            mapped: mapped as *mut u8,
-            next_offset: 0,
-        })
+        Ok(Self { pages: vec![UploadPage::new(device)?], page: 0, next_offset: 0 })
     }
 
-    /// Resets allocation to the beginning of the buffer.
-    ///
-    /// This is safe because the current renderer waits for the GPU
-    /// to finish each frame before beginning another.
+    /// Called only after the previous frame has finished on the GPU.
+    /// Retain pages used in that frame; retire older unused high-water pages.
     pub(crate) fn reset(&mut self) {
+        self.pages.truncate(self.page + 1);
+        self.page = 0;
         self.next_offset = 0;
     }
 
-    pub(crate) fn write<T: Copy>(&mut self, data: &T) -> u64 {
-        let data_size = std::mem::size_of::<T>();
-
-        let allocation_size = (data_size + CONSTANT_BUFFER_ALIGNMENT - 1)
-            / CONSTANT_BUFFER_ALIGNMENT
-            * CONSTANT_BUFFER_ALIGNMENT;
-
-        assert!(
-            self.next_offset + allocation_size
-                <= CONSTANT_BUFFER_ALIGNMENT * MAX_CONSTANTS_PER_FRAME,
-            "Oxide exceeded the temporary per-frame constant-buffer capacity"
-        );
-
-        let offset = self.next_offset;
-
-        self.next_offset += allocation_size;
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(
-                data as *const T as *const u8,
-                self.mapped.add(offset),
-                data_size,
-            );
+    pub(crate) fn write<T: Copy>(&mut self, device: &D3D12Device, data: &T) -> Result<u64> {
+        let size = std::mem::size_of::<T>();
+        if size == 0 || size > MAX_CONSTANT_SIZE {
+            return Err(Error::new(E_INVALIDARG, "constant-buffer data must contain between one byte and 64 KiB"));
         }
-
-        let base_address = unsafe { self.resource.GetGPUVirtualAddress() };
-
-        base_address + offset as u64
-    }
-}
-
-impl Drop for D3D12ConstantBuffer {
-    fn drop(&mut self) {
+        let allocation = size.div_ceil(CONSTANT_BUFFER_ALIGNMENT) * CONSTANT_BUFFER_ALIGNMENT;
+        if self.next_offset + allocation > PAGE_SIZE {
+            let next = self.page + 1;
+            if next == self.pages.len() { self.pages.push(UploadPage::new(device)?); }
+            self.page = next;
+            self.next_offset = 0;
+        }
+        let page = &self.pages[self.page];
+        let offset = self.next_offset;
+        self.next_offset += allocation;
         unsafe {
-            self.resource.Unmap(0, None);
+            std::ptr::copy_nonoverlapping(data as *const T as *const u8, page.mapped.add(offset), size);
+            Ok(page.resource.GetGPUVirtualAddress() + offset as u64)
         }
     }
 }

@@ -1,4 +1,5 @@
 pub(crate) mod constant_buffer;
+pub(crate) mod descriptor_allocator;
 pub(crate) mod device;
 pub(crate) mod index_buffer;
 pub(crate) mod pipeline;

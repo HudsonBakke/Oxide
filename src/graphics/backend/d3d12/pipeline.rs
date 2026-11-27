@@ -379,10 +379,10 @@ impl D3D12Pipeline {
             ..Default::default()
         };
 
-        let pipeline_state: ID3D12PipelineState = unsafe {
+        let pipeline_result: Result<ID3D12PipelineState> = unsafe {
             device
                 .device()
-                .CreateGraphicsPipelineState(&pipeline_desc)?
+                .CreateGraphicsPipelineState(&pipeline_desc)
         };
 
         unsafe {
@@ -391,7 +391,7 @@ impl D3D12Pipeline {
 
         Ok(Self {
             root_signature,
-            pipeline_state,
+            pipeline_state: pipeline_result?,
         })
     }
 
@@ -609,17 +609,17 @@ impl D3D12Pipeline {
             },
             ..Default::default()
         };
-        let pipeline_state = unsafe {
+        let pipeline_result: Result<ID3D12PipelineState> = unsafe {
             device
                 .device()
-                .CreateGraphicsPipelineState(&pipeline_desc)?
+                .CreateGraphicsPipelineState(&pipeline_desc)
         };
         unsafe {
             std::mem::ManuallyDrop::drop(&mut pipeline_desc.pRootSignature);
         }
         Ok(Self {
             root_signature,
-            pipeline_state,
+            pipeline_state: pipeline_result?,
         })
     }
 

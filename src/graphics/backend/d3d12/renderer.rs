@@ -25,7 +25,8 @@ use windows::{
     core::{Interface, Result},
 };
 
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, sync::Weak};
+use super::descriptor_allocator::DescriptorAllocator;
 use super::{
     render_target::HdrTarget, shadow_map::ShadowMap,
     transmission_map::{TransmissionMap, TRANSMISSION_LAYERS, TRANSMISSION_MAX_RESOLUTION, FIRST_TEXTURE_DESCRIPTOR, MAX_SHADOW_LIGHTS, PREVIOUS_VIEWS_PER_LIGHT, array_srv},
@@ -299,6 +300,7 @@ struct ViewConstants {
 }
 
 struct CachedMesh {
+    owner: Weak<()>,
     center: Vec3,
     vertex_buffer: D3D12VertexBuffer,
     index_buffer: D3D12IndexBuffer,
@@ -315,6 +317,7 @@ impl CachedMesh {
         );
         let center = if mesh.vertices().is_empty() { Vec3::default() } else { (minimum + maximum) * 0.5 };
         Ok(Self {
+            owner: mesh.lifetime(),
             center,
             vertex_buffer: D3D12VertexBuffer::new(device, mesh.vertices())?,
             index_buffer: D3D12IndexBuffer::new(device, mesh.indices())?,
@@ -364,7 +367,8 @@ pub(crate) struct D3D12Renderer {
     texture_heap: ID3D12DescriptorHeap,
     texture_staging_heap: ID3D12DescriptorHeap,
     texture_descriptor_size: u32,
-    next_texture_descriptor: u32,
+    descriptors: DescriptorAllocator,
+    texture_owners: HashMap<TextureId, Weak<()>>,
     pending_background: Option<BackgroundConstants>,
     background_drawn: bool,
 }
@@ -501,7 +505,8 @@ impl D3D12Renderer {
             texture_heap,
             texture_staging_heap,
             texture_descriptor_size,
-            next_texture_descriptor: FIRST_TEXTURE_DESCRIPTOR,
+            descriptors: DescriptorAllocator::new(FIRST_TEXTURE_DESCRIPTOR, MAX_TEXTURES),
+            texture_owners: HashMap::new(),
             pending_background: None,
             background_drawn: false,
         })
@@ -524,6 +529,7 @@ impl D3D12Renderer {
         device: &D3D12Device,
         swap_chain: &D3D12SwapChain,
     ) -> Result<()> {
+        self.reclaim_unused_assets();
         self.reset_frame_state();
         let frame_index = swap_chain.current_frame_index();
         let command_allocator = &self.command_allocators[frame_index];
@@ -624,7 +630,7 @@ impl D3D12Renderer {
         }
     }
 
-    fn record_caster(&mut self, draw: &QueuedMesh, matrix: Mat4, first_layer: bool) {
+    fn record_caster(&mut self, device: &D3D12Device, draw: &QueuedMesh, matrix: Mat4, first_layer: bool) -> Result<()> {
         #[repr(C)]
         #[derive(Clone, Copy)]
         struct Constants { matrix: [[f32; 4]; 4], parameters: [f32; 4] }
@@ -632,7 +638,7 @@ impl D3D12Renderer {
             matrix: (matrix * draw.model).transposed().as_array(),
             parameters: [draw.transparency, first_layer as u8 as f32, 0.0, 0.0],
         };
-        let address = self.constant_buffer.write(&constants);
+        let address = self.constant_buffer.write(device, &constants)?;
         let mesh = &self.mesh_cache[&draw.mesh];
         unsafe {
             self.command_list.SetGraphicsRootConstantBufferView(0, address);
@@ -640,6 +646,7 @@ impl D3D12Renderer {
             self.command_list.IASetIndexBuffer(Some(mesh.index_buffer.view()));
             self.command_list.DrawIndexedInstanced(mesh.index_buffer.index_count(), 1, 0, 0, 0);
         }
+        Ok(())
     }
 
     fn render_shadows(&mut self, device: &D3D12Device) -> Result<u64> {
@@ -653,6 +660,7 @@ impl D3D12Renderer {
             if self.shadow_resources[index].as_ref().is_none_or(|resources| resources.opaque.resolution != resolution || resources.opaque.faces != request.faces) {
                 let map = ShadowMap::new_array(device, resolution, request.faces, self.shadow_cpu(1 + index))?;
                 self.shadow_resources[index] = Some(ShadowResources { opaque: map, transmission: None });
+                self.clear_shadow_views(device, index, false);
             }
             for face in 0..request.faces {
                 let map = &self.shadow_resources[index].as_ref().unwrap().opaque;
@@ -665,7 +673,7 @@ impl D3D12Renderer {
                     self.command_list.SetPipelineState(self.shadow_pipeline.pipeline_state());
                 }
                 self.set_viewport(Rect::new(0.0, 0.0, resolution as f32, resolution as f32));
-                for draw in casters.iter().filter(|draw| draw.transparency == 0.0) { self.record_caster(draw, request.matrices[face as usize], true); }
+                for draw in casters.iter().filter(|draw| draw.transparency == 0.0) { self.record_caster(device, draw, request.matrices[face as usize], true)?; }
                 unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
                 transition_slice(&self.command_list, &self.shadow_resources[index].as_ref().unwrap().opaque.resource, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, face);
             }
@@ -698,7 +706,7 @@ impl D3D12Renderer {
                             self.command_list.SetPipelineState(self.transmission_pipeline.pipeline_state());
                             self.command_list.SetGraphicsRootDescriptorTable(1, previous);
                         }
-                        for draw in &transparent { self.record_caster(draw, request.matrices[face as usize], layer == 0); }
+                        for draw in &transparent { self.record_caster(device, draw, request.matrices[face as usize], layer == 0)?; }
                         unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
                         let map = self.shadow_resources[index].as_ref().unwrap().transmission.as_ref().unwrap();
                         transition_slice(&self.command_list, &map.depth, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, slice);
@@ -714,7 +722,7 @@ impl D3D12Renderer {
                 position: [request.position.x, request.position.y, request.position.z, 0.0],
             };
         }
-        Ok(self.constant_buffer.write(&constants))
+        Ok(self.constant_buffer.write(device, &constants)?)
     }
 
     fn render_scene_mesh(&self, draw: &QueuedMesh, shadow_address: u64) {
@@ -793,6 +801,7 @@ impl D3D12Renderer {
             .map_err(|error| invalid_shadow_order(&error.to_string()))?;
         let view_address = self.view_address.ok_or_else(|| invalid_shadow_order("bind a camera before drawing a mesh"))?;
         let destination = self.destination.unwrap();
+        self.validate_light_capacity()?;
         if !self.background_drawn {
             self.draw_background(device)?;
             self.background_drawn = true;
@@ -803,57 +812,18 @@ impl D3D12Renderer {
         let normal_matrix = transform.normal_matrix();
 
         let texture = material.base_texture();
-
         let texture_id = texture.id();
-
-        if !self.texture_cache.contains_key(&texture_id) {
-            assert!(
-                self.next_texture_descriptor < MAX_TEXTURES,
-                "Oxide exceeded the temporary GPU texture limit"
-            );
-
-            let descriptor_index = self.next_texture_descriptor;
-
-            self.next_texture_descriptor += 1;
-
-            let gpu_texture =
-                D3D12Texture::new(device, &self.command_list, texture, descriptor_index)?;
-
-            self.create_texture_srv(device, &gpu_texture);
-
-            self.texture_cache.insert(texture_id, gpu_texture);
-        }
-
-        let base_descriptor_index = self
-            .texture_cache
-            .get(&texture_id)
-            .expect("texture should be cached after upload")
-            .descriptor_index();
-
+        let base_descriptor_index = self.ensure_texture(device, texture)?;
         let normal_texture = material.normal_texture();
         let normal_texture_id = normal_texture.id();
-
-        if !self.texture_cache.contains_key(&normal_texture_id) {
-            assert!(
-                self.next_texture_descriptor < MAX_TEXTURES,
-                "Oxide exceeded the temporary GPU texture limit"
-            );
-            let descriptor_index = self.next_texture_descriptor;
-            self.next_texture_descriptor += 1;
-            let gpu_normal =
-                D3D12Texture::new(device, &self.command_list, normal_texture, descriptor_index)?;
-            self.create_texture_srv(device, &gpu_normal);
-            self.texture_cache.insert(normal_texture_id, gpu_normal);
-        }
+        self.ensure_texture(device, normal_texture)?;
 
         let normal_descriptor_index = if let Some(&index) =
             self.normal_descriptor_cache.get(&normal_texture_id)
         {
             index
         } else {
-            let index = self.next_texture_descriptor;
-            assert!(index < MAX_TEXTURES);
-            self.next_texture_descriptor += 1;
+            let index = self.descriptors.allocate(1)?;
             let texture = &self.texture_cache[&normal_texture_id];
             let format = if texture.format() == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB {
                 DXGI_FORMAT_R8G8B8A8_UNORM
@@ -871,12 +841,7 @@ impl D3D12Renderer {
         let descriptor_index = if let Some(&index) = self.material_descriptor_cache.get(&pair_key) {
             index
         } else {
-            let index = self.next_texture_descriptor;
-            assert!(
-                index + 1 < MAX_TEXTURES,
-                "Oxide exceeded the temporary GPU texture limit"
-            );
-            self.next_texture_descriptor += 2;
+            let index = self.descriptors.allocate(2)?;
             self.copy_texture_descriptor(device, base_descriptor_index, index);
             self.copy_texture_descriptor(device, normal_descriptor_index, index + 1);
             self.material_descriptor_cache.insert(pair_key, index);
@@ -906,7 +871,7 @@ impl D3D12Renderer {
             transparency: [transparency, 0.0, 0.0, 0.0],
         };
 
-        let model_address = self.constant_buffer.write(&object_constants);
+        let model_address = self.constant_buffer.write(device, &object_constants)?;
 
         let mesh_key = (mesh.id(), mesh.vertex_generation(), mesh.index_generation());
         if !self.mesh_cache.contains_key(&mesh_key) {
@@ -951,9 +916,6 @@ impl D3D12Renderer {
                 ActiveLight::Point(light) => {
                     let index = light_constants.point_light_count as usize;
 
-                    if index >= MAX_POINT_LIGHTS {
-                        continue;
-                    }
 
                     let position = light.position();
                     let color = light.color();
@@ -970,9 +932,6 @@ impl D3D12Renderer {
                 ActiveLight::Spot(light) => {
                     let index = light_constants.spot_light_count as usize;
 
-                    if index >= MAX_SPOT_LIGHTS {
-                        continue;
-                    }
 
                     let position = light.position();
                     let direction = light.direction();
@@ -997,9 +956,6 @@ impl D3D12Renderer {
                 ActiveLight::Directional(light) => {
                     let index = light_constants.directional_light_count as usize;
 
-                    if index >= MAX_DIRECTIONAL_LIGHTS {
-                        continue;
-                    }
 
                     let direction = light.direction();
                     let color = light.color();
@@ -1015,7 +971,7 @@ impl D3D12Renderer {
             }
         }
 
-        let light_address = self.constant_buffer.write(&light_constants);
+        let light_address = self.constant_buffer.write(device, &light_constants)?;
 
         let center = model_matrix.transform_point(self.mesh_cache[&mesh_key].center);
         let sort_depth = -self.camera_view.unwrap().transform_point(center).z;
@@ -1055,7 +1011,7 @@ impl D3D12Renderer {
         unsafe {
             self.command_list.OMSetRenderTargets(1, Some(&rtv), false, None);
         }
-        let display_address = self.constant_buffer.write(&[self.exposure, 0.0_f32, 0.0, 0.0]);
+        let display_address = self.constant_buffer.write(device, &[self.exposure, 0.0_f32, 0.0, 0.0])?;
         unsafe {
             self.command_list.SetGraphicsRootSignature(self.display_pipeline.root_signature());
             self.command_list.SetPipelineState(self.display_pipeline.pipeline_state());
@@ -1092,11 +1048,7 @@ impl D3D12Renderer {
         swap_chain.present()?;
 
         self.wait_for_gpu(device)?;
-        self.commands.clear();
-        self.mesh_cache.retain(|(id, vertices, indices), _| {
-            self.latest_mesh_versions.get(id) == Some(&(*vertices, *indices))
-        });
-
+        self.finish_completed_frame(device);
 
         Ok(())
     }
@@ -1188,7 +1140,7 @@ impl D3D12Renderer {
             camera_position: [position.x, position.y, position.z, 1.0],
         };
 
-        let view_address = self.constant_buffer.write(&view_constants);
+        let view_address = self.constant_buffer.write(device, &view_constants)?;
         self.view_address = Some(view_address);
 
         self.destination = Some(destination);
@@ -1220,143 +1172,174 @@ impl D3D12Renderer {
         self.active_lights.clear();
     }
 
-    fn draw_background(&mut self, device: &D3D12Device) -> Result<()> {
-        let Some(mut constants) = self.pending_background else {
-            return Ok(());
-        };
-        let texture = self.environment.as_ref()
-            .and_then(|environment| environment.background_texture.as_ref());
-        constants.projection_params[2] = texture.is_some() as u8 as f32;
-        let color = self.environment.as_ref().map(|environment| environment.background_color)
-            .unwrap_or(crate::graphics::Color::rgba(0.10, 0.15, 0.25, 1.0));
-        constants.fallback_color = [color.r, color.g, color.b, color.a];
-        let texture = texture.unwrap_or(&self.fallback_environment_texture);
-
-        let texture_id = texture.id();
-        if !self.texture_cache.contains_key(&texture_id) {
-            let descriptor_index = self.next_texture_descriptor;
-            assert!(descriptor_index < MAX_TEXTURES);
-            self.next_texture_descriptor += 1;
-            let gpu = D3D12Texture::new(device, &self.command_list, texture, descriptor_index)?;
-            self.create_texture_srv(device, &gpu);
-            self.texture_cache.insert(texture_id, gpu);
+    fn validate_light_capacity(&self) -> Result<()> {
+        let mut counts = [0; 3];
+        for light in &self.active_lights {
+            let (index, name, maximum) = match light {
+                ActiveLight::Point(_) => (0, "point", MAX_POINT_LIGHTS),
+                ActiveLight::Spot(_) => (1, "spot", MAX_SPOT_LIGHTS),
+                ActiveLight::Directional(_) => (2, "directional", MAX_DIRECTIONAL_LIGHTS),
+            };
+            counts[index] += 1;
+            if counts[index] > maximum {
+                return Err(invalid_shadow_order(&format!("draw has too many {name} lights: maximum {maximum} per draw; clear or reduce the active lights")));
+            }
         }
-        let descriptor_index = self.texture_cache[&texture_id].descriptor_index();
-        let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
-        handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
-        let address = self.constant_buffer.write(&constants);
-
-        self.commands.push(SceneCommand::Background {
-            constants: address, texture: handle, destination: self.destination.unwrap(),
-        });
         Ok(())
     }
 
-    fn prepare_environment_descriptors(
-        &mut self,
-        device: &D3D12Device,
-    ) -> Result<D3D12_GPU_DESCRIPTOR_HANDLE> {
-        let environment_texture = self
-            .environment
-            .as_ref()
-            .and_then(|environment| environment.environment_texture.as_ref());
-        let background_texture = self
-            .environment
-            .as_ref()
-            .and_then(|environment| environment.background_texture.as_ref());
+    fn ensure_texture(&mut self, device: &D3D12Device, texture: &crate::graphics::Texture) -> Result<u32> {
+        let id = texture.id();
+        if let Some(gpu) = self.texture_cache.get(&id) { return Ok(gpu.descriptor_index()); }
+        let index = self.descriptors.allocate(1)?;
+        let gpu = match D3D12Texture::new(device, &self.command_list, texture, index) {
+            Ok(gpu) => gpu,
+            Err(error) => { self.descriptors.release(index, 1); return Err(error); }
+        };
+        self.create_texture_srv(device, &gpu);
+        self.texture_owners.insert(id, texture.lifetime());
+        self.texture_cache.insert(id, gpu);
+        Ok(index)
+    }
 
-        let environment_id = environment_texture.map(|texture| texture.id());
-        let background_id = background_texture.map(|texture| texture.id());
+    fn ensure_fallback(&mut self, device: &D3D12Device) -> Result<u32> {
+        if let Some(gpu) = self.texture_cache.get(&self.fallback_environment_texture.id()) { return Ok(gpu.descriptor_index()); }
+        // This texture is only one pixel; cloned once on its first upload.
+        let fallback = self.fallback_environment_texture.clone();
+        self.ensure_texture(device, &fallback)
+    }
 
-        if let Some(texture) = environment_texture {
+    fn draw_background(&mut self, device: &D3D12Device) -> Result<()> {
+        let environment = self.environment.take();
+        let result = self.prepare_background(device, environment.as_ref());
+        self.environment = environment;
+        result
+    }
+
+    fn prepare_background(&mut self, device: &D3D12Device, environment: Option<&Environment>) -> Result<()> {
+        let Some(mut constants) = self.pending_background else { return Ok(()); };
+        let texture = environment.and_then(|environment| environment.background_texture.as_ref());
+        constants.projection_params[2] = texture.is_some() as u8 as f32;
+        let color = environment.map(|environment| environment.background_color)
+            .unwrap_or(crate::graphics::Color::rgba(0.10, 0.15, 0.25, 1.0));
+        constants.fallback_color = [color.r, color.g, color.b, color.a];
+        let index = if let Some(texture) = texture { self.ensure_texture(device, texture)? } else { self.ensure_fallback(device)? };
+        let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+        handle.ptr += index as u64 * self.texture_descriptor_size as u64;
+        let address = self.constant_buffer.write(device, &constants)?;
+        self.commands.push(SceneCommand::Background { constants: address, texture: handle, destination: self.destination.unwrap() });
+        Ok(())
+    }
+
+    fn prepare_environment_descriptors(&mut self, device: &D3D12Device) -> Result<D3D12_GPU_DESCRIPTOR_HANDLE> {
+        let environment = self.environment.take();
+        let result = self.prepare_environment(device, environment.as_ref());
+        self.environment = environment;
+        result
+    }
+
+    fn prepare_environment(&mut self, device: &D3D12Device, environment: Option<&Environment>) -> Result<D3D12_GPU_DESCRIPTOR_HANDLE> {
+        let lighting = environment.and_then(|environment| environment.environment_texture.as_ref());
+        let background = environment.and_then(|environment| environment.background_texture.as_ref());
+        let key = (lighting.map(|texture| texture.id()), background.map(|texture| texture.id()));
+        if let Some(texture) = lighting {
             let id = texture.id();
-            if !self.specular_cache.contains_key(&id) {
+            if !self.specular_cache.contains_key(&id) || !self.irradiance_cache.contains_key(&id) {
                 let prefilter = texture.environment_prefilter();
-
-                let specular_index = self.next_texture_descriptor;
-                assert!(specular_index < MAX_TEXTURES);
-                self.next_texture_descriptor += 1;
-                let specular = D3D12Texture::new_float_levels(
-                    device,
-                    &self.command_list,
-                    &prefilter.specular,
-                    specular_index,
-                )?;
-                self.create_texture_srv(device, &specular);
-                self.specular_cache.insert(id, specular);
-
-                let irradiance_index = self.next_texture_descriptor;
-                assert!(irradiance_index < MAX_TEXTURES);
-                self.next_texture_descriptor += 1;
-                let irradiance_level = vec![prefilter.irradiance];
-                let irradiance = D3D12Texture::new_float_levels(
-                    device,
-                    &self.command_list,
-                    &irradiance_level,
-                    irradiance_index,
-                )?;
-                self.create_texture_srv(device, &irradiance);
-                self.irradiance_cache.insert(id, irradiance);
+                if !self.specular_cache.contains_key(&id) {
+                    let index = self.descriptors.allocate(1)?;
+                    let gpu = match D3D12Texture::new_float_levels(device, &self.command_list, &prefilter.specular, index) {
+                        Ok(gpu) => gpu,
+                        Err(error) => { self.descriptors.release(index, 1); return Err(error); }
+                    };
+                    self.create_texture_srv(device, &gpu);
+                    self.specular_cache.insert(id, gpu);
+                    self.texture_owners.insert(id, texture.lifetime());
+                }
+                if !self.irradiance_cache.contains_key(&id) {
+                    let index = self.descriptors.allocate(1)?;
+                    let gpu = match D3D12Texture::new_float_levels(device, &self.command_list, &[prefilter.irradiance], index) {
+                        Ok(gpu) => gpu,
+                        Err(error) => { self.descriptors.release(index, 1); return Err(error); }
+                    };
+                    self.create_texture_srv(device, &gpu);
+                    self.irradiance_cache.insert(id, gpu);
+                    self.texture_owners.insert(id, texture.lifetime());
+                }
             }
         }
-
-        if let Some(texture) = background_texture {
-            let id = texture.id();
-            if !self.texture_cache.contains_key(&id) {
-                let index = self.next_texture_descriptor;
-                assert!(index < MAX_TEXTURES);
-                self.next_texture_descriptor += 1;
-                let gpu = D3D12Texture::new(device, &self.command_list, texture, index)?;
-                self.create_texture_srv(device, &gpu);
-                self.texture_cache.insert(id, gpu);
-            }
-        }
-
-        let fallback_id = self.fallback_environment_texture.id();
-        if !self.texture_cache.contains_key(&fallback_id) {
-            let index = self.next_texture_descriptor;
-            assert!(index < MAX_TEXTURES);
-            self.next_texture_descriptor += 1;
-            let gpu = D3D12Texture::new(
-                device,
-                &self.command_list,
-                &self.fallback_environment_texture,
-                index,
-            )?;
-            self.create_texture_srv(device, &gpu);
-            self.texture_cache.insert(fallback_id, gpu);
-        }
-
-        let key = (environment_id, background_id);
-        let descriptor_index = if let Some(&index) = self.environment_descriptor_cache.get(&key) {
-            index
-        } else {
-            let index = self.next_texture_descriptor;
-            assert!(index + 2 < MAX_TEXTURES);
-            self.next_texture_descriptor += 3;
-
-            let fallback_descriptor = self.texture_cache[&fallback_id].descriptor_index();
-            let specular_descriptor = environment_id
-                .map(|id| self.specular_cache[&id].descriptor_index())
-                .unwrap_or(fallback_descriptor);
-            let irradiance_descriptor = environment_id
-                .and_then(|id| self.irradiance_cache.get(&id))
-                .map(|texture| texture.descriptor_index())
-                .unwrap_or(fallback_descriptor);
-            let background_descriptor = background_id
-                .map(|id| self.texture_cache[&id].descriptor_index())
-                .unwrap_or(fallback_descriptor);
-
-            self.copy_texture_descriptor(device, specular_descriptor, index);
-            self.copy_texture_descriptor(device, irradiance_descriptor, index + 1);
-            self.copy_texture_descriptor(device, background_descriptor, index + 2);
+        let background_index = if let Some(texture) = background { Some(self.ensure_texture(device, texture)?) } else { None };
+        let fallback = self.ensure_fallback(device)?;
+        let index = if let Some(&index) = self.environment_descriptor_cache.get(&key) { index } else {
+            let index = self.descriptors.allocate(3)?;
+            let specular = key.0.map(|id| self.specular_cache[&id].descriptor_index()).unwrap_or(fallback);
+            let irradiance = key.0.map(|id| self.irradiance_cache[&id].descriptor_index()).unwrap_or(fallback);
+            self.copy_texture_descriptor(device, specular, index);
+            self.copy_texture_descriptor(device, irradiance, index + 1);
+            self.copy_texture_descriptor(device, background_index.unwrap_or(fallback), index + 2);
             self.environment_descriptor_cache.insert(key, index);
             index
         };
-
         let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
-        handle.ptr += descriptor_index as u64 * self.texture_descriptor_size as u64;
+        handle.ptr += index as u64 * self.texture_descriptor_size as u64;
         Ok(handle)
+    }
+
+    // Both callers are GPU-idle boundaries. Weak ownership never retires an
+    // asset while its already-submitted draw/copy commands can still execute.
+    fn reclaim_unused_assets(&mut self) {
+        self.mesh_cache.retain(|(id, vertices, indices), cached| {
+            cached.owner.strong_count() > 0 && self.latest_mesh_versions.get(id) == Some(&(*vertices, *indices))
+        });
+        let mesh_ids: HashSet<_> = self.mesh_cache.keys().map(|key| key.0).collect();
+        self.latest_mesh_versions.retain(|id, _| mesh_ids.contains(id));
+        let dead: HashSet<_> = self.texture_owners.iter().filter_map(|(id, owner)| (owner.strong_count() == 0).then_some(*id)).collect();
+        let descriptors = &mut self.descriptors;
+        self.material_descriptor_cache.retain(|(base, normal), index| {
+            if dead.contains(base) || dead.contains(normal) { descriptors.release(*index, 2); false } else { true }
+        });
+        self.environment_descriptor_cache.retain(|(lighting, background), index| {
+            if lighting.is_some_and(|id| dead.contains(&id)) || background.is_some_and(|id| dead.contains(&id)) { descriptors.release(*index, 3); false } else { true }
+        });
+        self.normal_descriptor_cache.retain(|id, index| {
+            if dead.contains(id) { descriptors.release(*index, 1); false } else { true }
+        });
+        for cache in [&mut self.texture_cache, &mut self.specular_cache, &mut self.irradiance_cache] {
+            cache.retain(|id, texture| {
+                if dead.contains(id) { descriptors.release(texture.descriptor_index(), 1); false } else { true }
+            });
+        }
+        self.texture_owners.retain(|id, _| !dead.contains(id));
+        for cache in [&mut self.texture_cache, &mut self.specular_cache, &mut self.irradiance_cache] {
+            for texture in cache.values_mut() { texture.finish_upload(); }
+        }
+    }
+
+    fn clear_shadow_views(&self, device: &D3D12Device, index: usize, include_opaque: bool) {
+        for (base, format) in [(1, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R32_FLOAT), (1 + MAX_SHADOW_LIGHTS, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R32_FLOAT), (1 + 2 * MAX_SHADOW_LIGHTS, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R16_FLOAT)] {
+            if base == 1 && !include_opaque { continue; }
+            array_srv(device, None, format, 0, 1, self.shadow_cpu(base + index));
+        }
+        for slice in 0..PREVIOUS_VIEWS_PER_LIGHT as usize {
+            array_srv(device, None, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R32_FLOAT, 0, 1,
+                self.shadow_cpu(1 + 3 * MAX_SHADOW_LIGHTS + index * PREVIOUS_VIEWS_PER_LIGHT as usize + slice));
+        }
+    }
+
+    fn finish_completed_frame(&mut self, device: &D3D12Device) {
+        let transmission_used = self.commands.iter().any(|command| matches!(command, SceneCommand::Mesh(draw) if draw.transparency > 0.0 && draw.transparency < 1.0));
+        self.commands.clear();
+        self.reclaim_unused_assets();
+        for index in 0..self.shadow_resources.len() {
+            if index >= self.shadow_requests.len() {
+                self.shadow_resources[index] = None;
+                self.clear_shadow_views(device, index, true);
+            } else if !transmission_used {
+                self.shadow_resources[index].as_mut().unwrap().transmission = None;
+                self.clear_shadow_views(device, index, false);
+            }
+        }
+        self.shadow_resources.truncate(self.shadow_requests.len());
     }
 
     fn copy_texture_descriptor(
@@ -1449,31 +1432,3 @@ impl Drop for D3D12Renderer {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn directional_shadow_pipelines_and_depth_views_are_valid_on_d3d12() {
-        let device = D3D12Device::warp_for_test().unwrap();
-        // Creating the real PSOs checks shader/root-signature compatibility,
-        // including comparison sampling and the depth-only output layout.
-        let mut renderer = D3D12Renderer::new(&device).unwrap();
-        let mut srv = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
-        srv.ptr += renderer.texture_descriptor_size as usize;
-        for resolution in [128, 1024] {
-            let map = ShadowMap::new(&device, resolution, srv).unwrap();
-            assert_eq!(map.resolution, resolution);
-            assert_eq!(unsafe { map.resource.GetDesc() }.Width, resolution as u64);
-        }
-        let light = DirectionalLight::new(crate::math::Vec3::new(0.0, -1.0, 0.0), crate::graphics::Color::WHITE, 1.0).unwrap();
-        let _ = light;
-        let layers = TransmissionMap::new(&device, 128, 1, renderer.shadow_cpu(1 + MAX_SHADOW_LIGHTS), renderer.shadow_cpu(1 + 2 * MAX_SHADOW_LIGHTS), renderer.shadow_cpu(1 + 3 * MAX_SHADOW_LIGHTS), renderer.texture_descriptor_size as usize).unwrap();
-        assert_eq!(layers.dsvs.len(), TRANSMISSION_LAYERS as usize);
-    }
-}
-
-#[cfg(test)]
-#[path = "renderer_tests.rs"]
-mod render_tests;

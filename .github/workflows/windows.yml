@@ -41,11 +41,19 @@ jobs:
           python-version: '3.11'
           architecture: x64
 
+      - name: Enforce consolidated test layout
+        run: python tests/check_test_layout.py
+
       - name: Compile all embedded HLSL shaders
         run: ./scripts/build-shaders.ps1
 
       - name: Check Rust library, examples, tests, and benchmarks
-        run: cargo check --locked --all-targets
+        id: rust_check
+        run: python tests/run_rust_tests.py --check
+
+      - name: 'Rust compile failure: ${{ steps.rust_check.outputs.detail }}'
+        if: failure() && steps.rust_check.outcome == 'failure'
+        run: exit 1
 
       - name: Check public Rust documentation
         env:
@@ -54,7 +62,7 @@ jobs:
 
       - name: Run Rust unit and integration tests
         id: rust_tests
-        run: python scripts/check-rust-tests.py
+        run: python tests/run_rust_tests.py
 
       - name: 'Rust test failure: ${{ steps.rust_tests.outputs.detail }}'
         if: failure() && steps.rust_tests.outcome == 'failure'
@@ -73,7 +81,7 @@ jobs:
           }
 
       - name: Check C# shared light interface and native layouts
-        run: dotnet run --no-build --project examples/csharp/Shadows/Shadows.csproj -- --verify-lights
+        run: dotnet run --project tests/csharp/Oxide.Tests.csproj
 
       - name: Compile and link the C example against oxide.dll
         shell: cmd
@@ -89,10 +97,10 @@ jobs:
         env:
           OXIDE_LIBRARY: ${{ github.workspace }}\target\debug\oxide.dll
         run: |
-          python -m compileall -q bindings/python/oxide examples/python
+          python -m compileall -q bindings/python/oxide examples/python tests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -c "import oxide; import oxide.app; import oxide.collision; import oxide.content; import oxide.graphics; import oxide.input; import oxide.math"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python examples/python/math_test.py
+          python tests/python_math.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/python_shadows.py

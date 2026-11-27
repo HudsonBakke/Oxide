@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 result = subprocess.run(
+    ["cargo", "check", "--locked", "--all-targets"] if "--check" in sys.argv else
     ["cargo", "test", "--locked", "--lib", "--tests", "--", "--test-threads=1", "--nocapture"],
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
@@ -18,7 +19,7 @@ if result.returncode and os.environ.get("GITHUB_OUTPUT"):
     plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
     lines = plain.splitlines()
     details = [line for line in lines if any(term in line for term in (
-        "panicked at", "wrong transmission", "receiver must be lit", "opposing camera sort",
+        "error", " -->", "panicked at", "wrong transmission", "receiver must be lit", "opposing camera sort",
         "assertion", "left:", "right:", " != ", "FAILED", "GPU CHECK", "called `Result", "D3D12 validation",
     ))]
     detail = " | ".join((details or lines[-12:])[-12:])[:1800]

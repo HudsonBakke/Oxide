@@ -1,7 +1,7 @@
 use std::{
     io::{Read, Write},
     path::Path,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{atomic::{AtomicU64, Ordering}, Arc, Weak},
 };
 
 use super::Vertex;
@@ -28,6 +28,7 @@ fn next_mesh_id() -> MeshId {
 #[derive(Debug)]
 pub struct Mesh {
     id: MeshId,
+    lifetime: Arc<()>,
 
     vertex_generation: u64,
     index_generation: u64,
@@ -149,6 +150,7 @@ impl Mesh {
 
         Self {
             id: next_mesh_id(),
+            lifetime: Arc::new(()),
 
             vertex_generation: 0,
             index_generation: 0,
@@ -241,6 +243,10 @@ impl Mesh {
     /// Number of vertex indices; each group of three describes a triangle.
     pub fn index_count(&self) -> usize {
         self.indices.len()
+    }
+
+    pub(crate) fn lifetime(&self) -> Weak<()> {
+        Arc::downgrade(&self.lifetime)
     }
 
     pub(crate) fn id(&self) -> MeshId {
@@ -357,6 +363,7 @@ impl Clone for Mesh {
     fn clone(&self) -> Self {
         Self {
             id: next_mesh_id(),
+            lifetime: Arc::new(()),
 
             vertex_generation: 0,
             index_generation: 0,

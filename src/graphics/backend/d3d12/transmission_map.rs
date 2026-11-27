@@ -7,8 +7,8 @@ use super::D3D12Device;
 
 pub(crate) const TRANSMISSION_LAYERS: u32 = 8;
 pub(crate) const TRANSMISSION_MAX_RESOLUTION: u32 = 1024;
-// Heap slots: HDR=0, opaque depth=1, transmission depth=2, values=3,
-// previous-depth views=4..12. Ordinary textures start at 12.
+// Heap slots: HDR, three arrays of 32 shadow views, then 48 previous-depth
+// views per light. Ordinary reusable texture ranges follow these reserved slots.
 pub(crate) const MAX_SHADOW_LIGHTS: usize = 32;
 pub(crate) const PREVIOUS_VIEWS_PER_LIGHT: u32 = 6 * TRANSMISSION_LAYERS;
 pub(crate) const FIRST_TEXTURE_DESCRIPTOR: u32 = 1 + 3 * MAX_SHADOW_LIGHTS as u32 + MAX_SHADOW_LIGHTS as u32 * PREVIOUS_VIEWS_PER_LIGHT;

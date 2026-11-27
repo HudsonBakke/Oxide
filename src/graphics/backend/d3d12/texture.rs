@@ -27,13 +27,18 @@ use super::D3D12Device;
 
 pub(crate) struct D3D12Texture {
     resource: ID3D12Resource,
-    _upload_resource: ID3D12Resource,
+    upload_resource: Option<ID3D12Resource>,
 
     descriptor_index: u32,
     format: DXGI_FORMAT,
 }
 
 impl D3D12Texture {
+    /// The upload commands have completed; staging memory can now be retired.
+    pub(crate) fn finish_upload(&mut self) {
+        self.upload_resource = None;
+    }
+
     pub(crate) fn resource(&self) -> &ID3D12Resource {
         &self.resource
     }
@@ -189,7 +194,7 @@ impl D3D12Texture {
             upload_resource.Unmap(0, None);
         }
 
-        let source = D3D12_TEXTURE_COPY_LOCATION {
+        let mut source = D3D12_TEXTURE_COPY_LOCATION {
             pResource: std::mem::ManuallyDrop::new(Some(upload_resource.clone())),
 
             Type: D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
@@ -199,7 +204,7 @@ impl D3D12Texture {
             },
         };
 
-        let destination = D3D12_TEXTURE_COPY_LOCATION {
+        let mut destination = D3D12_TEXTURE_COPY_LOCATION {
             pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
 
             Type: D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
@@ -211,9 +216,11 @@ impl D3D12Texture {
 
         unsafe {
             command_list.CopyTextureRegion(&destination, 0, 0, 0, &source, None);
+                std::mem::ManuallyDrop::drop(&mut source.pResource);
+                std::mem::ManuallyDrop::drop(&mut destination.pResource);
         }
 
-        let barrier = D3D12_RESOURCE_BARRIER {
+        let mut barrier = D3D12_RESOURCE_BARRIER {
             Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
 
             Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
@@ -232,12 +239,13 @@ impl D3D12Texture {
         };
 
         unsafe {
-            command_list.ResourceBarrier(&[barrier]);
+            command_list.ResourceBarrier(std::slice::from_ref(&barrier));
+            std::mem::ManuallyDrop::drop(&mut (*barrier.Anonymous.Transition).pResource);
         }
 
         Ok(Self {
             resource,
-            _upload_resource: upload_resource,
+            upload_resource: Some(upload_resource),
             descriptor_index,
             format: if texture.srgb_encoded() { DXGI_FORMAT_R8G8B8A8_UNORM_SRGB } else { DXGI_FORMAT_R8G8B8A8_UNORM },
         })
@@ -355,14 +363,14 @@ impl D3D12Texture {
                 }
             }
 
-            let source = D3D12_TEXTURE_COPY_LOCATION {
+            let mut source = D3D12_TEXTURE_COPY_LOCATION {
                 pResource: std::mem::ManuallyDrop::new(Some(upload.clone())),
                 Type: D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
                 Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
                     PlacedFootprint: footprints[level],
                 },
             };
-            let destination = D3D12_TEXTURE_COPY_LOCATION {
+            let mut destination = D3D12_TEXTURE_COPY_LOCATION {
                 pResource: std::mem::ManuallyDrop::new(Some(resource.clone())),
                 Type: D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
                 Anonymous: D3D12_TEXTURE_COPY_LOCATION_0 {
@@ -371,6 +379,8 @@ impl D3D12Texture {
             };
             unsafe {
                 command_list.CopyTextureRegion(&destination, 0, 0, 0, &source, None);
+                std::mem::ManuallyDrop::drop(&mut source.pResource);
+                std::mem::ManuallyDrop::drop(&mut destination.pResource);
             }
         }
 
@@ -378,7 +388,7 @@ impl D3D12Texture {
             upload.Unmap(0, None);
         }
 
-        let barrier = D3D12_RESOURCE_BARRIER {
+        let mut barrier = D3D12_RESOURCE_BARRIER {
             Type: D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
             Flags: D3D12_RESOURCE_BARRIER_FLAG_NONE,
             Anonymous: D3D12_RESOURCE_BARRIER_0 {
@@ -391,12 +401,13 @@ impl D3D12Texture {
             },
         };
         unsafe {
-            command_list.ResourceBarrier(&[barrier]);
+            command_list.ResourceBarrier(std::slice::from_ref(&barrier));
+            std::mem::ManuallyDrop::drop(&mut (*barrier.Anonymous.Transition).pResource);
         }
 
         Ok(Self {
             resource,
-            _upload_resource: upload,
+            upload_resource: Some(upload),
             descriptor_index,
             format: DXGI_FORMAT_R32G32B32A32_FLOAT,
         })

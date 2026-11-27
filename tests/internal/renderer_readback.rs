@@ -203,6 +203,7 @@ fn check_light_transmission(kind: usize) {
             samples.push(half_to_float(red));
             readback.Unmap(0, None);
         }
+        renderer.finish_completed_frame(&device);
     }
     let full = samples[0];
     assert!(full > 0.05, "light {kind} receiver must be lit: {samples:?}");
@@ -329,6 +330,7 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
             }
             readback.Unmap(0, None);
         }
+        renderer.finish_completed_frame(&device);
     }
 }
 
@@ -345,4 +347,178 @@ fn point_shadow_projection_faces_cover_all_axes() {
             assert!((clip.z / clip.w - expected_depth).abs() < 0.0001);
         }
     }
+}
+
+fn headless_renderer(device: &D3D12Device) -> (D3D12Renderer, ShadowMap) {
+    let mut renderer = D3D12Renderer::new(device).unwrap();
+    let cpu = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+    renderer.hdr_target = Some(HdrTarget::new(device, 64, 64, cpu).unwrap());
+    let mut unused = cpu;
+    unused.ptr += (FIRST_TEXTURE_DESCRIPTOR - 1) as usize * renderer.texture_descriptor_size as usize;
+    let depth = ShadowMap::new(device, 64, unused).unwrap();
+    renderer.set_environment(crate::graphics::Environment::new(Color::BLACK, 0.0, None, 0.0, None, Color::BLACK).unwrap());
+    (renderer, depth)
+}
+
+fn start_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap, first: bool) {
+    renderer.reclaim_unused_assets();
+    renderer.reset_frame_state();
+    unsafe {
+        renderer.command_allocators[0].Reset().unwrap();
+        renderer.command_list.Reset(&renderer.command_allocators[0], None).unwrap();
+        renderer.command_list.SetDescriptorHeaps(&[Some(renderer.texture_heap.clone())]);
+        renderer.command_list.IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
+    if first {
+        transition_resource(&renderer.command_list, &depth.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    }
+    let hdr = renderer.hdr_target.as_ref().unwrap();
+    transition_resource(&renderer.command_list, &hdr.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    unsafe {
+        renderer.command_list.ClearDepthStencilView(depth.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+        renderer.command_list.ClearRenderTargetView(hdr.rtv, &[0.0; 4], None);
+    }
+    let mut camera = Camera::new();
+    camera.set_position(Vec3::new(0.0, 0.0, 5.0));
+    renderer.bind_camera(device, &camera, Rect::new(0.0, 0.0, 64.0, 64.0)).unwrap();
+}
+
+fn finish_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap) -> f32 {
+    let shadow = renderer.render_shadows(device).unwrap();
+    let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
+    unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
+    renderer.render_scene(shadow);
+    unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
+    let readback = copy_hdr(renderer, device);
+    unsafe {
+        renderer.command_list.Close().unwrap();
+        if let Ok(queue) = device.device().cast::<ID3D12InfoQueue>() {
+            for index in 0..queue.GetNumStoredMessagesAllowedByRetrievalFilter() {
+                let mut length = 0;
+                queue.GetMessage(index, None, &mut length).unwrap();
+                let mut storage = vec![0_u64; length.div_ceil(8)];
+                let message = storage.as_mut_ptr() as *mut D3D12_MESSAGE;
+                queue.GetMessage(index, Some(message), &mut length).unwrap();
+                if (*message).Severity == D3D12_MESSAGE_SEVERITY_ERROR || (*message).Severity == D3D12_MESSAGE_SEVERITY_CORRUPTION {
+                    panic!("D3D12 validation: {}", std::ffi::CStr::from_ptr((*message).pDescription as *const i8).to_string_lossy());
+                }
+            }
+            queue.ClearStoredMessages();
+        }
+        let list: ID3D12CommandList = renderer.command_list.cast().unwrap();
+        device.command_queue().ExecuteCommandLists(&[Some(list)]);
+    }
+    renderer.wait_for_gpu(device).unwrap();
+    let mut pointer = std::ptr::null_mut();
+    let red = unsafe {
+        readback.Map(0, None, Some(&mut pointer)).unwrap();
+        let red = half_to_float(std::ptr::read_unaligned((pointer as *const u8).add(32 * 512 + 32 * 8) as *const u16));
+        readback.Unmap(0, None);
+        red
+    };
+    renderer.finish_completed_frame(device);
+    red
+}
+
+fn emissive_red() -> Material {
+    let mut material = Material::solid(Color::BLACK);
+    material.set_emissive_color(Color::RED);
+    material.set_emissive_strength(1.0).unwrap();
+    material
+}
+
+#[test]
+fn transient_assets_survive_submission_and_recycle_more_than_a_heaps_worth_of_descriptors() {
+    let device = D3D12Device::warp_for_test().unwrap();
+    let (mut renderer, depth) = headless_renderer(&device);
+    for frame in 0..12 {
+        start_headless_frame(&mut renderer, &device, &depth, frame == 0);
+        for _ in 0..100 {
+            let mesh = quad();
+            let material = emissive_red();
+            renderer.draw_mesh(&device, &mesh, &material, &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
+        }
+        assert_eq!(renderer.mesh_cache.len(), 100);
+        assert_eq!(renderer.material_descriptor_cache.len(), 100);
+        assert_eq!(renderer.descriptors.used(), 504);
+        assert!((finish_headless_frame(&mut renderer, &device, &depth) - 1.0).abs() < 0.003);
+        assert!(renderer.mesh_cache.is_empty());
+        assert!(renderer.latest_mesh_versions.is_empty());
+        assert!(renderer.material_descriptor_cache.is_empty());
+        assert!(renderer.normal_descriptor_cache.is_empty());
+        assert_eq!(renderer.texture_cache.len(), 1);
+        assert_eq!(renderer.texture_owners.len(), 1);
+        assert_eq!(renderer.descriptors.used(), 4);
+    }
+}
+
+#[test]
+fn texture_clones_and_environment_owners_keep_resources_until_the_last_owner_drops() {
+    let device = D3D12Device::warp_for_test().unwrap();
+    let (mut renderer, depth) = headless_renderer(&device);
+    let texture = crate::graphics::Texture::solid(Color::WHITE);
+    let clone = texture.clone();
+    let id = texture.id();
+    renderer.set_environment(crate::graphics::Environment::new(Color::BLACK, 0.0, Some(texture.clone()), 1.0, Some(texture.clone()), Color::BLACK).unwrap());
+    start_headless_frame(&mut renderer, &device, &depth, true);
+    let material = Material::new(texture);
+    renderer.draw_mesh(&device, &quad(), &material, &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
+    drop(material);
+    finish_headless_frame(&mut renderer, &device, &depth);
+    assert!(renderer.texture_cache.contains_key(&id));
+    assert!(renderer.specular_cache.contains_key(&id));
+    assert!(renderer.irradiance_cache.contains_key(&id));
+    drop(clone);
+    renderer.reclaim_unused_assets();
+    assert!(renderer.specular_cache.contains_key(&id));
+    renderer.clear_environment();
+    renderer.reclaim_unused_assets();
+    assert!(!renderer.texture_cache.contains_key(&id));
+    assert!(renderer.specular_cache.is_empty());
+    assert!(renderer.irradiance_cache.is_empty());
+    assert!(renderer.environment_descriptor_cache.is_empty());
+    assert_eq!(renderer.descriptors.used(), 1);
+}
+
+#[test]
+fn descriptor_exhaustion_preserves_queued_draws_and_recovers_after_the_frame() {
+    let device = D3D12Device::warp_for_test().unwrap();
+    let (mut renderer, depth) = headless_renderer(&device);
+    renderer.descriptors = DescriptorAllocator::new(FIRST_TEXTURE_DESCRIPTOR, FIRST_TEXTURE_DESCRIPTOR + 12);
+    for frame in 0..2 {
+        start_headless_frame(&mut renderer, &device, &depth, frame == 0);
+        renderer.draw_mesh(&device, &quad(), &emissive_red(), &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
+        let queued = renderer.commands.len();
+        let error = renderer.draw_mesh(&device, &quad(), &emissive_red(), &Transform::new(), 0.0).unwrap_err();
+        assert!(error.to_string().contains("GPU descriptor capacity exhausted"));
+        assert_eq!(renderer.commands.len(), queued);
+        assert_eq!(renderer.descriptors.used(), 12);
+        assert!((finish_headless_frame(&mut renderer, &device, &depth) - 1.0).abs() < 0.003);
+        assert_eq!(renderer.descriptors.used(), 4);
+    }
+}
+
+#[test]
+fn excess_lights_are_rejected_before_preparing_a_draw_and_can_be_cleared() {
+    let device = D3D12Device::warp_for_test().unwrap();
+    let (mut renderer, depth) = headless_renderer(&device);
+    start_headless_frame(&mut renderer, &device, &depth, true);
+    for kind in ["point", "spot", "directional"] {
+        renderer.clear_lights();
+        for _ in 0..9 {
+            match kind {
+                "point" => renderer.add_point_light(&PointLight::new(Vec3::new(0.0, 2.0, 0.0), Color::WHITE, 1.0).unwrap()),
+                "spot" => renderer.add_spot_light(&SpotLight::new(Vec3::new(0.0, 2.0, 0.0), Vec3::new(0.0, -1.0, 0.0), crate::math::Angle::degrees(30.0), Color::WHITE, 1.0).unwrap()),
+                _ => renderer.add_directional_light(&DirectionalLight::new(Vec3::new(0.0, -1.0, 0.0), Color::WHITE, 1.0).unwrap()),
+            }
+        }
+        let error = renderer.draw_mesh(&device, &quad(), &emissive_red(), &Transform::new(), 0.0).unwrap_err();
+        assert!(error.to_string().contains(&format!("too many {kind} lights")));
+        assert!(renderer.commands.is_empty());
+        assert!(renderer.texture_cache.is_empty());
+        assert_eq!(renderer.descriptors.used(), 0);
+    }
+    renderer.clear_lights();
+    renderer.draw_mesh(&device, &quad(), &emissive_red(), &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
+    assert!((finish_headless_frame(&mut renderer, &device, &depth) - 1.0).abs() < 0.003);
 }
