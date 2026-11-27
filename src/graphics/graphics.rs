@@ -157,7 +157,7 @@ impl Graphics {
     ///
     /// The light affects subsequent draw calls until the lights are cleared
     /// or the current frame ends.
-    pub fn add_light<L: LightSource>(&mut self, light: &L) {
+    pub fn add_light<L: LightSource + ?Sized>(&mut self, light: &L) {
         light.add_to_graphics(self);
     }
 

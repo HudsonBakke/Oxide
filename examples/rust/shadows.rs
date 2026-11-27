@@ -1,7 +1,7 @@
 //! Automatic directional shadows. Space toggles shadows; T cycles box transparency.
 use oxide::{
     app::{AppConfig, Game, GameTime},
-    graphics::{Camera, Color, DirectionalLight, PointLight, SpotLight, Environment, Graphics, Material, Mesh, Vertex},
+    graphics::{Camera, Color, DirectionalLight, PointLight, SpotLight, LightSource, Environment, Graphics, Material, Mesh, Vertex},
     input::{Keyboard, Keys},
     math::{Angle, Quaternion, Transform, Vec2, Vec3},
 };
@@ -11,9 +11,7 @@ struct Shadows {
     mesh: Mesh,
     materials: [Material; 7],
     transforms: [Transform; 7],
-    light: DirectionalLight,
-    point: PointLight,
-    spot: SpotLight,
+    lights: [Box<dyn LightSource>; 3],
     light_mode: usize,
     environment: Environment,
     transparency: f32,
@@ -46,16 +44,16 @@ impl Shadows {
                 instance(Vec3::new(-2.5, 4.0, 2.35), Vec3::new(2.0, 0.1, 2.0)),
                 instance(Vec3::new(-1.2, 1.0, -1.8), Vec3::new(0.8, 0.8, 0.8)),
             ],
-            light: DirectionalLight::new(Vec3::new(-0.5, -1.0, -0.35), Color::WHITE, 3.0).unwrap(),
-            point: PointLight::new(Vec3::new(2.0, 7.0, 4.0), Color::WHITE, 100.0).unwrap(),
-            spot: SpotLight::new(Vec3::new(0.0, 8.0, 4.0), Vec3::new(0.0, -1.0, -0.5), Angle::degrees(45.0), Color::WHITE, 100.0).unwrap(),
+            lights: [
+                Box::new(DirectionalLight::new(Vec3::new(-0.5, -1.0, -0.35), Color::WHITE, 3.0).unwrap()),
+                Box::new(PointLight::new(Vec3::new(2.0, 7.0, 4.0), Color::WHITE, 100.0).unwrap()),
+                Box::new(SpotLight::new(Vec3::new(0.0, 8.0, 4.0), Vec3::new(0.0, -1.0, -0.5), Angle::degrees(45.0), Color::WHITE, 100.0).unwrap()),
+            ],
             light_mode: 0,
             environment: Environment::new(Color::WHITE, 0.12, None, 0.0, None, Color::rgb(0.04, 0.06, 0.09)).unwrap(),
             transparency: 0.5,
         };
-        demo.light.set_casts_shadows(true);
-        demo.point.set_casts_shadows(true);
-        demo.spot.set_casts_shadows(true);
+        for light in &mut demo.lights { light.set_casts_shadows(true); }
         demo
     }
 }
@@ -66,28 +64,21 @@ impl Game for Shadows {
         self.transforms[1].set_position(Vec3::new(t.sin() * 2.5, 1.5 + t.cos() * 0.4, 0.0));
         self.transforms[1].set_rotation(Quaternion::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), Angle::radians(t * 0.5)));
         if Keyboard::get_state().is_key_pressed(Keys::Space) {
-            match self.light_mode {
-                0 => self.light.set_casts_shadows(!self.light.casts_shadows()),
-                1 => self.point.set_casts_shadows(!self.point.casts_shadows()),
-                _ => self.spot.set_casts_shadows(!self.spot.casts_shadows()),
-            }
+            let enabled = self.lights[self.light_mode].casts_shadows();
+            self.lights[self.light_mode].set_casts_shadows(!enabled);
         }
         if Keyboard::get_state().is_key_pressed(Keys::T) {
             self.transparency = if self.transparency < 1.0 { self.transparency + 0.5 } else { 0.0 };
         }
         if Keyboard::get_state().is_key_pressed(Keys::L) { self.light_mode = (self.light_mode + 1) % 3; }
-        let enabled = match self.light_mode { 0 => self.light.casts_shadows(), 1 => self.point.casts_shadows(), _ => self.spot.casts_shadows() };
+        let enabled = self.lights[self.light_mode].casts_shadows();
         oxide::app::set_window_name(format!("Oxide Shadows | {} | box transparency {} | Space shadows, T transparency, L light {}", if enabled { "on" } else { "off" }, self.transparency, ["directional", "point", "spot"][self.light_mode]));
     }
 
     fn draw(&mut self, graphics: &mut Graphics) {
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
         graphics.set_environment(&self.environment);
-        match self.light_mode {
-            0 => graphics.add_light(&self.light),
-            1 => graphics.add_light(&self.point),
-            _ => graphics.add_light(&self.spot),
-        }
+        graphics.add_light(self.lights[self.light_mode].as_ref());
         let transmission = [0.0, self.transparency, 0.0, 0.75, 0.5, 0.5, 0.0];
         for ((material, transform), transparency) in self.materials.iter().zip(&self.transforms).zip(transmission) {
             if transparency == 0.0 {

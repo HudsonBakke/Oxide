@@ -355,7 +355,7 @@ impl DirectionalLight {
 // ---------------------------------------------------------
 
 /// Sealed trait implemented by point, spot, and directional lights accepted by Graphics.
-pub trait LightSource: private::LightSourceInternal + Copy {
+pub trait LightSource: private::LightSourceInternal {
     /// RGB light color; alpha is unused.
     fn color(&self) -> Color;
     /// Changes the light color.
@@ -378,7 +378,7 @@ pub(crate) use private::LightSourceInternal;
 
 mod private {
     /// Internal dispatch from a sealed light type into the graphics subsystem.
-    pub trait LightSourceInternal: Copy {
+    pub trait LightSourceInternal {
         /// Adds this concrete light to the active graphics lighting state.
         fn add_to_graphics(&self, graphics: &mut crate::graphics::Graphics);
     }
@@ -458,4 +458,20 @@ mod tests {
         assert_eq!(std::mem::size_of::<DirectionalLight>(), 76);
         assert_eq!(std::mem::size_of::<SpotLight>(), 92);
     }
+    #[test]
+    fn light_interface_supports_heterogeneous_dynamic_dispatch() {
+        let mut lights: Vec<Box<dyn LightSource>> = vec![
+            Box::new(PointLight::new(Vec3::default(), Color::WHITE, 1.0).unwrap()),
+            Box::new(DirectionalLight::new(Vec3::new(0.0, -1.0, 0.0), Color::WHITE, 1.0).unwrap()),
+            Box::new(SpotLight::new(Vec3::default(), Vec3::new(0.0, -1.0, 0.0), Angle::degrees(30.0), Color::WHITE, 1.0).unwrap()),
+        ];
+        for light in &mut lights {
+            light.set_casts_shadows(true);
+            light.set_intensity(2.0).unwrap();
+            assert!(light.casts_shadows());
+            assert_eq!(light.intensity(), 2.0);
+            assert_eq!(light.shadow_settings().resolution, 1024);
+        }
+    }
+
 }

@@ -33,6 +33,8 @@ graphics.add_light(light)
 graphics.draw_mesh(mesh, material, transform, transparency=0.5)
 ```
 
+Rust also accepts `&dyn LightSource` and heterogeneous `Box<dyn LightSource>` collections.
+
 Python's three concrete types implement `LightSource` with common `color`,
 `intensity`, `casts_shadows`, and `shadow_settings` attributes. Rust uses the
 sealed `LightSource` trait. The original graphics-level
