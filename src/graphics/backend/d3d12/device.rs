@@ -108,6 +108,13 @@ impl D3D12Device {
     // WARP is used only by headless runtime tests, never by adapter selection.
     #[cfg(test)]
     pub(crate) fn warp_for_test() -> Result<Self> {
+        static DEBUG_INIT: std::sync::Once = std::sync::Once::new();
+        DEBUG_INIT.call_once(|| unsafe {
+            let mut debug: Option<ID3D12Debug> = None;
+            if D3D12GetDebugInterface(&mut debug).is_ok() {
+                if let Some(debug) = debug { debug.EnableDebugLayer(); }
+            }
+        });
         let factory: IDXGIFactory6 = unsafe { CreateDXGIFactory2(DXGI_CREATE_FACTORY_FLAGS(0))? };
         let adapter: IDXGIAdapter1 = unsafe { factory.EnumWarpAdapter()? };
         let mut device: Option<ID3D12Device> = None;

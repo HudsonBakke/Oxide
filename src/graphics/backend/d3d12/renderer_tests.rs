@@ -162,6 +162,21 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
         unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
         let readback = copy_hdr(&renderer, &device);
         unsafe {
+            if let Ok(queue) = device.device().cast::<ID3D12InfoQueue>() {
+                for index in 0..queue.GetNumStoredMessagesAllowedByRetrievalFilter() {
+                    let mut length = 0;
+                    queue.GetMessage(index, None, &mut length).unwrap();
+                    let mut buffer = vec![0_u64; (length + 7) / 8];
+                    let message = buffer.as_mut_ptr() as *mut D3D12_MESSAGE;
+                    queue.GetMessage(index, Some(message), &mut length).unwrap();
+                    let message = &*message;
+                    if message.Severity == D3D12_MESSAGE_SEVERITY_ERROR || message.Severity == D3D12_MESSAGE_SEVERITY_CORRUPTION {
+                        let description = std::ffi::CStr::from_ptr(message.pDescription as *const i8).to_string_lossy();
+                        panic!("D3D12 validation: {description}");
+                    }
+                }
+                queue.ClearStoredMessages();
+            }
             renderer.command_list.Close().unwrap();
             let list: ID3D12CommandList = renderer.command_list.cast().unwrap();
             device.command_queue().ExecuteCommandLists(&[Some(list)]);
@@ -185,6 +200,7 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
 
 #[test]
 fn visible_transparency_blends_in_depth_order_per_camera() {
+    println!("GPU CHECK visible create device");
     let device = D3D12Device::warp_for_test().unwrap();
     let mut renderer = D3D12Renderer::new(&device).unwrap();
     let cpu = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
@@ -207,6 +223,7 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
     let mut camera = Camera::new();
     camera.set_position(Vec3::new(0.0, 0.0, 5.0));
     for frame in 0..8 {
+        println!("GPU CHECK visible frame {frame} begin");
         renderer.reset_frame_state();
         unsafe {
             renderer.command_allocators[0].Reset().unwrap();
@@ -249,21 +266,43 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
             renderer.bind_camera(&device, &camera, Rect::new(0.0, 0.0, 64.0, 64.0)).unwrap();
             renderer.draw_mesh(&device, &mesh, &materials[2], &transform(0.0, 0.0, 4.0, 4.0), 0.0).unwrap();
         }
+        println!("GPU CHECK visible frame {frame} prepared");
         let shadow = renderer.render_shadows(&device).unwrap();
         let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
         unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
+        println!("GPU CHECK visible frame {frame} record scene");
         renderer.render_scene(shadow);
+        println!("GPU CHECK visible frame {frame} scene recorded");
         unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
         let readback = copy_hdr(&renderer, &device);
         unsafe {
+            if let Ok(queue) = device.device().cast::<ID3D12InfoQueue>() {
+                for index in 0..queue.GetNumStoredMessagesAllowedByRetrievalFilter() {
+                    let mut length = 0;
+                    queue.GetMessage(index, None, &mut length).unwrap();
+                    let mut buffer = vec![0_u64; (length + 7) / 8];
+                    let message = buffer.as_mut_ptr() as *mut D3D12_MESSAGE;
+                    queue.GetMessage(index, Some(message), &mut length).unwrap();
+                    let message = &*message;
+                    if message.Severity == D3D12_MESSAGE_SEVERITY_ERROR || message.Severity == D3D12_MESSAGE_SEVERITY_CORRUPTION {
+                        let description = std::ffi::CStr::from_ptr(message.pDescription as *const i8).to_string_lossy();
+                        panic!("D3D12 validation: {description}");
+                    }
+                }
+                queue.ClearStoredMessages();
+            }
             renderer.command_list.Close().unwrap();
             let list: ID3D12CommandList = renderer.command_list.cast().unwrap();
             device.command_queue().ExecuteCommandLists(&[Some(list)]);
         }
+        println!("GPU CHECK visible frame {frame} execute");
         renderer.wait_for_gpu(&device).unwrap();
+        println!("GPU CHECK visible frame {frame} executed");
         let mut pointer = std::ptr::null_mut();
         unsafe {
             readback.Map(0, None, Some(&mut pointer)).unwrap();
+            assert!(!pointer.is_null(), "GPU CHECK readback pointer is null");
+            println!("GPU CHECK visible frame {frame} mapped");
             let sample = |x: usize| -> [f32; 3] {
                 [0, 1, 2].map(|channel| half_to_float(std::ptr::read_unaligned(
                     (pointer as *const u8).add(32 * 512 + x * 8 + channel * 2) as *const u16,

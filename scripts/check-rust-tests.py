@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 result = subprocess.run(
-    ["cargo", "test", "--locked", "--lib", "--tests"],
+    ["cargo", "test", "--locked", "--lib", "--tests", "--", "--test-threads=1", "--nocapture"],
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
     text=True,
@@ -19,9 +19,9 @@ if result.returncode and os.environ.get("GITHUB_OUTPUT"):
     lines = plain.splitlines()
     details = [line for line in lines if any(term in line for term in (
         "panicked at", "wrong transmission", "receiver must be lit", "opposing camera sort",
-        "assertion", "left:", "right:", " != ", "FAILED",
+        "assertion", "left:", "right:", " != ", "FAILED", "GPU CHECK", "called `Result", "D3D12 validation",
     ))]
-    detail = " | ".join(details or lines[-12:])[:1800]
+    detail = " | ".join((details or lines[-12:])[-12:])[:1800]
     with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
         output.write("detail=" + detail + "\n")
 sys.exit(result.returncode)
