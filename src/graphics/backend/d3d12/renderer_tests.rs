@@ -85,11 +85,16 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
     let settings = DirectionalShadowSettings { size: 12.0, depth: 16.0, resolution: 128, normal_bias: 0.0, ..Default::default() };
     let mut camera = Camera::new();
     camera.set_position(Vec3::new(0.0, 0.0, 5.0));
-    let mesh = quad();
-    let material = Material::solid(Color::WHITE);
+    let mut mesh = quad();
+    let mut material = Material::solid(Color::WHITE);
     let mut samples = Vec::new();
     // Window planes sit outside the camera but on the light ray to the receiver.
-    for frame in 0..6 {
+    for frame in 0..8 {
+        if frame == 7 {
+            camera.set_position(Vec3::new(0.0, 0.0, 5.0));
+            material.set_base_color(Color::WHITE);
+            for vertex in mesh.vertices_mut() { vertex.position.x -= 100.0; }
+        }
         renderer.reset_frame_state();
         unsafe {
             renderer.command_allocators[0].Reset().unwrap();
@@ -109,7 +114,30 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
         renderer.set_directional_shadows(&light, &settings).unwrap();
         renderer.bind_camera(&device, &camera, Rect::new(0.0, 0.0, 64.0, 64.0)).unwrap();
         renderer.add_directional_light(&light);
+        if frame == 7 {
+            // Dropping CPU resources after submission must leave the GPU draw valid.
+            let transient_mesh = quad();
+            let transient_material = Material::solid(Color::WHITE);
+            renderer.draw_mesh(&device, &transient_mesh, &transient_material, &transform(0.0, 0.0, 4.0, 4.0), 1.0).unwrap();
+        } else {
         renderer.draw_mesh(&device, &mesh, &material, &transform(0.0, 0.0, 4.0, 4.0), 1.0).unwrap();
+        }
+        let count = renderer.commands.len();
+        assert!(renderer.draw_mesh(&device, &mesh, &material, &Transform::new(), f32::NAN).is_err());
+        assert_eq!(renderer.commands.len(), count);
+        assert!(renderer.clear_directional_shadows().is_err());
+        if frame == 6 {
+            // Later geometry, material, lighting, and camera changes must not
+            // alter the earlier white receiver draw at the center of the view.
+            for vertex in mesh.vertices_mut() { vertex.position.x += 100.0; }
+            material.set_base_color(Color::BLACK);
+            renderer.clear_lights();
+            camera.set_position(Vec3::new(100.0, 0.0, 5.0));
+            renderer.bind_camera(&device, &camera, Rect::new(48.0, 0.0, 16.0, 64.0)).unwrap();
+            renderer.draw_mesh(&device, &mesh, &material, &Transform::new(), 1.0).unwrap();
+            assert!(renderer.mesh_cache.contains_key(&(mesh.id(), 0, 0)));
+            assert!(renderer.mesh_cache.contains_key(&(mesh.id(), mesh.vertex_generation(), 0)));
+        }
         if (1..=3).contains(&frame) || frame == 5 {
             renderer.draw_mesh(&device, &mesh, &material, &transform(2.0, 2.0, 1.0, 3.0), 0.5).unwrap();
         }
@@ -149,7 +177,7 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
     }
     let full = samples[0];
     assert!(full > 0.05, "receiver must be lit: {samples:?}");
-    for (index, expected) in [(1, 0.5), (2, 0.25), (3, 0.0), (4, 1.0), (5, 0.5)] {
+    for (index, expected) in [(1, 0.5), (2, 0.25), (3, 0.0), (4, 1.0), (5, 0.5), (6, 1.0), (7, 1.0)] {
         assert!((samples[index] / full - expected).abs() < 0.025, "wrong transmission in frame {index}: {samples:?}");
     }
 }
