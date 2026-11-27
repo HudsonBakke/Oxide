@@ -210,7 +210,7 @@ class ShadowSettings(ctypes.Structure):
         near_plane: float = 0.1,
         far_plane: float = 60.0,
     ) -> None:
-        """Creates shadow settings; the native begin call validates field values."""
+        """Creates optional shadow settings; light submission validates their field values."""
         if (
             not isinstance(resolution, int)
             or not 128 <= resolution <= 4096
@@ -221,6 +221,18 @@ class ShadowSettings(ctypes.Structure):
             center if center is not None else Vec3(),
             size, depth, resolution, depth_bias, normal_bias, near_plane, far_plane,
         )
+
+    def validate(self) -> None:
+        """Raises ValueError if coverage, clipping, resolution, or bias is invalid."""
+        if (
+            not all(math.isfinite(v) for v in (self.center.x, self.center.y, self.center.z,
+                self.size, self.depth, self.depth_bias, self.normal_bias, self.near_plane, self.far_plane))
+            or self.size <= 0 or self.depth <= 0
+            or not 128 <= self.resolution <= 4096 or self.resolution & (self.resolution - 1)
+            or self.depth_bias < 0 or self.normal_bias < 0
+            or self.near_plane <= 0 or self.far_plane <= self.near_plane
+        ):
+            raise ValueError("Invalid shadow coverage, clipping, resolution, or bias")
 
 
 DirectionalShadowSettings = ShadowSettings
@@ -250,6 +262,7 @@ class LightSource(ctypes.Structure):
     def shadow_settings(self, settings: ShadowSettings) -> None:
         if not isinstance(settings, ShadowSettings):
             raise TypeError("settings must be ShadowSettings")
+        settings.validate()
         self._shadow_settings = settings
 
 

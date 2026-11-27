@@ -146,6 +146,15 @@ impl ActiveLight {
     fn casts_shadows(&self) -> bool {
         match self { Self::Point(l) => l.casts_shadows(), Self::Spot(l) => l.casts_shadows(), Self::Directional(l) => l.casts_shadows() }
     }
+    fn same_shadow_projection(self, other: Self) -> bool {
+        if self.shadow_settings() != other.shadow_settings() { return false; }
+        match (self, other) {
+            (Self::Point(a), Self::Point(b)) => a.position() == b.position(),
+            (Self::Directional(a), Self::Directional(b)) => a.direction() == b.direction(),
+            (Self::Spot(a), Self::Spot(b)) => a.position() == b.position() && a.direction() == b.direction() && a.angle() == b.angle(),
+            _ => false,
+        }
+    }
     fn shadow_request(self) -> crate::OxideResult<ShadowRequest> {
         let settings = *self.shadow_settings();
         settings.validate()?;
@@ -584,7 +593,7 @@ impl D3D12Renderer {
 
     fn request_shadow(&mut self, light: ActiveLight) -> Result<f32> {
         if !light.casts_shadows() { return Ok(-1.0); }
-        if let Some(index) = self.shadow_requests.iter().position(|request| request.light == light) { return Ok(index as f32); }
+        if let Some(index) = self.shadow_requests.iter().position(|request| request.light.same_shadow_projection(light)) { return Ok(index as f32); }
         if self.shadow_requests.len() == MAX_SHADOW_LIGHTS {
             return Err(invalid_shadow_order("frame exceeds 32 distinct shadow-enabled light snapshots"));
         }

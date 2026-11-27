@@ -113,4 +113,4 @@ See [rendering and color conventions](docs/rendering.md) for texture semantics
 and the exposure API. In each materials example, **Q** halves exposure, **E**
 doubles it, and **R** resets it to one. The title shows the current multiplier.
 
-See [directional shadows](docs/shadows.md) for automatic shadows through DrawMesh, scalar transparency, coverage and bias settings, and matching Rust, C#, and Python demos.
+See [light-owned shadows and transparency](docs/shadows.md) for automatic shadows through DrawMesh, scalar transparency, coverage and bias settings, and matching Rust, C#, and Python demos.

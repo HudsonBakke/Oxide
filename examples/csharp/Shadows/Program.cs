@@ -27,14 +27,13 @@ internal sealed class Shadows : Game
         new() { Position = new Vec3(-1.2f, 1, -1.8f), Scale = new Vec3(0.8f, 0.8f, 0.8f) },
     ];
     private readonly ILightSource[] _lights = [
-        new DirectionalLight(new Vec3(-0.5f, -1, -0.35f), Color.White, 3),
-        new PointLight(new Vec3(2, 7, 4), Color.White, 100),
-        new SpotLight(new Vec3(0, 8, 4), new Vec3(0, -1, -0.5f), Angle.Degrees(45), Color.White, 100),
+        new DirectionalLight(new Vec3(-0.5f, -1, -0.35f), Color.White, 3, castsShadows: true),
+        new PointLight(new Vec3(2, 7, 4), Color.White, 100, castsShadows: true),
+        new SpotLight(new Vec3(0, 8, 4), new Vec3(0, -1, -0.5f), Angle.Degrees(45), Color.White, 100, castsShadows: true),
     ];
     private int _lightMode;
     private readonly Oxide.Graphics.Environment _environment =
         new(Color.White, 0.12f, null, 0, null, new Color(0.04f, 0.06f, 0.09f, 1));
-    private bool _enabled = true;
     private float _transparency = 0.5f;
 
     public Shadows()
@@ -49,16 +48,15 @@ internal sealed class Shadows : Game
         float t = (float)time.TotalSeconds;
         _transforms[1].Position = new Vec3(MathF.Sin(t) * 2.5f, 1.5f + MathF.Cos(t) * 0.4f, 0);
         _transforms[1].Rotation = Quaternion.FromAxisAngle(new Vec3(0, 1, 0), Angle.Radians(t * 0.5f));
-        if (Keyboard.GetState().IsKeyPressed(Keys.Space)) _enabled = !_enabled;
+        if (Keyboard.GetState().IsKeyPressed(Keys.Space)) _lights[_lightMode].CastsShadows = !_lights[_lightMode].CastsShadows;
         if (Keyboard.GetState().IsKeyPressed(Keys.T)) _transparency = _transparency < 1 ? _transparency + 0.5f : 0;
         if (Keyboard.GetState().IsKeyPressed(Keys.L)) _lightMode = (_lightMode + 1) % _lights.Length;
-        SetWindowName($"Oxide Shadows | {(_enabled ? "on" : "off")} | box transparency {_transparency} | Space shadows, T transparency, L light {_lightMode}");
+        SetWindowName($"Oxide Shadows | {(_lights[_lightMode].CastsShadows ? "on" : "off")} | box transparency {_transparency} | Space shadows, T transparency, L light {_lightMode}");
     }
 
     protected override void Draw(Graphics graphics)
     {
         ILightSource light = _lights[_lightMode];
-        light.CastsShadows = _enabled;
         graphics.BindCamera(_camera, graphics.FullRect);
         graphics.SetEnvironment(_environment);
         graphics.AddLight(light);
@@ -96,8 +94,32 @@ internal sealed class Shadows : Game
 
 internal static class Program
 {
-    private static void Main()
+    private static void Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--verify-lights")
+        {
+            if (System.Runtime.InteropServices.Marshal.SizeOf<ShadowSettings>() != 40 ||
+                System.Runtime.InteropServices.Marshal.SizeOf<PointLight>() != 76 ||
+                System.Runtime.InteropServices.Marshal.SizeOf<DirectionalLight>() != 76 ||
+                System.Runtime.InteropServices.Marshal.SizeOf<SpotLight>() != 92)
+                throw new InvalidOperationException("Native light layout mismatch");
+            ILightSource[] lights = [
+                new PointLight(new Vec3(0, 2, 0), Color.White, 1),
+                new DirectionalLight(new Vec3(0, -1, 0), Color.White, 1),
+                new SpotLight(new Vec3(0, 2, 0), new Vec3(0, -1, 0), Angle.Degrees(30), Color.White, 1),
+            ];
+            foreach (ILightSource light in lights)
+            {
+                if (light.CastsShadows || light.ShadowSettings.Resolution != 1024) throw new InvalidOperationException("Light defaults mismatch");
+                light.CastsShadows = true;
+                light.ShadowSettings = new ShadowSettings { Resolution = 256 };
+                if (!light.CastsShadows || light.ShadowSettings.Resolution != 256) throw new InvalidOperationException("Light interface state mismatch");
+            }
+            PointLight zero = default;
+            zero.CastsShadows = true;
+            if (zero.ShadowSettings.Resolution != 1024) throw new InvalidOperationException("Default value shadow settings missing");
+            return;
+        }
         using var game = new Shadows();
         game.Run(new AppConfig { Title = "Oxide Shadows", Width = 1280, Height = 800 });
     }

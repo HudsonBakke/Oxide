@@ -16,7 +16,6 @@ struct Shadows {
     spot: SpotLight,
     light_mode: usize,
     environment: Environment,
-    enabled: bool,
     transparency: f32,
 }
 
@@ -26,7 +25,7 @@ impl Shadows {
         let position = Vec3::new(9.0, 8.0, 13.0);
         camera.set_position(position);
         camera.set_rotation(Quaternion::from_to(Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 0.5, 0.0) - position));
-        Self {
+        let mut demo = Self {
             camera,
             mesh: cube(),
             materials: [
@@ -52,9 +51,12 @@ impl Shadows {
             spot: SpotLight::new(Vec3::new(0.0, 8.0, 4.0), Vec3::new(0.0, -1.0, -0.5), Angle::degrees(45.0), Color::WHITE, 100.0).unwrap(),
             light_mode: 0,
             environment: Environment::new(Color::WHITE, 0.12, None, 0.0, None, Color::rgb(0.04, 0.06, 0.09)).unwrap(),
-            enabled: true,
             transparency: 0.5,
-        }
+        };
+        demo.light.set_casts_shadows(true);
+        demo.point.set_casts_shadows(true);
+        demo.spot.set_casts_shadows(true);
+        demo
     }
 }
 
@@ -64,19 +66,21 @@ impl Game for Shadows {
         self.transforms[1].set_position(Vec3::new(t.sin() * 2.5, 1.5 + t.cos() * 0.4, 0.0));
         self.transforms[1].set_rotation(Quaternion::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), Angle::radians(t * 0.5)));
         if Keyboard::get_state().is_key_pressed(Keys::Space) {
-            self.enabled = !self.enabled;
+            match self.light_mode {
+                0 => self.light.set_casts_shadows(!self.light.casts_shadows()),
+                1 => self.point.set_casts_shadows(!self.point.casts_shadows()),
+                _ => self.spot.set_casts_shadows(!self.spot.casts_shadows()),
+            }
         }
         if Keyboard::get_state().is_key_pressed(Keys::T) {
             self.transparency = if self.transparency < 1.0 { self.transparency + 0.5 } else { 0.0 };
         }
         if Keyboard::get_state().is_key_pressed(Keys::L) { self.light_mode = (self.light_mode + 1) % 3; }
-        oxide::app::set_window_name(format!("Oxide Shadows | {} | box transparency {} | Space shadows, T transparency, L light {}", if self.enabled { "on" } else { "off" }, self.transparency, ["directional", "point", "spot"][self.light_mode]));
+        let enabled = match self.light_mode { 0 => self.light.casts_shadows(), 1 => self.point.casts_shadows(), _ => self.spot.casts_shadows() };
+        oxide::app::set_window_name(format!("Oxide Shadows | {} | box transparency {} | Space shadows, T transparency, L light {}", if enabled { "on" } else { "off" }, self.transparency, ["directional", "point", "spot"][self.light_mode]));
     }
 
     fn draw(&mut self, graphics: &mut Graphics) {
-        self.light.set_casts_shadows(self.enabled);
-        self.point.set_casts_shadows(self.enabled);
-        self.spot.set_casts_shadows(self.enabled);
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
         graphics.set_environment(&self.environment);
         match self.light_mode {

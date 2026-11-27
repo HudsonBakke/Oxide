@@ -5,7 +5,7 @@ import sys
 import unittest
 from unittest.mock import Mock, patch
 
-from oxide import ShadowSettings, GameTime, Vec3, Keys
+from oxide import ShadowSettings, GameTime, Vec3, Keys, PointLight, SpotLight, DirectionalLight, LightSource, Color, Angle
 from oxide import _native
 from oxide.math import Rect
 
@@ -15,7 +15,7 @@ from shadows import Shadows
 
 class ShadowBindingsTests(unittest.TestCase):
     def test_defaults_match_native_abi(self):
-        native_defaults = _native.lib.oxide_directional_shadow_settings_default
+        native_defaults = _native.lib.oxide_shadow_settings_default
         native_defaults.argtypes = [ctypes.POINTER(ShadowSettings)]
         native_defaults.restype = ctypes.c_int
         actual = ShadowSettings(size=1, depth=1, resolution=128)
@@ -25,6 +25,32 @@ class ShadowBindingsTests(unittest.TestCase):
         for field, _ in actual._fields_:
             self.assertEqual(getattr(actual, field), getattr(expected, field), field)
         self.assertEqual(actual.center, Vec3())
+
+    def test_light_native_layouts_and_shared_defaults(self):
+        for kind, cls, args, argtypes, size in [
+            ("point", PointLight, (Vec3(1, 2, 3), Color.WHITE, 2.0), [Vec3, Color, ctypes.c_float], 76),
+            ("directional", DirectionalLight, (Vec3(0, -1, 0), Color.WHITE, 2.0), [Vec3, Color, ctypes.c_float], 76),
+            ("spot", SpotLight, (Vec3(1, 2, 3), Vec3(0, -1, 0), Angle.degrees(30), Color.WHITE, 2.0), [Vec3, Vec3, Angle, Color, ctypes.c_float], 92),
+        ]:
+            light = cls(*args)
+            self.assertIsInstance(light, LightSource)
+            init = getattr(_native.lib, f"oxide_{kind}_light_init")
+            init.argtypes = argtypes + [ctypes.POINTER(cls)]
+            init.restype = ctypes.c_int
+            _native.check(init(*args, ctypes.byref(light)))
+            self.assertEqual(ctypes.sizeof(light), size)
+            self.assertEqual(light.intensity, 2.0)
+            self.assertEqual(light.color, Color.WHITE)
+            self.assertFalse(light.casts_shadows)
+            self.assertEqual(light.shadow_settings.resolution, 1024)
+            self.assertGreater(light.shadow_settings.near_plane, 0.0)
+            light.casts_shadows = True
+            self.assertTrue(light.casts_shadows)
+            light.shadow_settings = ShadowSettings(resolution=256)
+            self.assertEqual(light.shadow_settings.resolution, 256)
+            with self.assertRaises(ValueError):
+                light.shadow_settings = ShadowSettings(depth=-1)
+            self.assertEqual(light.shadow_settings.resolution, 256)
 
     def test_single_submissions_capture_transparency_and_interactive_controls(self):
         demo = Shadows()
@@ -53,7 +79,7 @@ class ShadowBindingsTests(unittest.TestCase):
             self.assertNotIn("draw_shadow_mesh", names)
             pressed.add(Keys.SPACE)
             demo.update(GameTime(1.0 / 60.0, 2.0))
-            self.assertFalse(demo.enabled)
+            self.assertFalse(demo.lights[demo.light_mode].casts_shadows)
             graphics.reset_mock()
             demo.draw(graphics)
             self.assertFalse(demo.lights[demo.light_mode].casts_shadows)

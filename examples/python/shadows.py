@@ -49,14 +49,13 @@ class Shadows(Game):
             Transform(position=Vec3(-2.5, 4, 2.35), scale=Vec3(2, 0.1, 2)),
             Transform(position=Vec3(-1.2, 1, -1.8), scale=Vec3(0.8, 0.8, 0.8)),
         ]
-        self.light = DirectionalLight(Vec3(-0.5, -1, -0.35), Color.WHITE, 3)
+        self.light = DirectionalLight(Vec3(-0.5, -1, -0.35), Color.WHITE, 3, casts_shadows=True)
         self.lights: list[LightSource] = [self.light,
-            PointLight(Vec3(2, 7, 4), Color.WHITE, 100),
-            SpotLight(Vec3(0, 8, 4), Vec3(0, -1, -0.5), Angle.degrees(45), Color.WHITE, 100),
+            PointLight(Vec3(2, 7, 4), Color.WHITE, 100, casts_shadows=True),
+            SpotLight(Vec3(0, 8, 4), Vec3(0, -1, -0.5), Angle.degrees(45), Color.WHITE, 100, casts_shadows=True),
         ]
         self.light_mode = 0
         self.environment = Environment(Color.WHITE, 0.12, None, 0, None, Color.rgb(0.04, 0.06, 0.09))
-        self.enabled = True
         self.transparency = 0.5
 
     def update(self, time: GameTime) -> None:
@@ -64,18 +63,18 @@ class Shadows(Game):
         self.transforms[1].position = Vec3(math.sin(t) * 2.5, 1.5 + math.cos(t) * 0.4, 0)
         self.transforms[1].rotation = Quaternion.from_axis_angle(Vec3(0, 1, 0), Angle.from_radians(t * 0.5))
         if Keyboard.get_state().is_key_pressed(Keys.SPACE):
-            self.enabled = not self.enabled
+            light = self.lights[self.light_mode]
+            light.casts_shadows = not light.casts_shadows
         if Keyboard.get_state().is_key_pressed(Keys.T):
             self.transparency = self.transparency + 0.5 if self.transparency < 1 else 0.0
         if Keyboard.get_state().is_key_pressed(Keys.L):
             self.light_mode = (self.light_mode + 1) % 3
         self.set_window_name(
-            f"Oxide Shadows | {'on' if self.enabled else 'off'} | box transparency {self.transparency} | Space shadows, T transparency, L light {self.light_mode}"
+            f"Oxide Shadows | {'on' if self.lights[self.light_mode].casts_shadows else 'off'} | box transparency {self.transparency} | Space shadows, T transparency, L light {self.light_mode}"
         )
 
     def draw(self, graphics: Graphics) -> None:
         light = self.lights[self.light_mode]
-        light.casts_shadows = self.enabled
         graphics.bind_camera(self.camera, graphics.full_rect)
         graphics.set_environment(self.environment)
         graphics.add_light(light)

@@ -63,7 +63,7 @@ window resizing and the Rust split-screen example when validating a GPU backend.
 
 ## Shadows
 
-Directional lights can use automatic shadows from queued mesh draws, with
+Point, spot, and directional lights own optional shadow state and use queued mesh draws, with
 configurable coverage, resolution, receiver bias, and per-draw transparency.
 See [directional shadows](shadows.md) for the submission API and examples. Shadows modulate direct lighting in
 linear HDR space before the shared display transform.

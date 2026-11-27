@@ -80,7 +80,11 @@ public struct DirectionalLight : ILightSource
     public bool CastsShadows
     {
         readonly get => _castsShadows != 0;
-        set => _castsShadows = value ? 1u : 0u;
+        set
+        {
+            if (value && _shadowSettings.Resolution == 0) _shadowSettings = new ShadowSettings();
+            _castsShadows = value ? 1u : 0u;
+        }
     }
 
     /// <summary>Optional shadow quality, directional coverage, and local-light clipping settings.</summary>

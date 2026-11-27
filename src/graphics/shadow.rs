@@ -5,9 +5,8 @@ use crate::{
 
 /// Optional shadow quality, directional coverage, and local-light clipping settings.
 ///
-/// The volume is centered on `center`, with square cross-section perpendicular
-/// to the light rays. Submit all relevant opaque casters, including those above
-/// the visible scene. Positions outside this volume receive no shadow.
+/// Lights provide defaults automatically. Directional lights use center/size/depth;
+/// point and spot lights derive their projection from the light and near/far planes.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShadowSettings {

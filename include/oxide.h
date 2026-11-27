@@ -170,7 +170,7 @@ extern "C"
         OxideVec4 tangent;
     } OxideVertex;
 
-    /** Orthographic directional shadow volume and receiver bias. Initialize with oxide_directional_shadow_settings_default. */
+    /** Optional shadow quality, directional coverage, and local-light clipping. Light initializers supply defaults. */
     typedef struct OxideShadowSettings
     {
         /** Finite world-space volume center; default origin. */
