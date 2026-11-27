@@ -5,7 +5,7 @@ import sys
 import unittest
 from unittest.mock import Mock, patch
 
-from oxide import DirectionalShadowSettings, GameTime, Vec3, Keys
+from oxide import ShadowSettings, GameTime, Vec3, Keys
 from oxide import _native
 from oxide.math import Rect
 
@@ -16,12 +16,12 @@ from shadows import Shadows
 class ShadowBindingsTests(unittest.TestCase):
     def test_defaults_match_native_abi(self):
         native_defaults = _native.lib.oxide_directional_shadow_settings_default
-        native_defaults.argtypes = [ctypes.POINTER(DirectionalShadowSettings)]
+        native_defaults.argtypes = [ctypes.POINTER(ShadowSettings)]
         native_defaults.restype = ctypes.c_int
-        actual = DirectionalShadowSettings(size=1, depth=1, resolution=128)
+        actual = ShadowSettings(size=1, depth=1, resolution=128)
         _native.check(native_defaults(ctypes.byref(actual)))
-        expected = DirectionalShadowSettings()
-        self.assertEqual(ctypes.sizeof(actual), 32)
+        expected = ShadowSettings()
+        self.assertEqual(ctypes.sizeof(actual), 40)
         for field, _ in actual._fields_:
             self.assertEqual(getattr(actual, field), getattr(expected, field), field)
         self.assertEqual(actual.center, Vec3())
@@ -38,9 +38,10 @@ class ShadowBindingsTests(unittest.TestCase):
             self.assertNotEqual(initial_x, demo.transforms[1].position.x)
             graphics = Mock(full_rect=Rect(0, 0, 1280, 800))
             demo.draw(graphics)
-            graphics.set_directional_shadows.assert_called_once_with(demo.light, demo.settings)
+            graphics.add_light.assert_called_once_with(demo.lights[demo.light_mode])
+            self.assertTrue(demo.lights[demo.light_mode].casts_shadows)
             names = [call[0] for call in graphics.method_calls]
-            self.assertLess(names.index("set_directional_shadows"), names.index("draw_mesh"))
+            self.assertLess(names.index("add_light"), names.index("draw_mesh"))
             self.assertLess(names.index("bind_camera"), names.index("draw_mesh"))
             draws = graphics.draw_mesh.call_args_list
             self.assertEqual(len(draws), len(demo.transforms))
@@ -55,9 +56,13 @@ class ShadowBindingsTests(unittest.TestCase):
             self.assertFalse(demo.enabled)
             graphics.reset_mock()
             demo.draw(graphics)
-            graphics.set_directional_shadows.assert_not_called()
-            graphics.clear_directional_shadows.assert_called_once()
+            self.assertFalse(demo.lights[demo.light_mode].casts_shadows)
             self.assertEqual(graphics.draw_mesh.call_count, len(demo.transforms))
+            pressed.clear()
+            pressed.add(Keys.L)
+            for expected in [1, 2, 0]:
+                demo.update(GameTime(1.0 / 60.0, 3.0))
+                self.assertEqual(demo.light_mode, expected)
             pressed.clear()
             pressed.add(Keys.T)
             for expected in [1.0, 0.0, 0.5]:

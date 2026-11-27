@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{DirectionalShadowSettings, DirectionalLight, Environment, Graphics, PointLight, SpotLight},
+    graphics::{ShadowSettings, DirectionalLight, Environment, Graphics, PointLight, SpotLight},
     math::{Rect, Transform},
 };
 
@@ -267,6 +267,12 @@ pub extern "C" fn oxide_graphics_add_point_light(
     light: PointLight,
 ) -> OxideStatus {
     ffi_boundary(|| {
+        if light.casts_shadows() {
+            if let Err(error) = light.shadow_settings().validate() {
+                set_last_error(error.to_string());
+                return OxideStatus::InvalidArgument;
+            }
+        }
         let Some(graphics) = graphics_from_handle(graphics) else {
             set_last_error("graphics handle is null");
 
@@ -285,6 +291,12 @@ pub extern "C" fn oxide_graphics_add_spot_light(
     light: SpotLight,
 ) -> OxideStatus {
     ffi_boundary(|| {
+        if light.casts_shadows() {
+            if let Err(error) = light.shadow_settings().validate() {
+                set_last_error(error.to_string());
+                return OxideStatus::InvalidArgument;
+            }
+        }
         let Some(graphics) = graphics_from_handle(graphics) else {
             set_last_error("graphics handle is null");
 
@@ -303,6 +315,12 @@ pub extern "C" fn oxide_graphics_add_directional_light(
     light: DirectionalLight,
 ) -> OxideStatus {
     ffi_boundary(|| {
+        if light.casts_shadows() {
+            if let Err(error) = light.shadow_settings().validate() {
+                set_last_error(error.to_string());
+                return OxideStatus::InvalidArgument;
+            }
+        }
         let Some(graphics) = graphics_from_handle(graphics) else {
             set_last_error("graphics handle is null");
 
@@ -316,51 +334,20 @@ pub extern "C" fn oxide_graphics_add_directional_light(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_directional_shadow_settings_default(result: *mut DirectionalShadowSettings) -> OxideStatus {
+pub extern "C" fn oxide_directional_shadow_settings_default(result: *mut ShadowSettings) -> OxideStatus {
     ffi_boundary(|| {
         if result.is_null() {
             set_last_error("result pointer cannot be null");
             return OxideStatus::InvalidArgument;
         }
-        unsafe { *result = DirectionalShadowSettings::default(); }
+        unsafe { *result = ShadowSettings::default(); }
         OxideStatus::Ok
     })
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_set_directional_shadows(
-    graphics: OxideGraphicsHandle,
-    light: DirectionalLight,
-    settings: DirectionalShadowSettings,
-) -> OxideStatus {
-    ffi_boundary(|| {
-        let Some(graphics) = graphics_from_handle(graphics) else {
-            set_last_error("graphics handle is null");
-            return OxideStatus::InvalidArgument;
-        };
-        if let Err(error) = settings.light_matrix(light.direction()) {
-            set_last_error(error.to_string());
-            return OxideStatus::InvalidArgument;
-        }
-        match graphics.set_directional_shadows(&light, &settings) {
-            Ok(()) => OxideStatus::Ok,
-            Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
-        }
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn oxide_graphics_clear_directional_shadows(graphics: OxideGraphicsHandle) -> OxideStatus {
-    ffi_boundary(|| {
-        let Some(graphics) = graphics_from_handle(graphics) else {
-            set_last_error("graphics handle is null");
-            return OxideStatus::InvalidArgument;
-        };
-        match graphics.clear_directional_shadows() {
-            Ok(()) => OxideStatus::Ok,
-            Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError }
-        }
-    })
+pub extern "C" fn oxide_shadow_settings_default(result: *mut ShadowSettings) -> OxideStatus {
+    oxide_directional_shadow_settings_default(result)
 }
 
 #[cfg(test)]
@@ -369,9 +356,42 @@ mod tests {
 
     #[test]
     fn shadow_defaults_cross_the_c_boundary_and_reject_null_output() {
-        let mut settings = DirectionalShadowSettings { resolution: 0, ..Default::default() };
+        let mut settings = ShadowSettings { resolution: 0, ..Default::default() };
         assert_eq!(oxide_directional_shadow_settings_default(&mut settings), OxideStatus::Ok);
-        assert_eq!(settings, DirectionalShadowSettings::default());
+        assert_eq!(settings, ShadowSettings::default());
         assert_eq!(oxide_directional_shadow_settings_default(std::ptr::null_mut()), OxideStatus::InvalidArgument);
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_point_light_init(position: crate::math::Vec3, color: crate::graphics::Color, intensity: f32, result: *mut PointLight) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() { set_last_error("result pointer cannot be null"); return OxideStatus::InvalidArgument; }
+        match PointLight::new(position, color, intensity) {
+            Ok(light) => { unsafe { *result = light; } OxideStatus::Ok }
+            Err(error) => { set_last_error(error.to_string()); OxideStatus::InvalidArgument }
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_spot_light_init(position: crate::math::Vec3, direction: crate::math::Vec3, angle: crate::math::Angle, color: crate::graphics::Color, intensity: f32, result: *mut SpotLight) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() { set_last_error("result pointer cannot be null"); return OxideStatus::InvalidArgument; }
+        match SpotLight::new(position, direction, angle, color, intensity) {
+            Ok(light) => { unsafe { *result = light; } OxideStatus::Ok }
+            Err(error) => { set_last_error(error.to_string()); OxideStatus::InvalidArgument }
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_directional_light_init(direction: crate::math::Vec3, color: crate::graphics::Color, intensity: f32, result: *mut DirectionalLight) -> OxideStatus {
+    ffi_boundary(|| {
+        if result.is_null() { set_last_error("result pointer cannot be null"); return OxideStatus::InvalidArgument; }
+        match DirectionalLight::new(direction, color, intensity) {
+            Ok(light) => { unsafe { *result = light; } OxideStatus::Ok }
+            Err(error) => { set_last_error(error.to_string()); OxideStatus::InvalidArgument }
+        }
+    })
 }

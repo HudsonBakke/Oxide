@@ -1,7 +1,7 @@
 //! Automatic directional shadows. Space toggles shadows; T cycles box transparency.
 use oxide::{
     app::{AppConfig, Game, GameTime},
-    graphics::{Camera, Color, DirectionalLight, DirectionalShadowSettings, Environment, Graphics, Material, Mesh, Vertex},
+    graphics::{Camera, Color, DirectionalLight, PointLight, SpotLight, Environment, Graphics, Material, Mesh, Vertex},
     input::{Keyboard, Keys},
     math::{Angle, Quaternion, Transform, Vec2, Vec3},
 };
@@ -12,7 +12,9 @@ struct Shadows {
     materials: [Material; 7],
     transforms: [Transform; 7],
     light: DirectionalLight,
-    settings: DirectionalShadowSettings,
+    point: PointLight,
+    spot: SpotLight,
+    light_mode: usize,
     environment: Environment,
     enabled: bool,
     transparency: f32,
@@ -46,7 +48,9 @@ impl Shadows {
                 instance(Vec3::new(-1.2, 1.0, -1.8), Vec3::new(0.8, 0.8, 0.8)),
             ],
             light: DirectionalLight::new(Vec3::new(-0.5, -1.0, -0.35), Color::WHITE, 3.0).unwrap(),
-            settings: DirectionalShadowSettings::default(),
+            point: PointLight::new(Vec3::new(2.0, 7.0, 4.0), Color::WHITE, 100.0).unwrap(),
+            spot: SpotLight::new(Vec3::new(0.0, 8.0, 4.0), Vec3::new(0.0, -1.0, -0.5), Angle::degrees(45.0), Color::WHITE, 100.0).unwrap(),
+            light_mode: 0,
             environment: Environment::new(Color::WHITE, 0.12, None, 0.0, None, Color::rgb(0.04, 0.06, 0.09)).unwrap(),
             enabled: true,
             transparency: 0.5,
@@ -65,18 +69,21 @@ impl Game for Shadows {
         if Keyboard::get_state().is_key_pressed(Keys::T) {
             self.transparency = if self.transparency < 1.0 { self.transparency + 0.5 } else { 0.0 };
         }
-        oxide::app::set_window_name(format!("Oxide Shadows | {} | box transparency {} | Space toggles, T cycles", if self.enabled { "on" } else { "off" }, self.transparency));
+        if Keyboard::get_state().is_key_pressed(Keys::L) { self.light_mode = (self.light_mode + 1) % 3; }
+        oxide::app::set_window_name(format!("Oxide Shadows | {} | box transparency {} | Space shadows, T transparency, L light {}", if self.enabled { "on" } else { "off" }, self.transparency, ["directional", "point", "spot"][self.light_mode]));
     }
 
     fn draw(&mut self, graphics: &mut Graphics) {
-        if self.enabled {
-            graphics.set_directional_shadows(&self.light, &self.settings).unwrap();
-        } else {
-            graphics.clear_directional_shadows().unwrap();
-        }
+        self.light.set_casts_shadows(self.enabled);
+        self.point.set_casts_shadows(self.enabled);
+        self.spot.set_casts_shadows(self.enabled);
         graphics.bind_camera(&self.camera, graphics.full_rect()).unwrap();
         graphics.set_environment(&self.environment);
-        graphics.add_light(&self.light);
+        match self.light_mode {
+            0 => graphics.add_light(&self.light),
+            1 => graphics.add_light(&self.point),
+            _ => graphics.add_light(&self.spot),
+        }
         let transmission = [0.0, self.transparency, 0.0, 0.75, 0.5, 0.5, 0.0];
         for ((material, transform), transparency) in self.materials.iter().zip(&self.transforms).zip(transmission) {
             if transparency == 0.0 {

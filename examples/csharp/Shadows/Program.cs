@@ -26,8 +26,12 @@ internal sealed class Shadows : Game
         new() { Position = new Vec3(-2.5f, 4, 2.35f), Scale = new Vec3(2, 0.1f, 2) },
         new() { Position = new Vec3(-1.2f, 1, -1.8f), Scale = new Vec3(0.8f, 0.8f, 0.8f) },
     ];
-    private readonly DirectionalLight _light = new(new Vec3(-0.5f, -1, -0.35f), Color.White, 3);
-    private readonly DirectionalShadowSettings _settings = new();
+    private readonly ILightSource[] _lights = [
+        new DirectionalLight(new Vec3(-0.5f, -1, -0.35f), Color.White, 3),
+        new PointLight(new Vec3(2, 7, 4), Color.White, 100),
+        new SpotLight(new Vec3(0, 8, 4), new Vec3(0, -1, -0.5f), Angle.Degrees(45), Color.White, 100),
+    ];
+    private int _lightMode;
     private readonly Oxide.Graphics.Environment _environment =
         new(Color.White, 0.12f, null, 0, null, new Color(0.04f, 0.06f, 0.09f, 1));
     private bool _enabled = true;
@@ -47,16 +51,17 @@ internal sealed class Shadows : Game
         _transforms[1].Rotation = Quaternion.FromAxisAngle(new Vec3(0, 1, 0), Angle.Radians(t * 0.5f));
         if (Keyboard.GetState().IsKeyPressed(Keys.Space)) _enabled = !_enabled;
         if (Keyboard.GetState().IsKeyPressed(Keys.T)) _transparency = _transparency < 1 ? _transparency + 0.5f : 0;
-        SetWindowName($"Oxide Shadows | {(_enabled ? "on" : "off")} | box transparency {_transparency} | Space toggles, T cycles");
+        if (Keyboard.GetState().IsKeyPressed(Keys.L)) _lightMode = (_lightMode + 1) % _lights.Length;
+        SetWindowName($"Oxide Shadows | {(_enabled ? "on" : "off")} | box transparency {_transparency} | Space shadows, T transparency, L light {_lightMode}");
     }
 
     protected override void Draw(Graphics graphics)
     {
-        if (_enabled) graphics.SetDirectionalShadows(_light, _settings);
-        else graphics.ClearDirectionalShadows();
+        ILightSource light = _lights[_lightMode];
+        light.CastsShadows = _enabled;
         graphics.BindCamera(_camera, graphics.FullRect);
         graphics.SetEnvironment(_environment);
-        graphics.AddLight(_light);
+        graphics.AddLight(light);
         float[] transmission = [0, _transparency, 0, 0.75f, 0.5f, 0.5f, 0];
         for (int i = 0; i < _transforms.Length; i++)
         {

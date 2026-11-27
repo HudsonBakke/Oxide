@@ -73,6 +73,10 @@ fn copy_hdr(renderer: &D3D12Renderer, device: &D3D12Device) -> ID3D12Resource {
 
 #[test]
 fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
+    for kind in 0..5 { check_light_transmission(kind); }
+}
+
+fn check_light_transmission(kind: usize) {
     let device = D3D12Device::warp_for_test().unwrap();
     let mut renderer = D3D12Renderer::new(&device).unwrap();
     let cpu = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
@@ -81,8 +85,15 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
     let mut unused = cpu;
     unused.ptr += (FIRST_TEXTURE_DESCRIPTOR - 1) as usize * renderer.texture_descriptor_size as usize;
     let depth = ShadowMap::new(&device, 64, unused).unwrap();
-    let light = DirectionalLight::new(Vec3::new(-1.0, 0.0, -1.0), Color::WHITE, 1.0).unwrap();
-    let settings = DirectionalShadowSettings { size: 12.0, depth: 16.0, resolution: 128, normal_bias: 0.0, ..Default::default() };
+    let mut light = DirectionalLight::new(Vec3::new(-1.0, 0.0, -1.0), Color::WHITE, 1.0).unwrap();
+    let settings = ShadowSettings { size: 12.0, depth: 16.0, resolution: 128, normal_bias: 0.0, depth_bias: 0.001, ..Default::default() };
+    light.set_shadow_settings(settings).unwrap();
+    light.set_casts_shadows(true);
+    let mut point = PointLight::new(Vec3::new(7.0, 0.0, 6.0), Color::WHITE, if kind == 3 { 42.5 } else { 85.0 }).unwrap();
+    let mut spot = SpotLight::new(Vec3::new(7.0, 0.0, 6.0), Vec3::new(-7.0, 0.0, -6.0), crate::math::Angle::degrees(if kind == 4 { 120.0 } else { 30.0 }), Color::WHITE, 85.0).unwrap();
+    point.set_shadow_settings(settings).unwrap(); point.set_casts_shadows(true);
+    spot.set_shadow_settings(settings).unwrap(); spot.set_casts_shadows(true);
+    if kind == 3 { light.set_intensity(0.5).unwrap(); }
     let mut camera = Camera::new();
     camera.set_position(Vec3::new(0.0, 0.0, 5.0));
     let mut mesh = quad();
@@ -111,9 +122,13 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
             renderer.command_list.ClearDepthStencilView(depth.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
             renderer.command_list.ClearRenderTargetView(hdr.rtv, &[0.0; 4], None);
         }
-        renderer.set_directional_shadows(&light, &settings).unwrap();
         renderer.bind_camera(&device, &camera, Rect::new(0.0, 0.0, 64.0, 64.0)).unwrap();
-        renderer.add_directional_light(&light);
+        match kind {
+            0 => renderer.add_directional_light(&light),
+            1 => renderer.add_point_light(&point),
+            3 => { renderer.add_directional_light(&light); renderer.add_point_light(&point); }
+            _ => renderer.add_spot_light(&spot),
+        }
         if frame == 7 {
             // Dropping CPU resources after submission must leave the GPU draw valid.
             let transient_mesh = quad();
@@ -125,7 +140,6 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
         let count = renderer.commands.len();
         assert!(renderer.draw_mesh(&device, &mesh, &material, &Transform::new(), f32::NAN).is_err());
         assert_eq!(renderer.commands.len(), count);
-        assert!(renderer.clear_directional_shadows().is_err());
         if frame == 6 {
             // Later geometry, material, lighting, and camera changes must not
             // alter the earlier white receiver draw at the center of the view.
@@ -139,21 +153,21 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
             assert!(renderer.mesh_cache.contains_key(&(mesh.id(), mesh.vertex_generation(), 0)));
         }
         if (1..=3).contains(&frame) || frame == 5 {
-            renderer.draw_mesh(&device, &mesh, &material, &transform(2.0, 2.0, 1.0, 3.0), 0.5).unwrap();
+            renderer.draw_mesh(&device, &mesh, &material, &transform(2.0, 2.0, 2.0, 3.0), 0.5).unwrap();
         }
         if (2..=3).contains(&frame) {
-            renderer.draw_mesh(&device, &mesh, &material, &transform(3.0, 3.0, 1.0, 3.0), 0.5).unwrap();
+            renderer.draw_mesh(&device, &mesh, &material, &transform(3.0, 3.0, 2.0, 3.0), 0.5).unwrap();
         }
         if frame == 3 {
             renderer.draw_mesh(&device, &mesh, &material, &transform(1.0, 1.0, 1.0, 3.0), 0.0).unwrap();
         }
         if frame == 4 {
-            renderer.draw_mesh(&device, &mesh, &material, &transform(-2.0, -2.0, 1.0, 3.0), 0.5).unwrap();
+            renderer.draw_mesh(&device, &mesh, &material, &transform(-2.0, -2.0, 2.0, 3.0), 0.5).unwrap();
         }
         if frame == 5 {
             // A second camera can submit the same caster without doubling its transmission.
             renderer.bind_camera(&device, &camera, Rect::new(48.0, 0.0, 16.0, 64.0)).unwrap();
-            renderer.draw_mesh(&device, &mesh, &material, &transform(2.0, 2.0, 1.0, 3.0), 0.5).unwrap();
+            renderer.draw_mesh(&device, &mesh, &material, &transform(2.0, 2.0, 2.0, 3.0), 0.5).unwrap();
         }
         let shadow = renderer.render_shadows(&device).unwrap();
         let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
@@ -191,9 +205,9 @@ fn queued_shadows_multiply_transmission_and_preserve_opaque_blockers() {
         }
     }
     let full = samples[0];
-    assert!(full > 0.05, "receiver must be lit: {samples:?}");
+    assert!(full > 0.05, "light {kind} receiver must be lit: {samples:?}");
     for (index, expected) in [(1, 0.5), (2, 0.25), (3, 0.0), (4, 1.0), (5, 0.5), (6, 1.0), (7, 1.0)] {
-        assert!((samples[index] / full - expected).abs() < 0.025, "wrong transmission in frame {index}: {samples:?}");
+        assert!((samples[index] / full - expected).abs() < 0.025, "wrong transmission for light {kind} in frame {index}: {samples:?}");
     }
 }
 
@@ -314,6 +328,21 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
                 assert!((right[0] - 0.25).abs() < 0.003 && (right[1] - 0.5).abs() < 0.003 && right[2] == 0.0, "opposing camera sort: {right:?}");
             }
             readback.Unmap(0, None);
+        }
+    }
+}
+
+#[test]
+fn point_shadow_projection_faces_cover_all_axes() {
+    let request = ActiveLight::Point(PointLight::new(Vec3::new(2.0,3.0,4.0), Color::WHITE, 1.0).unwrap()).shadow_request().unwrap();
+    assert_eq!(request.faces, 6);
+    for (face, direction) in [Vec3::new(1.0,0.0,0.0), Vec3::new(-1.0,0.0,0.0), Vec3::new(0.0,1.0,0.0), Vec3::new(0.0,-1.0,0.0), Vec3::new(0.0,0.0,1.0), Vec3::new(0.0,0.0,-1.0)].into_iter().enumerate() {
+        for (distance, expected_depth) in [(request.settings.near_plane, 0.0), (request.settings.far_plane, 1.0)] {
+            let point = request.position + direction * distance;
+            let clip = request.matrices[face] * crate::math::Vec4::new(point.x, point.y, point.z, 1.0);
+            assert!(clip.w > 0.0);
+            assert!((clip.x / clip.w).abs() < 0.0001 && (clip.y / clip.w).abs() < 0.0001);
+            assert!((clip.z / clip.w - expected_depth).abs() < 0.0001);
         }
     }
 }

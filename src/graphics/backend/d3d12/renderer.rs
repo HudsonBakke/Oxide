@@ -28,7 +28,7 @@ use windows::{
 use std::collections::{HashMap, HashSet};
 use super::{
     render_target::HdrTarget, shadow_map::ShadowMap,
-    transmission_map::{TransmissionMap, TRANSMISSION_LAYERS, TRANSMISSION_MAX_RESOLUTION, FIRST_TEXTURE_DESCRIPTOR},
+    transmission_map::{TransmissionMap, TRANSMISSION_LAYERS, TRANSMISSION_MAX_RESOLUTION, FIRST_TEXTURE_DESCRIPTOR, MAX_SHADOW_LIGHTS, PREVIOUS_VIEWS_PER_LIGHT, array_srv},
 };
 use windows::Win32::Graphics::Direct3D12::{D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_CPU_DESCRIPTOR_HANDLE};
 use windows::Win32::Graphics::Dxgi::Common::{
@@ -43,7 +43,7 @@ use super::{
 
 use crate::{
     graphics::{
-        Camera, DirectionalLight, DirectionalShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight,
+        Camera, DirectionalLight, ShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight,
         SpotLight, mesh::MeshId, texture::TextureId,
     },
     math::{Mat4, Rect, Transform, Vec3},
@@ -100,29 +100,72 @@ fn unique_casters(commands: &[SceneCommand]) -> Vec<QueuedMesh> {
 }
 
 #[derive(Clone, Copy)]
-struct ShadowState {
-    light: DirectionalLight,
-    settings: DirectionalShadowSettings,
-    matrix: Mat4,
+struct ShadowRequest {
+    light: ActiveLight,
+    settings: ShadowSettings,
+    matrices: [Mat4; 6],
+    faces: u32,
+    position: Vec3,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct ShadowConstants {
-    world_to_shadow: [[f32; 4]; 4],
+    matrices: [[[f32; 4]; 4]; 6],
     parameters: [f32; 4],
     transmission: [f32; 4],
+    position: [f32; 4],
+}
+
+impl Default for ShadowConstants {
+    fn default() -> Self {
+        Self { matrices: [[[0.0; 4]; 4]; 6], parameters: [0.0; 4], transmission: [0.0; 4], position: [0.0; 4] }
+    }
+}
+
+struct ShadowResources {
+    opaque: ShadowMap,
+    transmission: Option<TransmissionMap>,
 }
 
 fn invalid_shadow_order(message: &str) -> windows::core::Error {
     windows::core::Error::new(windows::Win32::Foundation::E_INVALIDARG, message)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum ActiveLight {
     Point(PointLight),
     Spot(SpotLight),
     Directional(DirectionalLight),
+}
+
+impl ActiveLight {
+    fn shadow_settings(&self) -> &ShadowSettings {
+        match self { Self::Point(l) => l.shadow_settings(), Self::Spot(l) => l.shadow_settings(), Self::Directional(l) => l.shadow_settings() }
+    }
+    fn casts_shadows(&self) -> bool {
+        match self { Self::Point(l) => l.casts_shadows(), Self::Spot(l) => l.casts_shadows(), Self::Directional(l) => l.casts_shadows() }
+    }
+    fn shadow_request(self) -> crate::OxideResult<ShadowRequest> {
+        let settings = *self.shadow_settings();
+        settings.validate()?;
+        let mut matrices = [Mat4::identity(); 6];
+        let (faces, position) = match self {
+            Self::Directional(light) => { matrices[0] = settings.light_matrix(light.direction())?; (1, Vec3::default()) }
+            Self::Spot(light) if light.angle().as_radians() < std::f32::consts::FRAC_PI_2 - 0.001 => {
+                matrices[0] = settings.perspective_matrix(light.position(), light.direction(), 2.0 * light.angle().as_radians())?;
+                (1, light.position())
+            }
+            _ => {
+                let position = match self { Self::Point(light) => light.position(), Self::Spot(light) => light.position(), _ => unreachable!() };
+                for (index, direction) in [Vec3::new(1.0,0.0,0.0), Vec3::new(-1.0,0.0,0.0), Vec3::new(0.0,1.0,0.0), Vec3::new(0.0,-1.0,0.0), Vec3::new(0.0,0.0,1.0), Vec3::new(0.0,0.0,-1.0)].into_iter().enumerate() {
+                    matrices[index] = settings.perspective_matrix(position, direction, std::f32::consts::FRAC_PI_2)?;
+                }
+                (6, position)
+            }
+        };
+        Ok(ShadowRequest { light: self, settings, matrices, faces, position })
+    }
 }
 
 fn transition_resource(
@@ -270,7 +313,7 @@ impl CachedMesh {
     }
 }
 
-const MAX_TEXTURES: u32 = 1024;
+const MAX_TEXTURES: u32 = 4096;
 
 pub(crate) struct D3D12Renderer {
     command_allocators: [ID3D12CommandAllocator; FRAME_COUNT],
@@ -283,10 +326,9 @@ pub(crate) struct D3D12Renderer {
     display_pipeline: D3D12Pipeline,
     hdr_target: Option<HdrTarget>,
     shadow_pipeline: D3D12Pipeline,
-    shadow_map: Option<ShadowMap>,
-    shadow_state: Option<ShadowState>,
+    shadow_requests: Vec<ShadowRequest>,
+    shadow_resources: Vec<Option<ShadowResources>>,
     transmission_pipeline: D3D12Pipeline,
-    transmission_map: Option<TransmissionMap>,
     commands: Vec<SceneCommand>,
     destination: Option<Rect>,
     latest_mesh_versions: HashMap<MeshId, (u64, u64)>,
@@ -400,11 +442,13 @@ impl D3D12Renderer {
                 .GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
         };
 
-        let mut shadow_srv = unsafe { texture_heap.GetCPUDescriptorHandleForHeapStart() };
-        shadow_srv.ptr += texture_descriptor_size as usize;
-        ShadowMap::write_srv(device, None, shadow_srv);
-        shadow_srv.ptr += texture_descriptor_size as usize;
-        TransmissionMap::null_views(device, shadow_srv, texture_descriptor_size as usize);
+        for index in 0..MAX_SHADOW_LIGHTS {
+            for (base, format) in [(1, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R32_FLOAT), (1 + MAX_SHADOW_LIGHTS, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R32_FLOAT), (1 + 2 * MAX_SHADOW_LIGHTS, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R16_FLOAT)] {
+                let mut handle = unsafe { texture_heap.GetCPUDescriptorHandleForHeapStart() };
+                handle.ptr += (base + index) * texture_descriptor_size as usize;
+                array_srv(device, None, format, 0, 1, handle);
+            }
+        }
 
         Ok(Self {
             command_allocators,
@@ -417,10 +461,9 @@ impl D3D12Renderer {
             display_pipeline,
             hdr_target: None,
             shadow_pipeline,
-            shadow_map: None,
-            shadow_state: None,
+            shadow_requests: Vec::new(),
+            shadow_resources: Vec::new(),
             transmission_pipeline,
-            transmission_map: None,
             commands: Vec::new(),
             destination: None,
             latest_mesh_versions: HashMap::new(),
@@ -457,6 +500,7 @@ impl D3D12Renderer {
 
     fn reset_frame_state(&mut self) {
         self.commands.clear();
+        self.shadow_requests.clear();
         self.destination = None;
         self.constant_buffer.reset();
         self.active_lights.clear();
@@ -538,22 +582,22 @@ impl D3D12Renderer {
         Ok(())
     }
 
-    pub(crate) fn set_directional_shadows(&mut self, light: &DirectionalLight, settings: &DirectionalShadowSettings) -> Result<()> {
-        if self.commands.iter().any(|command| matches!(command, SceneCommand::Mesh(_))) {
-            return Err(invalid_shadow_order("configure shadows before submitting meshes"));
+    fn request_shadow(&mut self, light: ActiveLight) -> Result<f32> {
+        if !light.casts_shadows() { return Ok(-1.0); }
+        if let Some(index) = self.shadow_requests.iter().position(|request| request.light == light) { return Ok(index as f32); }
+        if self.shadow_requests.len() == MAX_SHADOW_LIGHTS {
+            return Err(invalid_shadow_order("frame exceeds 32 distinct shadow-enabled light snapshots"));
         }
-        let matrix = settings.light_matrix(light.direction())
-            .map_err(|error| invalid_shadow_order(&error.to_string()))?;
-        self.shadow_state = Some(ShadowState { light: *light, settings: *settings, matrix });
-        Ok(())
+        let request = light.shadow_request().map_err(|error| invalid_shadow_order(&error.to_string()))?;
+        let index = self.shadow_requests.len();
+        self.shadow_requests.push(request);
+        Ok(index as f32)
     }
 
-    pub(crate) fn clear_directional_shadows(&mut self) -> Result<()> {
-        if self.commands.iter().any(|command| matches!(command, SceneCommand::Mesh(_))) {
-            return Err(invalid_shadow_order("configure shadows before submitting meshes"));
-        }
-        self.shadow_state = None;
-        Ok(())
+    fn shadow_cpu(&self, slot: usize) -> D3D12_CPU_DESCRIPTOR_HANDLE {
+        let mut handle = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += slot * self.texture_descriptor_size as usize;
+        handle
     }
 
     fn set_viewport(&self, destination: Rect) {
@@ -590,72 +634,77 @@ impl D3D12Renderer {
     }
 
     fn render_shadows(&mut self, device: &D3D12Device) -> Result<u64> {
-        let state = self.shadow_state;
-        let mut constants = ShadowConstants {
-            world_to_shadow: Mat4::identity().as_array(),
-            parameters: [0.0; 4], transmission: [0.0; 4],
-        };
-        let Some(state) = state else { return Ok(self.constant_buffer.write(&constants)); };
+        let mut constants = [ShadowConstants::default(); MAX_SHADOW_LIGHTS];
         let casters = unique_casters(&self.commands);
-        if self.shadow_map.as_ref().is_none_or(|map| map.resolution != state.settings.resolution) {
-            let mut srv = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
-            srv.ptr += self.texture_descriptor_size as usize;
-            self.shadow_map = Some(ShadowMap::new(device, state.settings.resolution, srv)?);
-        }
-        let map = self.shadow_map.as_ref().unwrap();
-        transition_resource(&self.command_list, &map.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-        unsafe {
-            self.command_list.ClearDepthStencilView(map.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
-            self.command_list.OMSetRenderTargets(0, None, false, Some(&map.dsv));
-            self.command_list.SetGraphicsRootSignature(self.shadow_pipeline.root_signature());
-            self.command_list.SetPipelineState(self.shadow_pipeline.pipeline_state());
-        }
-        self.set_viewport(Rect::new(0.0, 0.0, state.settings.resolution as f32, state.settings.resolution as f32));
-        for draw in casters.iter().filter(|draw| draw.transparency == 0.0) {
-            self.record_caster(draw, state.matrix, true);
-        }
-        unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
-        transition_resource(&self.command_list, &self.shadow_map.as_ref().unwrap().resource,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
         let transparent: Vec<_> = casters.iter().filter(|draw| draw.transparency > 0.0).collect();
-        if !transparent.is_empty() {
-            // Bound transmission memory independently of the opaque-map setting.
-            let resolution = state.settings.resolution.min(TRANSMISSION_MAX_RESOLUTION);
-            if self.transmission_map.as_ref().is_none_or(|map| map.resolution != resolution) {
-                let mut srv = unsafe { self.texture_heap.GetCPUDescriptorHandleForHeapStart() };
-                srv.ptr += 2 * self.texture_descriptor_size as usize;
-                self.transmission_map = Some(TransmissionMap::new(device, resolution, srv, self.texture_descriptor_size as usize)?);
+        if self.shadow_resources.len() < self.shadow_requests.len() { self.shadow_resources.resize_with(self.shadow_requests.len(), || None); }
+        for index in 0..self.shadow_requests.len() {
+            let request = self.shadow_requests[index];
+            let resolution = request.settings.resolution;
+            if self.shadow_resources[index].as_ref().is_none_or(|resources| resources.opaque.resolution != resolution || resources.opaque.faces != request.faces) {
+                let map = ShadowMap::new_array(device, resolution, request.faces, self.shadow_cpu(1 + index))?;
+                self.shadow_resources[index] = Some(ShadowResources { opaque: map, transmission: None });
             }
-            self.set_viewport(Rect::new(0.0, 0.0, resolution as f32, resolution as f32));
-            for layer in 0..TRANSMISSION_LAYERS {
-                let map = self.transmission_map.as_ref().unwrap();
-                transition_slice(&self.command_list, &map.depth, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE, layer);
-                transition_slice(&self.command_list, &map.values, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET, layer);
-                let dsv = map.dsvs[layer as usize];
-                let rtv = map.rtvs[layer as usize];
-                let mut previous = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
-                previous.ptr += (4 + layer) as u64 * self.texture_descriptor_size as u64;
+            for face in 0..request.faces {
+                let map = &self.shadow_resources[index].as_ref().unwrap().opaque;
+                transition_slice(&self.command_list, &map.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE, face);
+                let dsv = map.dsvs[face as usize];
                 unsafe {
                     self.command_list.ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
-                    self.command_list.ClearRenderTargetView(rtv, &[1.0; 4], None);
-                    self.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&dsv));
-                    self.command_list.SetGraphicsRootSignature(self.transmission_pipeline.root_signature());
-                    self.command_list.SetPipelineState(self.transmission_pipeline.pipeline_state());
-                    self.command_list.SetGraphicsRootDescriptorTable(1, previous);
+                    self.command_list.OMSetRenderTargets(0, None, false, Some(&dsv));
+                    self.command_list.SetGraphicsRootSignature(self.shadow_pipeline.root_signature());
+                    self.command_list.SetPipelineState(self.shadow_pipeline.pipeline_state());
                 }
-                for draw in &transparent {
-                    self.record_caster(draw, state.matrix, layer == 0);
-                }
+                self.set_viewport(Rect::new(0.0, 0.0, resolution as f32, resolution as f32));
+                for draw in casters.iter().filter(|draw| draw.transparency == 0.0) { self.record_caster(draw, request.matrices[face as usize], true); }
                 unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
-                let map = self.transmission_map.as_ref().unwrap();
-                transition_slice(&self.command_list, &map.depth, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, layer);
-                transition_slice(&self.command_list, &map.values, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, layer);
+                transition_slice(&self.command_list, &self.shadow_resources[index].as_ref().unwrap().opaque.resource, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, face);
             }
-            constants.transmission = [1.0 / resolution as f32, TRANSMISSION_LAYERS as f32, 1.0, 0.0];
+            let mut transmission = [0.0; 4];
+            if !transparent.is_empty() {
+                let cap = if request.faces == 6 { 256 } else if matches!(request.light, ActiveLight::Spot(_)) { 512 } else { TRANSMISSION_MAX_RESOLUTION };
+                let trans_resolution = resolution.min(cap);
+                if self.shadow_resources[index].as_ref().unwrap().transmission.as_ref().is_none_or(|map| map.resolution != trans_resolution) {
+                    let map = TransmissionMap::new(device, trans_resolution, request.faces,
+                        self.shadow_cpu(1 + MAX_SHADOW_LIGHTS + index), self.shadow_cpu(1 + 2 * MAX_SHADOW_LIGHTS + index),
+                        self.shadow_cpu(1 + 3 * MAX_SHADOW_LIGHTS + index * PREVIOUS_VIEWS_PER_LIGHT as usize), self.texture_descriptor_size as usize)?;
+                    self.shadow_resources[index].as_mut().unwrap().transmission = Some(map);
+                }
+                self.set_viewport(Rect::new(0.0, 0.0, trans_resolution as f32, trans_resolution as f32));
+                for face in 0..request.faces {
+                    for layer in 0..TRANSMISSION_LAYERS {
+                        let slice = face * TRANSMISSION_LAYERS + layer;
+                        let map = self.shadow_resources[index].as_ref().unwrap().transmission.as_ref().unwrap();
+                        transition_slice(&self.command_list, &map.depth, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE, slice);
+                        transition_slice(&self.command_list, &map.values, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET, slice);
+                        let dsv = map.dsvs[slice as usize];
+                        let rtv = map.rtvs[slice as usize];
+                        let mut previous = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+                        previous.ptr += (1 + 3 * MAX_SHADOW_LIGHTS + index * PREVIOUS_VIEWS_PER_LIGHT as usize + slice as usize) as u64 * self.texture_descriptor_size as u64;
+                        unsafe {
+                            self.command_list.ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+                            self.command_list.ClearRenderTargetView(rtv, &[1.0; 4], None);
+                            self.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&dsv));
+                            self.command_list.SetGraphicsRootSignature(self.transmission_pipeline.root_signature());
+                            self.command_list.SetPipelineState(self.transmission_pipeline.pipeline_state());
+                            self.command_list.SetGraphicsRootDescriptorTable(1, previous);
+                        }
+                        for draw in &transparent { self.record_caster(draw, request.matrices[face as usize], layer == 0); }
+                        unsafe { self.command_list.OMSetRenderTargets(0, None, false, None); }
+                        let map = self.shadow_resources[index].as_ref().unwrap().transmission.as_ref().unwrap();
+                        transition_slice(&self.command_list, &map.depth, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, slice);
+                        transition_slice(&self.command_list, &map.values, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, slice);
+                    }
+                }
+                transmission = [1.0 / trans_resolution as f32, TRANSMISSION_LAYERS as f32, 1.0, 0.0];
+            }
+            constants[index] = ShadowConstants {
+                matrices: request.matrices.map(|matrix| matrix.transposed().as_array()),
+                parameters: [request.settings.depth_bias, request.settings.normal_bias, 1.0 / resolution as f32, request.faces as f32],
+                transmission,
+                position: [request.position.x, request.position.y, request.position.z, 0.0],
+            };
         }
-        constants.world_to_shadow = state.matrix.transposed().as_array();
-        constants.parameters = [state.settings.depth_bias, state.settings.normal_bias, 1.0 / state.settings.resolution as f32, 1.0];
         Ok(self.constant_buffer.write(&constants))
     }
 
@@ -740,7 +789,6 @@ impl D3D12Renderer {
             self.background_drawn = true;
         }
 
-        let shadow = self.shadow_state;
         let model_matrix = transform.matrix_around(mesh.pivot());
 
         let normal_matrix = transform.normal_matrix();
@@ -888,7 +936,8 @@ impl D3D12Renderer {
             ];
         }
 
-        for light in &self.active_lights {
+        let active_lights = self.active_lights.clone();
+        for light in &active_lights {
             match light {
                 ActiveLight::Point(light) => {
                     let index = light_constants.point_light_count as usize;
@@ -903,7 +952,7 @@ impl D3D12Renderer {
                     light_constants.point_lights[index] = GpuPointLight {
                         position: [position.x, position.y, position.z, light.intensity()],
 
-                        color: [color.r, color.g, color.b, color.a],
+                        color: [color.r, color.g, color.b, self.request_shadow(ActiveLight::Point(*light))?],
                     };
 
                     light_constants.point_light_count += 1;
@@ -930,7 +979,7 @@ impl D3D12Renderer {
                             light.angle().as_radians().cos(),
                         ],
 
-                        color: [color.r, color.g, color.b, color.a],
+                        color: [color.r, color.g, color.b, self.request_shadow(ActiveLight::Spot(*light))?],
                     };
 
                     light_constants.spot_light_count += 1;
@@ -947,7 +996,7 @@ impl D3D12Renderer {
                     let color = light.color();
 
                     light_constants.directional_lights[index] = GpuDirectionalLight {
-                        direction: [direction.x, direction.y, direction.z, shadow.is_some_and(|state| state.light == *light) as u8 as f32],
+                        direction: [direction.x, direction.y, direction.z, self.request_shadow(ActiveLight::Directional(*light))?],
 
                         color: [color.r, color.g, color.b, light.intensity()],
                     };
@@ -1410,11 +1459,8 @@ mod tests {
             assert_eq!(unsafe { map.resource.GetDesc() }.Width, resolution as u64);
         }
         let light = DirectionalLight::new(crate::math::Vec3::new(0.0, -1.0, 0.0), crate::graphics::Color::WHITE, 1.0).unwrap();
-        renderer.set_directional_shadows(&light, &DirectionalShadowSettings::default()).unwrap();
-        renderer.clear_directional_shadows().unwrap();
-        let mut srv = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
-        srv.ptr += 2 * renderer.texture_descriptor_size as usize;
-        let layers = TransmissionMap::new(&device, 128, srv, renderer.texture_descriptor_size as usize).unwrap();
+        let _ = light;
+        let layers = TransmissionMap::new(&device, 128, 1, renderer.shadow_cpu(1 + MAX_SHADOW_LIGHTS), renderer.shadow_cpu(1 + 2 * MAX_SHADOW_LIGHTS), renderer.shadow_cpu(1 + 3 * MAX_SHADOW_LIGHTS), renderer.texture_descriptor_size as usize).unwrap();
         assert_eq!(layers.dsvs.len(), TRANSMISSION_LAYERS as usize);
     }
 }

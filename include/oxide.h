@@ -170,6 +170,29 @@ extern "C"
         OxideVec4 tangent;
     } OxideVertex;
 
+    /** Orthographic directional shadow volume and receiver bias. Initialize with oxide_directional_shadow_settings_default. */
+    typedef struct OxideShadowSettings
+    {
+        /** Finite world-space volume center; default origin. */
+        OxideVec3 center;
+        /** Finite positive full square width and height in world units; default 30. */
+        float size;
+        /** Finite positive full depth along light rays, centered on center; default 60. */
+        float depth;
+        /** Power-of-two square resolution from 128 through 4096; default 1024. */
+        uint32_t resolution;
+        /** Finite non-negative comparison offset in normalized depth units; default 0.0001. */
+        float depth_bias;
+        /** Finite non-negative receiver offset along the geometric normal in world units; default 0.01. */
+        float normal_bias;
+        /** Positive local-light near clipping distance in world units; default 0.1. */
+        float near_plane;
+        /** Local-light far clipping distance, greater than near_plane; default 60. */
+        float far_plane;
+    } OxideShadowSettings;
+    /** Compatibility name for common shadow settings. */
+    typedef OxideShadowSettings OxideDirectionalShadowSettings;
+
     /** Omnidirectional point light with inverse-square distance attenuation. */
     typedef struct OxidePointLight
     {
@@ -179,6 +202,10 @@ extern "C"
         OxideColor color;
         /** Non-negative light intensity; point and spot lights attenuate with squared distance. */
         float intensity;
+        /** Nonzero enables shadows; initialize the light with oxide_*_light_init for automatic settings. */
+        uint32_t casts_shadows;
+        /** Optional overrides; initialization functions supply defaults. */
+        OxideShadowSettings shadow_settings;
     } OxidePointLight;
 
     /** Point light restricted to a directional cone, with inverse-square distance attenuation. */
@@ -194,6 +221,10 @@ extern "C"
         OxideColor color;
         /** Non-negative light intensity; point and spot lights attenuate with squared distance. */
         float intensity;
+        /** Nonzero enables shadows; initialize the light with oxide_*_light_init for automatic settings. */
+        uint32_t casts_shadows;
+        /** Optional overrides; initialization functions supply defaults. */
+        OxideShadowSettings shadow_settings;
     } OxideSpotLight;
 
     /** Light whose rays travel in one world-space direction, with no distance attenuation. */
@@ -205,24 +236,11 @@ extern "C"
         OxideColor color;
         /** Non-negative light intensity; point and spot lights attenuate with squared distance. */
         float intensity;
+        /** Nonzero enables shadows; initialize the light with oxide_*_light_init for automatic settings. */
+        uint32_t casts_shadows;
+        /** Optional overrides; initialization functions supply defaults. */
+        OxideShadowSettings shadow_settings;
     } OxideDirectionalLight;
-
-    /** Orthographic directional shadow volume and receiver bias. Initialize with oxide_directional_shadow_settings_default. */
-    typedef struct OxideDirectionalShadowSettings
-    {
-        /** Finite world-space volume center; default origin. */
-        OxideVec3 center;
-        /** Finite positive full square width and height in world units; default 30. */
-        float size;
-        /** Finite positive full depth along light rays, centered on center; default 60. */
-        float depth;
-        /** Power-of-two square resolution from 128 through 4096; default 1024. */
-        uint32_t resolution;
-        /** Finite non-negative comparison offset in normalized depth units; default 0.0001. */
-        float depth_bias;
-        /** Finite non-negative receiver offset along the geometric normal in world units; default 0.01. */
-        float normal_bias;
-    } OxideDirectionalShadowSettings;
 
     /* ============================================================
  * Handles
@@ -565,13 +583,14 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
     /** Initializes shadow settings to documented defaults; result must not be null. */
     OXIDE_API OxideStatus oxide_directional_shadow_settings_default(OxideDirectionalShadowSettings *result);
 
-    /** Configures automatic directional shadows before any mesh submission; persists across frames. Add the same unchanged light for scene draws. */
-    OXIDE_API OxideStatus oxide_graphics_set_directional_shadows(OxideGraphicsHandle graphics,
-                                                              OxideDirectionalLight light,
-                                                              OxideDirectionalShadowSettings settings);
-
-    /** Disables automatic shadows; call before any mesh submission in this frame. */
-    OXIDE_API OxideStatus oxide_graphics_clear_directional_shadows(OxideGraphicsHandle graphics);
+    /** Initializes common shadow settings to defaults; result must be non-null. */
+    OXIDE_API OxideStatus oxide_shadow_settings_default(OxideShadowSettings *result);
+    /** Initializes a point light with shadows disabled and automatic default shadow settings. */
+    OXIDE_API OxideStatus oxide_point_light_init(OxideVec3 position, OxideColor color, float intensity, OxidePointLight *result);
+    /** Initializes a directional light with shadows disabled and automatic default shadow settings. */
+    OXIDE_API OxideStatus oxide_directional_light_init(OxideVec3 direction, OxideColor color, float intensity, OxideDirectionalLight *result);
+    /** Initializes a spot light with shadows disabled and automatic default shadow settings. */
+    OXIDE_API OxideStatus oxide_spot_light_init(OxideVec3 position, OxideVec3 direction, OxideAngle angle, OxideColor color, float intensity, OxideSpotLight *result);
 
     /** Submits geometry with finite transparency in [0,1]: zero is opaque, one is invisible and casts no shadow. Visible opacity is one minus transparency; the same value controls shadow transmission. State is captured now; rendering occurs at frame end. Up to eight transparent depths are retained per ray. */
     OXIDE_API OxideStatus oxide_graphics_draw_mesh_with_transparency(OxideGraphicsHandle graphics,

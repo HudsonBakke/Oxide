@@ -155,19 +155,17 @@ public sealed class Graphics
         NativeMethods.Check(NativeMethods.oxide_graphics_add_directional_light(_handle, light));
     }
 
-    /// <summary>Configures automatic shadows for one directional light; persists across frames.</summary>
-    /// <remarks>Call before submitting any meshes this frame. Add the same unchanged light for scene draws.</remarks>
-    public void SetDirectionalShadows(DirectionalLight light, DirectionalShadowSettings settings)
+    /// <summary>Adds any supported light through the shared light interface, including its shadow state.</summary>
+    public void AddLight(ILightSource light)
     {
-        EnsureValid();
-        NativeMethods.Check(NativeMethods.oxide_graphics_set_directional_shadows(_handle, light, settings));
-    }
-
-    /// <summary>Disables automatic shadows; call before submitting any meshes this frame.</summary>
-    public void ClearDirectionalShadows()
-    {
-        EnsureValid();
-        NativeMethods.Check(NativeMethods.oxide_graphics_clear_directional_shadows(_handle));
+        ArgumentNullException.ThrowIfNull(light);
+        switch (light)
+        {
+            case PointLight point: AddLight(point); break;
+            case SpotLight spot: AddLight(spot); break;
+            case DirectionalLight directional: AddLight(directional); break;
+            default: throw new ArgumentException("Unsupported light implementation.", nameof(light));
+        }
     }
 
     /// <summary>Submits a mesh with transparency from zero (opaque) to one (invisible and no shadow).</summary>

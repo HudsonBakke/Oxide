@@ -3,7 +3,7 @@ use crate::{
     math::{Angle, Vec3},
 };
 
-use super::Color;
+use super::{Color, ShadowSettings};
 
 const LIGHT_EPSILON: f32 = 1.0e-6;
 
@@ -14,6 +14,8 @@ pub struct PointLight {
     position: Vec3,
     color: Color,
     intensity: f32,
+    casts_shadows: u32,
+    shadow_settings: ShadowSettings,
 }
 
 impl PointLight {
@@ -30,6 +32,8 @@ impl PointLight {
             position,
             color,
             intensity,
+            casts_shadows: 0,
+            shadow_settings: ShadowSettings::default(),
         })
     }
 
@@ -71,6 +75,22 @@ impl PointLight {
 
         Ok(())
     }
+    /// Whether this light casts shadows; defaults to false.
+    pub fn casts_shadows(&self) -> bool { self.casts_shadows != 0 }
+
+    /// Enables or disables this light's shadows using its existing default/custom settings.
+    pub fn set_casts_shadows(&mut self, enabled: bool) { self.casts_shadows = enabled as u32; }
+
+    /// Optional quality and coverage settings; defaults are supplied by the constructor.
+    pub fn shadow_settings(&self) -> &ShadowSettings { &self.shadow_settings }
+
+    /// Overrides shadow quality/coverage after checking all setting ranges.
+    pub fn set_shadow_settings(&mut self, settings: ShadowSettings) -> OxideResult<()> {
+        settings.validate()?;
+        self.shadow_settings = settings;
+        Ok(())
+    }
+
 }
 
 /// A light emitted from one point within a directional cone.
@@ -83,6 +103,8 @@ pub struct SpotLight {
 
     color: Color,
     intensity: f32,
+    casts_shadows: u32,
+    shadow_settings: ShadowSettings,
 }
 
 impl SpotLight {
@@ -123,6 +145,8 @@ impl SpotLight {
             angle,
             color,
             intensity,
+            casts_shadows: 0,
+            shadow_settings: ShadowSettings::default(),
         })
     }
 
@@ -204,6 +228,22 @@ impl SpotLight {
 
         Ok(())
     }
+    /// Whether this light casts shadows; defaults to false.
+    pub fn casts_shadows(&self) -> bool { self.casts_shadows != 0 }
+
+    /// Enables or disables this light's shadows using its existing default/custom settings.
+    pub fn set_casts_shadows(&mut self, enabled: bool) { self.casts_shadows = enabled as u32; }
+
+    /// Optional quality and coverage settings; defaults are supplied by the constructor.
+    pub fn shadow_settings(&self) -> &ShadowSettings { &self.shadow_settings }
+
+    /// Overrides shadow quality/coverage after checking all setting ranges.
+    pub fn set_shadow_settings(&mut self, settings: ShadowSettings) -> OxideResult<()> {
+        settings.validate()?;
+        self.shadow_settings = settings;
+        Ok(())
+    }
+
 }
 
 /// A light whose rays travel in one uniform direction.
@@ -215,6 +255,8 @@ pub struct DirectionalLight {
     direction: Vec3,
     color: Color,
     intensity: f32,
+    casts_shadows: u32,
+    shadow_settings: ShadowSettings,
 }
 
 impl DirectionalLight {
@@ -238,6 +280,8 @@ impl DirectionalLight {
             direction: direction.normalized(),
             color,
             intensity,
+            casts_shadows: 0,
+            shadow_settings: ShadowSettings::default(),
         })
     }
 
@@ -288,6 +332,22 @@ impl DirectionalLight {
 
         Ok(())
     }
+    /// Whether this light casts shadows; defaults to false.
+    pub fn casts_shadows(&self) -> bool { self.casts_shadows != 0 }
+
+    /// Enables or disables this light's shadows using its existing default/custom settings.
+    pub fn set_casts_shadows(&mut self, enabled: bool) { self.casts_shadows = enabled as u32; }
+
+    /// Optional quality and coverage settings; defaults are supplied by the constructor.
+    pub fn shadow_settings(&self) -> &ShadowSettings { &self.shadow_settings }
+
+    /// Overrides shadow quality/coverage after checking all setting ranges.
+    pub fn set_shadow_settings(&mut self, settings: ShadowSettings) -> OxideResult<()> {
+        settings.validate()?;
+        self.shadow_settings = settings;
+        Ok(())
+    }
+
 }
 
 // ---------------------------------------------------------
@@ -295,7 +355,24 @@ impl DirectionalLight {
 // ---------------------------------------------------------
 
 /// Sealed trait implemented by point, spot, and directional lights accepted by Graphics.
-pub trait LightSource: private::LightSourceInternal + Copy {}
+pub trait LightSource: private::LightSourceInternal + Copy {
+    /// RGB light color; alpha is unused.
+    fn color(&self) -> Color;
+    /// Changes the light color.
+    fn set_color(&mut self, color: Color);
+    /// Non-negative intensity.
+    fn intensity(&self) -> f32;
+    /// Changes non-negative intensity.
+    fn set_intensity(&mut self, intensity: f32) -> OxideResult<()>;
+    /// Whether this light casts shadows.
+    fn casts_shadows(&self) -> bool;
+    /// Enables shadows without requiring custom settings.
+    fn set_casts_shadows(&mut self, enabled: bool);
+    /// Optional shadow quality and coverage settings.
+    fn shadow_settings(&self) -> &ShadowSettings;
+    /// Sets validated shadow quality and coverage.
+    fn set_shadow_settings(&mut self, settings: ShadowSettings) -> OxideResult<()>;
+}
 
 pub(crate) use private::LightSourceInternal;
 
@@ -313,7 +390,16 @@ impl LightSourceInternal for PointLight {
     }
 }
 
-impl LightSource for PointLight {}
+impl LightSource for PointLight {
+    fn color(&self) -> Color { self.color() }
+    fn set_color(&mut self, color: Color) { self.set_color(color); }
+    fn intensity(&self) -> f32 { self.intensity() }
+    fn set_intensity(&mut self, value: f32) -> OxideResult<()> { self.set_intensity(value) }
+    fn casts_shadows(&self) -> bool { self.casts_shadows() }
+    fn set_casts_shadows(&mut self, enabled: bool) { self.set_casts_shadows(enabled); }
+    fn shadow_settings(&self) -> &ShadowSettings { self.shadow_settings() }
+    fn set_shadow_settings(&mut self, settings: ShadowSettings) -> OxideResult<()> { self.set_shadow_settings(settings) }
+}
 
 impl LightSourceInternal for SpotLight {
     fn add_to_graphics(&self, graphics: &mut super::Graphics) {
@@ -321,7 +407,16 @@ impl LightSourceInternal for SpotLight {
     }
 }
 
-impl LightSource for SpotLight {}
+impl LightSource for SpotLight {
+    fn color(&self) -> Color { self.color() }
+    fn set_color(&mut self, color: Color) { self.set_color(color); }
+    fn intensity(&self) -> f32 { self.intensity() }
+    fn set_intensity(&mut self, value: f32) -> OxideResult<()> { self.set_intensity(value) }
+    fn casts_shadows(&self) -> bool { self.casts_shadows() }
+    fn set_casts_shadows(&mut self, enabled: bool) { self.set_casts_shadows(enabled); }
+    fn shadow_settings(&self) -> &ShadowSettings { self.shadow_settings() }
+    fn set_shadow_settings(&mut self, settings: ShadowSettings) -> OxideResult<()> { self.set_shadow_settings(settings) }
+}
 
 impl LightSourceInternal for DirectionalLight {
     fn add_to_graphics(&self, graphics: &mut super::Graphics) {
@@ -329,4 +424,38 @@ impl LightSourceInternal for DirectionalLight {
     }
 }
 
-impl LightSource for DirectionalLight {}
+impl LightSource for DirectionalLight {
+    fn color(&self) -> Color { self.color() }
+    fn set_color(&mut self, color: Color) { self.set_color(color); }
+    fn intensity(&self) -> f32 { self.intensity() }
+    fn set_intensity(&mut self, value: f32) -> OxideResult<()> { self.set_intensity(value) }
+    fn casts_shadows(&self) -> bool { self.casts_shadows() }
+    fn set_casts_shadows(&mut self, enabled: bool) { self.set_casts_shadows(enabled); }
+    fn shadow_settings(&self) -> &ShadowSettings { self.shadow_settings() }
+    fn set_shadow_settings(&mut self, settings: ShadowSettings) -> OxideResult<()> { self.set_shadow_settings(settings) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn shared_contract<L: LightSource>(mut light: L) {
+        assert!(!light.casts_shadows());
+        light.set_casts_shadows(true);
+        assert!(light.casts_shadows());
+        assert_eq!(*light.shadow_settings(), ShadowSettings::default());
+        let custom = ShadowSettings { resolution: 256, ..Default::default() };
+        light.set_shadow_settings(custom).unwrap();
+        assert_eq!(*light.shadow_settings(), custom);
+        assert!(light.set_shadow_settings(ShadowSettings { far_plane: 0.0, ..custom }).is_err());
+        assert_eq!(*light.shadow_settings(), custom);
+    }
+    #[test]
+    fn light_types_share_shadow_defaults_and_configuration() {
+        shared_contract(PointLight::new(Vec3::default(), Color::WHITE, 1.0).unwrap());
+        shared_contract(DirectionalLight::new(Vec3::new(0.0, -1.0, 0.0), Color::WHITE, 1.0).unwrap());
+        shared_contract(SpotLight::new(Vec3::default(), Vec3::new(0.0, -1.0, 0.0), Angle::degrees(30.0), Color::WHITE, 1.0).unwrap());
+        assert_eq!(std::mem::size_of::<PointLight>(), 76);
+        assert_eq!(std::mem::size_of::<DirectionalLight>(), 76);
+        assert_eq!(std::mem::size_of::<SpotLight>(), 92);
+    }
+}

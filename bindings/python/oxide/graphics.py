@@ -174,7 +174,86 @@ class Environment:
         self.background_color = background_color
 
 
-class PointLight(ctypes.Structure):
+class ShadowSettings(ctypes.Structure):
+    """Orthographic coverage and receiver bias for one directional shadow map.
+
+    Attributes:
+        center: Finite world-space volume center (default origin).
+        size: Positive finite full square width and height in world units (30).
+        depth: Positive finite full extent along light rays (60), centered on center.
+        resolution: Power-of-two square map size, 128 through 4096 pixels (1024).
+        depth_bias: Finite non-negative normalized depth comparison offset (0.0001).
+        normal_bias: Finite non-negative geometric normal offset in world units (0.01).
+        near_plane: Positive local-light near distance in world units (0.1).
+        far_plane: Local-light far distance greater than near_plane (60).
+    """
+
+    _fields_ = [
+        ("center", Vec3),
+        ("size", ctypes.c_float),
+        ("depth", ctypes.c_float),
+        ("resolution", ctypes.c_uint32),
+        ("depth_bias", ctypes.c_float),
+        ("normal_bias", ctypes.c_float),
+        ("near_plane", ctypes.c_float),
+        ("far_plane", ctypes.c_float),
+    ]
+
+    def __init__(
+        self,
+        center: Vec3 | None = None,
+        size: float = 30.0,
+        depth: float = 60.0,
+        resolution: int = 1024,
+        depth_bias: float = 0.0001,
+        normal_bias: float = 0.01,
+        near_plane: float = 0.1,
+        far_plane: float = 60.0,
+    ) -> None:
+        """Creates shadow settings; the native begin call validates field values."""
+        if (
+            not isinstance(resolution, int)
+            or not 128 <= resolution <= 4096
+            or resolution & (resolution - 1)
+        ):
+            raise ValueError("resolution must be a power of two from 128 through 4096")
+        super().__init__(
+            center if center is not None else Vec3(),
+            size, depth, resolution, depth_bias, normal_bias, near_plane, far_plane,
+        )
+
+
+DirectionalShadowSettings = ShadowSettings
+
+
+class LightSource(ctypes.Structure):
+    """Common interface implemented by point, spot, and directional light values."""
+    _fields_ = []
+    color: Color
+    intensity: float
+
+    @property
+    def casts_shadows(self) -> bool:
+        """Whether this light casts shadows; defaults to False."""
+        return bool(self._casts_shadows)
+
+    @casts_shadows.setter
+    def casts_shadows(self, enabled: bool) -> None:
+        self._casts_shadows = int(bool(enabled))
+
+    @property
+    def shadow_settings(self) -> ShadowSettings:
+        """Optional quality and coverage settings, populated with defaults automatically."""
+        return self._shadow_settings
+
+    @shadow_settings.setter
+    def shadow_settings(self, settings: ShadowSettings) -> None:
+        if not isinstance(settings, ShadowSettings):
+            raise TypeError("settings must be ShadowSettings")
+        self._shadow_settings = settings
+
+
+class PointLight(LightSource):
     """Omnidirectional point light with inverse-square distance attenuation.
 
     Attributes:
@@ -187,6 +266,8 @@ class PointLight(ctypes.Structure):
         ("position", Vec3),
         ("color", Color),
         ("intensity", ctypes.c_float),
+        ("_casts_shadows", ctypes.c_uint32),
+        ("_shadow_settings", ShadowSettings),
     ]
 
     def __init__(
@@ -194,6 +275,7 @@ class PointLight(ctypes.Structure):
         position: Vec3,
         color: Color,
         intensity: float,
+        casts_shadows: bool = False,
     ) -> None:
         """Creates a point light; intensity must not be negative."""
         if intensity < 0.0:
@@ -203,6 +285,8 @@ class PointLight(ctypes.Structure):
             position,
             color,
             float(intensity),
+            int(bool(casts_shadows)),
+            ShadowSettings(),
         )
 
     def __setattr__(self, name, value):
@@ -213,7 +297,7 @@ class PointLight(ctypes.Structure):
         super().__setattr__(name, value)
 
 
-class SpotLight(ctypes.Structure):
+class SpotLight(LightSource):
     """Point light restricted to a directional cone, with inverse-square distance attenuation.
 
     Attributes:
@@ -230,6 +314,8 @@ class SpotLight(ctypes.Structure):
         ("angle", Angle),
         ("color", Color),
         ("intensity", ctypes.c_float),
+        ("_casts_shadows", ctypes.c_uint32),
+        ("_shadow_settings", ShadowSettings),
     ]
 
     def __init__(
@@ -239,6 +325,7 @@ class SpotLight(ctypes.Structure):
         angle: Angle,
         color: Color,
         intensity: float,
+        casts_shadows: bool = False,
     ) -> None:
         """Creates a cone light; requires a nonzero direction, non-negative intensity, and half-angle in (0, pi) radians."""
         if direction.length <= 1.0e-6:
@@ -256,6 +343,8 @@ class SpotLight(ctypes.Structure):
             angle,
             color,
             float(intensity),
+            int(bool(casts_shadows)),
+            ShadowSettings(),
         )
 
     def __setattr__(self, name, value):
@@ -273,7 +362,7 @@ class SpotLight(ctypes.Structure):
         super().__setattr__(name, value)
 
 
-class DirectionalLight(ctypes.Structure):
+class DirectionalLight(LightSource):
     """Light whose rays travel in one world-space direction, with no distance attenuation.
 
     Attributes:
@@ -286,6 +375,8 @@ class DirectionalLight(ctypes.Structure):
         ("direction", Vec3),
         ("color", Color),
         ("intensity", ctypes.c_float),
+        ("_casts_shadows", ctypes.c_uint32),
+        ("_shadow_settings", ShadowSettings),
     ]
 
     def __init__(
@@ -293,6 +384,7 @@ class DirectionalLight(ctypes.Structure):
         direction: Vec3,
         color: Color,
         intensity: float,
+        casts_shadows: bool = False,
     ) -> None:
         """Creates a directional light; requires a nonzero direction and non-negative intensity."""
         if direction.length <= 1.0e-6:
@@ -305,6 +397,8 @@ class DirectionalLight(ctypes.Structure):
             direction.normalized(),
             color,
             float(intensity),
+            int(bool(casts_shadows)),
+            ShadowSettings(),
         )
 
     def __setattr__(self, name, value):
@@ -533,49 +627,6 @@ class Camera:
         )
 
 
-class DirectionalShadowSettings(ctypes.Structure):
-    """Orthographic coverage and receiver bias for one directional shadow map.
-
-    Attributes:
-        center: Finite world-space volume center (default origin).
-        size: Positive finite full square width and height in world units (30).
-        depth: Positive finite full extent along light rays (60), centered on center.
-        resolution: Power-of-two square map size, 128 through 4096 pixels (1024).
-        depth_bias: Finite non-negative normalized depth comparison offset (0.0001).
-        normal_bias: Finite non-negative geometric normal offset in world units (0.01).
-    """
-
-    _fields_ = [
-        ("center", Vec3),
-        ("size", ctypes.c_float),
-        ("depth", ctypes.c_float),
-        ("resolution", ctypes.c_uint32),
-        ("depth_bias", ctypes.c_float),
-        ("normal_bias", ctypes.c_float),
-    ]
-
-    def __init__(
-        self,
-        center: Vec3 | None = None,
-        size: float = 30.0,
-        depth: float = 60.0,
-        resolution: int = 1024,
-        depth_bias: float = 0.0001,
-        normal_bias: float = 0.01,
-    ) -> None:
-        """Creates shadow settings; the native begin call validates field values."""
-        if (
-            not isinstance(resolution, int)
-            or not 128 <= resolution <= 4096
-            or resolution & (resolution - 1)
-        ):
-            raise ValueError("resolution must be a power of two from 128 through 4096")
-        super().__init__(
-            center if center is not None else Vec3(),
-            size, depth, resolution, depth_bias, normal_bias,
-        )
-
-
 class Graphics:
     """Rendering interface supplied to the draw callback; bind a camera before drawing geometry.
 
@@ -694,24 +745,6 @@ class Graphics:
             )
         )
 
-    def set_directional_shadows(self, light: DirectionalLight, settings: DirectionalShadowSettings) -> None:
-        """Configures automatic directional shadows; persists across frames.
-
-        Call before submitting any meshes this frame. Add the same unchanged light
-        for scene lighting. All mesh submissions carry their own shadow transparency.
-        """
-        self._require_valid()
-        if not isinstance(light, DirectionalLight):
-            raise TypeError("light must be a DirectionalLight")
-        if not isinstance(settings, DirectionalShadowSettings):
-            raise TypeError("settings must be DirectionalShadowSettings")
-        _native.check(_native.lib.oxide_graphics_set_directional_shadows(self._handle, light, settings))
-
-    def clear_directional_shadows(self) -> None:
-        """Disables automatic shadows; call before submitting any meshes this frame."""
-        self._require_valid()
-        _native.check(_native.lib.oxide_graphics_clear_directional_shadows(self._handle))
-
     def draw_mesh(
         self,
         mesh: Mesh,
@@ -791,7 +824,7 @@ class Graphics:
 
     def add_light(
         self,
-        light: PointLight | SpotLight | DirectionalLight,
+        light: LightSource,
     ) -> None:
         """Adds a point, spot, or directional light for subsequent draws; lights reset at frame start."""
         self._require_valid()
@@ -902,12 +935,6 @@ _native.lib.oxide_graphics_add_directional_light.argtypes = [
 ]
 _native.lib.oxide_graphics_add_directional_light.restype = ctypes.c_int
 
-_native.lib.oxide_graphics_set_directional_shadows.argtypes = [
-    _native.NativeGraphicsHandle, DirectionalLight, DirectionalShadowSettings,
-]
-_native.lib.oxide_graphics_set_directional_shadows.restype = ctypes.c_int
-_native.lib.oxide_graphics_clear_directional_shadows.argtypes = [_native.NativeGraphicsHandle]
-_native.lib.oxide_graphics_clear_directional_shadows.restype = ctypes.c_int
 _native.lib.oxide_graphics_draw_mesh_with_transparency.argtypes = [
     _native.NativeGraphicsHandle, _native.NativeMeshHandle, _native.NativeMaterialHandle,
     Transform, ctypes.c_float,

@@ -32,4 +32,10 @@ public struct DirectionalShadowSettings
         DepthBias = 0.0001f;
         NormalBias = 0.01f;
     }
+    /// <summary>Converts legacy directional settings to common shadow settings with default local-light clipping.</summary>
+    public static implicit operator ShadowSettings(DirectionalShadowSettings settings) => new ShadowSettings {
+        Center = settings.Center, Size = settings.Size, Depth = settings.Depth,
+        Resolution = settings.Resolution, DepthBias = settings.DepthBias, NormalBias = settings.NormalBias,
+    };
+
 }

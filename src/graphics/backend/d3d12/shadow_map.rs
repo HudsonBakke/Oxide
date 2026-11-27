@@ -12,29 +12,27 @@ pub(crate) struct ShadowMap {
     pub resource: ID3D12Resource,
     _dsv_heap: ID3D12DescriptorHeap,
     pub dsv: D3D12_CPU_DESCRIPTOR_HANDLE,
+    pub dsvs: Vec<D3D12_CPU_DESCRIPTOR_HANDLE>,
+    pub faces: u32,
     pub resolution: u32,
 }
 
 impl ShadowMap {
     // Also creates a valid null descriptor before any shadow pass is requested.
     pub fn write_srv(device: &D3D12Device, resource: Option<&ID3D12Resource>, handle: D3D12_CPU_DESCRIPTOR_HANDLE) {
-        let desc = D3D12_SHADER_RESOURCE_VIEW_DESC {
-            Format: DXGI_FORMAT_R32_FLOAT,
-            ViewDimension: D3D12_SRV_DIMENSION_TEXTURE2D,
-            Shader4ComponentMapping: D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-            Anonymous: D3D12_SHADER_RESOURCE_VIEW_DESC_0 {
-                Texture2D: D3D12_TEX2D_SRV { MipLevels: 1, ..Default::default() },
-            },
-        };
-        unsafe { device.device().CreateShaderResourceView(resource, Some(&desc), handle); }
+        super::transmission_map::array_srv(device, resource, DXGI_FORMAT_R32_FLOAT, 0, 1, handle);
     }
 
     pub fn new(device: &D3D12Device, resolution: u32, srv: D3D12_CPU_DESCRIPTOR_HANDLE) -> Result<Self> {
+        Self::new_array(device, resolution, 1, srv)
+    }
+
+    pub fn new_array(device: &D3D12Device, resolution: u32, faces: u32, srv: D3D12_CPU_DESCRIPTOR_HANDLE) -> Result<Self> {
         let desc = D3D12_RESOURCE_DESC {
             Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D,
             Width: resolution as u64,
             Height: resolution,
-            DepthOrArraySize: 1,
+            DepthOrArraySize: faces as u16,
             MipLevels: 1,
             Format: DXGI_FORMAT_R32_TYPELESS,
             SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
@@ -58,18 +56,27 @@ impl ShadowMap {
         let resource: ID3D12Resource = resource.unwrap();
         let heap: ID3D12DescriptorHeap = unsafe {
             device.device().CreateDescriptorHeap(&D3D12_DESCRIPTOR_HEAP_DESC {
-                Type: D3D12_DESCRIPTOR_HEAP_TYPE_DSV, NumDescriptors: 1, ..Default::default()
+                Type: D3D12_DESCRIPTOR_HEAP_TYPE_DSV, NumDescriptors: faces, ..Default::default()
             })?
         };
         let dsv = unsafe { heap.GetCPUDescriptorHandleForHeapStart() };
-        unsafe {
-            device.device().CreateDepthStencilView(&resource, Some(&D3D12_DEPTH_STENCIL_VIEW_DESC {
-                Format: DXGI_FORMAT_D32_FLOAT,
-                ViewDimension: D3D12_DSV_DIMENSION_TEXTURE2D,
-                ..Default::default()
-            }), dsv);
+        let stride = unsafe { device.device().GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV) } as usize;
+        let mut dsvs = Vec::new();
+        for face in 0..faces {
+            let handle = D3D12_CPU_DESCRIPTOR_HANDLE { ptr: dsv.ptr + face as usize * stride };
+            unsafe {
+                device.device().CreateDepthStencilView(&resource, Some(&D3D12_DEPTH_STENCIL_VIEW_DESC {
+                    Format: DXGI_FORMAT_D32_FLOAT,
+                    ViewDimension: D3D12_DSV_DIMENSION_TEXTURE2DARRAY,
+                    Anonymous: D3D12_DEPTH_STENCIL_VIEW_DESC_0 {
+                        Texture2DArray: D3D12_TEX2D_ARRAY_DSV { MipSlice: 0, FirstArraySlice: face, ArraySize: 1 },
+                    },
+                    ..Default::default()
+                }), handle);
+            }
+            dsvs.push(handle);
         }
-        Self::write_srv(device, Some(&resource), srv);
-        Ok(Self { resource, _dsv_heap: heap, dsv, resolution })
+        super::transmission_map::array_srv(device, Some(&resource), DXGI_FORMAT_R32_FLOAT, 0, faces, srv);
+        Ok(Self { resource, _dsv_heap: heap, dsv, dsvs, faces, resolution })
     }
 }

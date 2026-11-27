@@ -1,7 +1,7 @@
 use crate::{math::Rect, math::Transform, platform::window::PlatformWindow};
 
 use super::{
-    Camera, DirectionalLight, DirectionalShadowSettings, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
+    Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
     SpotLight,
     backend::d3d12::{D3D12Device, D3D12Renderer, D3D12SwapChain},
 };
@@ -60,26 +60,6 @@ impl Graphics {
     pub(crate) fn end_frame(&mut self) -> GraphicsResult<()> {
         self.renderer.end_frame(&self.device, &self.swap_chain)?;
 
-        Ok(())
-    }
-
-    /// Configures automatic shadows for one directional light; persists across frames.
-    ///
-    /// Call before submitting any meshes this frame. Add the same unchanged
-    /// light with `add_light`. All submitted meshes cast opaque shadows unless
-    /// a transparency is supplied with `draw_mesh_with_transparency`.
-    pub fn set_directional_shadows(
-        &mut self,
-        light: &DirectionalLight,
-        settings: &DirectionalShadowSettings,
-    ) -> GraphicsResult<()> {
-        self.renderer.set_directional_shadows(light, settings)?;
-        Ok(())
-    }
-
-    /// Disables automatic shadows; call before submitting any meshes this frame.
-    pub fn clear_directional_shadows(&mut self) -> GraphicsResult<()> {
-        self.renderer.clear_directional_shadows()?;
         Ok(())
     }
 

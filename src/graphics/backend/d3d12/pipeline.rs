@@ -83,7 +83,7 @@ impl D3D12Pipeline {
 
         let shadow_range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-            NumDescriptors: 3,
+            NumDescriptors: 3 * super::transmission_map::MAX_SHADOW_LIGHTS as u32,
             BaseShaderRegister: 5,
             ..Default::default()
         }];

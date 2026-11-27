@@ -9,7 +9,9 @@ pub(crate) const TRANSMISSION_LAYERS: u32 = 8;
 pub(crate) const TRANSMISSION_MAX_RESOLUTION: u32 = 1024;
 // Heap slots: HDR=0, opaque depth=1, transmission depth=2, values=3,
 // previous-depth views=4..12. Ordinary textures start at 12.
-pub(crate) const FIRST_TEXTURE_DESCRIPTOR: u32 = 4 + TRANSMISSION_LAYERS;
+pub(crate) const MAX_SHADOW_LIGHTS: usize = 32;
+pub(crate) const PREVIOUS_VIEWS_PER_LIGHT: u32 = 6 * TRANSMISSION_LAYERS;
+pub(crate) const FIRST_TEXTURE_DESCRIPTOR: u32 = 1 + 3 * MAX_SHADOW_LIGHTS as u32 + MAX_SHADOW_LIGHTS as u32 * PREVIOUS_VIEWS_PER_LIGHT;
 
 pub(crate) struct TransmissionMap {
     pub depth: ID3D12Resource,
@@ -21,7 +23,7 @@ pub(crate) struct TransmissionMap {
     pub resolution: u32,
 }
 
-fn array_srv(
+pub(crate) fn array_srv(
     device: &D3D12Device,
     resource: Option<&ID3D12Resource>,
     format: DXGI_FORMAT,
@@ -44,16 +46,8 @@ fn array_srv(
 }
 
 impl TransmissionMap {
-    pub fn null_views(device: &D3D12Device, mut start: D3D12_CPU_DESCRIPTOR_HANDLE, stride: usize) {
-        array_srv(device, None, DXGI_FORMAT_R32_FLOAT, 0, TRANSMISSION_LAYERS, start);
-        start.ptr += stride;
-        array_srv(device, None, DXGI_FORMAT_R16_FLOAT, 0, TRANSMISSION_LAYERS, start);
-        start.ptr += stride;
-        // The first peeling pass does not read this view, but keep it valid.
-        array_srv(device, None, DXGI_FORMAT_R32_FLOAT, 0, 1, start);
-    }
-
-    pub fn new(device: &D3D12Device, resolution: u32, mut srv: D3D12_CPU_DESCRIPTOR_HANDLE, stride: usize) -> Result<Self> {
+    pub fn new(device: &D3D12Device, resolution: u32, faces: u32, depth_srv: D3D12_CPU_DESCRIPTOR_HANDLE, values_srv: D3D12_CPU_DESCRIPTOR_HANDLE, mut previous_srv: D3D12_CPU_DESCRIPTOR_HANDLE, stride: usize) -> Result<Self> {
+        let layers = faces * TRANSMISSION_LAYERS;
         let create = |format, flags, clear: &D3D12_CLEAR_VALUE| -> Result<ID3D12Resource> {
             let mut resource = None;
             unsafe {
@@ -63,7 +57,7 @@ impl TransmissionMap {
                     &D3D12_RESOURCE_DESC {
                         Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D,
                         Width: resolution as u64, Height: resolution,
-                        DepthOrArraySize: TRANSMISSION_LAYERS as u16, MipLevels: 1,
+                        DepthOrArraySize: layers as u16, MipLevels: 1,
                         Format: format, Flags: flags,
                         SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
                         ..Default::default()
@@ -85,13 +79,13 @@ impl TransmissionMap {
         })?;
         let dsv_heap: ID3D12DescriptorHeap = unsafe {
             device.device().CreateDescriptorHeap(&D3D12_DESCRIPTOR_HEAP_DESC {
-                Type: D3D12_DESCRIPTOR_HEAP_TYPE_DSV, NumDescriptors: TRANSMISSION_LAYERS,
+                Type: D3D12_DESCRIPTOR_HEAP_TYPE_DSV, NumDescriptors: layers,
                 ..Default::default()
             })?
         };
         let rtv_heap: ID3D12DescriptorHeap = unsafe {
             device.device().CreateDescriptorHeap(&D3D12_DESCRIPTOR_HEAP_DESC {
-                Type: D3D12_DESCRIPTOR_HEAP_TYPE_RTV, NumDescriptors: TRANSMISSION_LAYERS,
+                Type: D3D12_DESCRIPTOR_HEAP_TYPE_RTV, NumDescriptors: layers,
                 ..Default::default()
             })?
         };
@@ -101,7 +95,7 @@ impl TransmissionMap {
         let rtv_stride = unsafe { device.device().GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV) } as usize;
         let mut dsvs = Vec::new();
         let mut rtvs = Vec::new();
-        for layer in 0..TRANSMISSION_LAYERS {
+        for layer in 0..layers {
             unsafe {
                 device.device().CreateDepthStencilView(&depth, Some(&D3D12_DEPTH_STENCIL_VIEW_DESC {
                     Format: DXGI_FORMAT_D32_FLOAT, ViewDimension: D3D12_DSV_DIMENSION_TEXTURE2DARRAY,
@@ -126,14 +120,15 @@ impl TransmissionMap {
             dsv.ptr += dsv_stride;
             rtv.ptr += rtv_stride;
         }
-        array_srv(device, Some(&depth), DXGI_FORMAT_R32_FLOAT, 0, TRANSMISSION_LAYERS, srv);
-        srv.ptr += stride;
-        array_srv(device, Some(&values), DXGI_FORMAT_R16_FLOAT, 0, TRANSMISSION_LAYERS, srv);
-        srv.ptr += stride;
-        array_srv(device, None, DXGI_FORMAT_R32_FLOAT, 0, 1, srv);
-        for layer in 1..TRANSMISSION_LAYERS {
-            srv.ptr += stride;
-            array_srv(device, Some(&depth), DXGI_FORMAT_R32_FLOAT, layer - 1, 1, srv);
+        array_srv(device, Some(&depth), DXGI_FORMAT_R32_FLOAT, 0, layers, depth_srv);
+        array_srv(device, Some(&values), DXGI_FORMAT_R16_FLOAT, 0, layers, values_srv);
+        for slice in 0..layers {
+            if slice % TRANSMISSION_LAYERS == 0 {
+                array_srv(device, None, DXGI_FORMAT_R32_FLOAT, 0, 1, previous_srv);
+            } else {
+                array_srv(device, Some(&depth), DXGI_FORMAT_R32_FLOAT, slice - 1, 1, previous_srv);
+            }
+            previous_srv.ptr += stride;
         }
         Ok(Self { depth, values, _dsv_heap: dsv_heap, _rtv_heap: rtv_heap, dsvs, rtvs, resolution })
     }

@@ -7,14 +7,16 @@ namespace Oxide.Graphics;
 
 /// <summary>Light whose rays travel in one world-space direction, with no distance attenuation.</summary>
 [StructLayout(LayoutKind.Sequential)]
-public struct DirectionalLight
+public struct DirectionalLight : ILightSource
 {
     private Vec3 _direction;
     private Color _color;
     private float _intensity;
+    private uint _castsShadows;
+    private ShadowSettings _shadowSettings;
 
     /// <summary>Creates a directional light; requires a nonzero direction and non-negative intensity.</summary>
-    public DirectionalLight(Vec3 direction, Color color, float intensity)
+    public DirectionalLight(Vec3 direction, Color color, float intensity, bool castsShadows = false)
     {
         if (direction.Length <= 1.0e-6f)
         {
@@ -32,6 +34,8 @@ public struct DirectionalLight
 
         _color = color;
         _intensity = intensity;
+        _castsShadows = castsShadows ? 1u : 0u;
+        _shadowSettings = new ShadowSettings();
     }
 
     /// <summary>Normalized world-space direction in which light rays travel.</summary>
@@ -72,4 +76,18 @@ public struct DirectionalLight
             _intensity = value;
         }
     }
+    /// <summary>Whether this light casts shadows; defaults to false. Default quality settings are supplied automatically.</summary>
+    public bool CastsShadows
+    {
+        readonly get => _castsShadows != 0;
+        set => _castsShadows = value ? 1u : 0u;
+    }
+
+    /// <summary>Optional shadow quality, directional coverage, and local-light clipping settings.</summary>
+    public ShadowSettings ShadowSettings
+    {
+        readonly get => _shadowSettings;
+        set { value.Validate(); _shadowSettings = value; }
+    }
+
 }

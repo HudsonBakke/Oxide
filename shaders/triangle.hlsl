@@ -21,16 +21,22 @@ Texture2D environment_texture : register(t2);
 Texture2D irradiance_texture : register(t3);
 Texture2D background_texture : register(t4);
 SamplerState base_sampler : register(s0);
-Texture2D<float> directional_shadow_map : register(t5);
-Texture2DArray<float> transmission_depth : register(t6);
-Texture2DArray<float> transmission_values : register(t7);
+#define MAX_SHADOW_LIGHTS 32
+Texture2DArray<float> opaque_shadow_maps[MAX_SHADOW_LIGHTS] : register(t5);
+Texture2DArray<float> transmission_depth[MAX_SHADOW_LIGHTS] : register(t37);
+Texture2DArray<float> transmission_values[MAX_SHADOW_LIGHTS] : register(t69);
 SamplerComparisonState shadow_sampler : register(s1);
 
+struct ShadowData
+{
+    float4x4 matrices[6];
+    float4 parameters; // bias, normal bias, texel size, face count
+    float4 transmission; // texel size, layer count, enabled
+    float4 position;
+};
 cbuffer ShadowConstants : register(b3)
 {
-    float4x4 world_to_shadow;
-    float4 shadow_parameters; // x=depth bias, y=normal bias, z=texel size, w=enabled
-    float4 transmission_parameters; // x=texel size, y=layer count, z=enabled
+    ShadowData shadows[MAX_SHADOW_LIGHTS];
 };
 
 struct PointLight
@@ -195,12 +201,23 @@ float3 evaluate_environment(float3 normal, float3 view_direction, float3 albedo,
     return ambient + diffuse + specular_environment * intensity * fresnel * specular_energy;
 }
 
-float directional_visibility(float3 world_position, float3 geometric_normal)
+float shadow_visibility(int shadow_index, float3 world_position, float3 geometric_normal)
 {
-    if (shadow_parameters.w < 0.5)
+    if (shadow_index < 0)
         return 1.0;
-    float4 clip = mul(world_to_shadow,
-                      float4(world_position + geometric_normal * shadow_parameters.y, 1.0));
+    ShadowData shadow = shadows[shadow_index];
+    int face = 0;
+    if (shadow.parameters.w > 1.5)
+    {
+        float3 direction = world_position - shadow.position.xyz;
+        float3 magnitude = abs(direction);
+        if (magnitude.x >= magnitude.y && magnitude.x >= magnitude.z) face = direction.x >= 0 ? 0 : 1;
+        else if (magnitude.y >= magnitude.z) face = direction.y >= 0 ? 2 : 3;
+        else face = direction.z >= 0 ? 4 : 5;
+    }
+    float4 clip = mul(shadow.matrices[face],
+                      float4(world_position + geometric_normal * shadow.parameters.y, 1.0));
+    if (clip.w <= 0.0) return 1.0;
     float3 projected = clip.xyz / clip.w;
     float2 uv = projected.xy * float2(0.5, -0.5) + 0.5;
     if (projected.z <= 0.0 || projected.z >= 1.0 || any(uv < 0.0) || any(uv > 1.0))
@@ -213,24 +230,24 @@ float directional_visibility(float3 world_position, float3 geometric_normal)
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            float sample_visibility = directional_shadow_map.SampleCmpLevelZero(
-                shadow_sampler, uv + float2(x, y) * shadow_parameters.z,
-                projected.z - shadow_parameters.x);
-            if (sample_visibility > 0.0 && transmission_parameters.z > 0.5)
+            float sample_visibility = opaque_shadow_maps[shadow_index].SampleCmpLevelZero(
+                shadow_sampler, float3(uv + float2(x, y) * shadow.parameters.z, face),
+                projected.z - shadow.parameters.x);
+            if (sample_visibility > 0.0 && shadow.transmission.z > 0.5)
             {
-                int resolution = int(round(1.0 / transmission_parameters.x));
+                int resolution = int(round(1.0 / shadow.transmission.x));
                 int2 pixel = int2(floor(uv * resolution)) + int2(x, y);
                 if (all(pixel >= 0) && all(pixel < resolution))
                 {
                     // Depth peeling records successive transparent surfaces.
                     // Stop before the receiver, or at the first empty layer.
                     [loop]
-                    for (int layer = 0; layer < int(transmission_parameters.y); ++layer)
+                    for (int layer = 0; layer < int(shadow.transmission.y); ++layer)
                     {
-                        float depth = transmission_depth.Load(int4(pixel, layer, 0));
-                        if (depth >= projected.z - shadow_parameters.x)
+                        float depth = transmission_depth[shadow_index].Load(int4(pixel, face * 8 + layer, 0));
+                        if (depth >= projected.z - shadow.parameters.x)
                             break;
-                        sample_visibility *= transmission_values.Load(int4(pixel, layer, 0));
+                        sample_visibility *= transmission_values[shadow_index].Load(int4(pixel, face * 8 + layer, 0));
                     }
                 }
             }
@@ -270,6 +287,7 @@ float4 ps_main(VertexOutput input) : SV_TARGET
         float distance_squared = max(dot(to_light, to_light), 0.0001);
         float3 light_direction = normalize(to_light);
         float3 radiance = point_lights[i].color.rgb * point_lights[i].position.w / distance_squared;
+        radiance *= shadow_visibility(int(point_lights[i].color.a), input.world_position, geometric_normal);
 
         lighting += evaluate_brdf(normal, view_direction, light_direction, radiance, albedo,
                                   metallic, roughness);
@@ -279,8 +297,7 @@ float4 ps_main(VertexOutput input) : SV_TARGET
     {
         float3 light_direction = -normalize(directional_lights[i].direction.xyz);
         float3 radiance = directional_lights[i].color.rgb * directional_lights[i].color.a;
-        if (directional_lights[i].direction.w > 0.5)
-            radiance *= directional_visibility(input.world_position, geometric_normal);
+        radiance *= shadow_visibility(int(directional_lights[i].direction.w), input.world_position, geometric_normal);
 
         lighting += evaluate_brdf(normal, view_direction, light_direction, radiance, albedo,
                                   metallic, roughness);
@@ -297,6 +314,7 @@ float4 ps_main(VertexOutput input) : SV_TARGET
         {
             float3 radiance =
                 spot_lights[i].color.rgb * spot_lights[i].position.w / distance_squared;
+            radiance *= shadow_visibility(int(spot_lights[i].color.a), input.world_position, geometric_normal);
 
             lighting += evaluate_brdf(normal, view_direction, -light_to_fragment, radiance, albedo,
                                       metallic, roughness);

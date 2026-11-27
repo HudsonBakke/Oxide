@@ -9,12 +9,6 @@ namespace Oxide.Native;
 internal static class NativeMethods
 {
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern OxideStatus oxide_graphics_set_directional_shadows(NativeGraphicsHandle graphics, DirectionalLight light, DirectionalShadowSettings settings);
-
-    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern OxideStatus oxide_graphics_clear_directional_shadows(NativeGraphicsHandle graphics);
-
-    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
     internal static extern OxideStatus oxide_graphics_draw_mesh_with_transparency(NativeGraphicsHandle graphics, NativeMeshHandle mesh, NativeMaterialHandle material, Transform transform, float transparency);
 
     [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]

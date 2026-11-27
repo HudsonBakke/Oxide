@@ -4,7 +4,7 @@ import math
 from oxide.app import AppConfig, Game, GameTime
 from oxide.content import Material, Mesh, Vertex
 from oxide.graphics import (
-    Camera, Color, DirectionalLight, DirectionalShadowSettings, Environment, Graphics,
+    Camera, Color, DirectionalLight, PointLight, SpotLight, LightSource, Environment, Graphics,
 )
 from oxide.input import Keyboard, Keys
 from oxide.math import Angle, Quaternion, Transform, Vec2, Vec3
@@ -50,7 +50,11 @@ class Shadows(Game):
             Transform(position=Vec3(-1.2, 1, -1.8), scale=Vec3(0.8, 0.8, 0.8)),
         ]
         self.light = DirectionalLight(Vec3(-0.5, -1, -0.35), Color.WHITE, 3)
-        self.settings = DirectionalShadowSettings()
+        self.lights: list[LightSource] = [self.light,
+            PointLight(Vec3(2, 7, 4), Color.WHITE, 100),
+            SpotLight(Vec3(0, 8, 4), Vec3(0, -1, -0.5), Angle.degrees(45), Color.WHITE, 100),
+        ]
+        self.light_mode = 0
         self.environment = Environment(Color.WHITE, 0.12, None, 0, None, Color.rgb(0.04, 0.06, 0.09))
         self.enabled = True
         self.transparency = 0.5
@@ -63,18 +67,18 @@ class Shadows(Game):
             self.enabled = not self.enabled
         if Keyboard.get_state().is_key_pressed(Keys.T):
             self.transparency = self.transparency + 0.5 if self.transparency < 1 else 0.0
+        if Keyboard.get_state().is_key_pressed(Keys.L):
+            self.light_mode = (self.light_mode + 1) % 3
         self.set_window_name(
-            f"Oxide Shadows | {'on' if self.enabled else 'off'} | box transparency {self.transparency} | Space toggles, T cycles"
+            f"Oxide Shadows | {'on' if self.enabled else 'off'} | box transparency {self.transparency} | Space shadows, T transparency, L light {self.light_mode}"
         )
 
     def draw(self, graphics: Graphics) -> None:
-        if self.enabled:
-            graphics.set_directional_shadows(self.light, self.settings)
-        else:
-            graphics.clear_directional_shadows()
+        light = self.lights[self.light_mode]
+        light.casts_shadows = self.enabled
         graphics.bind_camera(self.camera, graphics.full_rect)
         graphics.set_environment(self.environment)
-        graphics.add_light(self.light)
+        graphics.add_light(light)
         transmission = [0, self.transparency, 0, 0.75, 0.5, 0.5, 0]
         for material, transform, transparency in zip(self.materials, self.transforms, transmission):
             if transparency == 0:

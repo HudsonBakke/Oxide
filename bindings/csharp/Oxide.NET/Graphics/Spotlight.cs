@@ -7,16 +7,18 @@ namespace Oxide.Graphics;
 
 /// <summary>Point light restricted to a directional cone, with inverse-square distance attenuation.</summary>
 [StructLayout(LayoutKind.Sequential)]
-public struct SpotLight
+public struct SpotLight : ILightSource
 {
     private Vec3 _position;
     private Vec3 _direction;
     private Angle _angle;
     private Color _color;
     private float _intensity;
+    private uint _castsShadows;
+    private ShadowSettings _shadowSettings;
 
     /// <summary>Creates a cone light; requires a nonzero direction, non-negative intensity, and half-angle in (0, pi) radians.</summary>
-    public SpotLight(Vec3 position, Vec3 direction, Angle angle, Color color, float intensity)
+    public SpotLight(Vec3 position, Vec3 direction, Angle angle, Color color, float intensity, bool castsShadows = false)
     {
         if (direction.Length <= 1.0e-6f)
         {
@@ -42,6 +44,8 @@ public struct SpotLight
         _angle = angle;
         _color = color;
         _intensity = intensity;
+        _castsShadows = castsShadows ? 1u : 0u;
+        _shadowSettings = new ShadowSettings();
     }
 
     /// <summary>Position in world space.</summary>
@@ -105,4 +109,19 @@ public struct SpotLight
             _intensity = value;
         }
     }
+    /// <summary>Whether this light casts shadows; defaults to false. Default quality settings are supplied automatically.</summary>
+    public bool CastsShadows
+    {
+        readonly get => _castsShadows != 0;
+        set => _castsShadows = value ? 1u : 0u;
+    }
+
+    /// <summary>Optional shadow quality, directional coverage, and local-light clipping settings.</summary>
+    public ShadowSettings ShadowSettings
+    {
+        readonly get => _shadowSettings;
+        set { value.Validate(); _shadowSettings = value; }
+    }
+
 }
+
