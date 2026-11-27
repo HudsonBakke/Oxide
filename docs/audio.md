@@ -7,7 +7,7 @@ set of controls; `AudioListener` is the viewpoint from which sources are heard.
 The Windows backend uses XAudio2 and Media Foundation. No additional native SDK,
 Python package, or NuGet dependency is needed beyond the existing Windows build
 requirements. WAV and MP3 are supported; Windows N editions require their Media
-Feature Pack for file decoding. Creating assets, settings, and listeners does not
+Feature Pack to supply the Media Foundation runtime used by the native library. Creating assets, settings, and listeners does not
 open an output endpoint. Constructing the first source opens the default device;
 a missing endpoint returns an audio error. Restore the device and recreate all
 sources after an output failure. Automatic device switching is not implemented.
@@ -122,8 +122,8 @@ Play resets emission to omnidirectional.
 | Volume / volume | 1 | Linear amplitude, 0..16; zero mutes |
 | Pitch / pitch | 1 | Playback-rate ratio, 1/16..16; changes pitch and duration together |
 | Looping / looping | false | Wrap to beginning; turning it off lets the current traversal finish |
-| ReferenceDistance / reference_distance | 1 | Positive distance where attenuation starts |
-| MaxDistance / max_distance | 50 | Cutoff strictly above reference distance |
+| ReferenceDistance / reference_distance | 1 | 0.0001..1e9 world units, where attenuation starts |
+| MaxDistance / max_distance | 50 | 0.0002..1e12 world units, strictly above reference distance |
 | Rolloff / rolloff | 1 | Inverse-distance exponent, 0..16, with the range fade still applied |
 | LowPassCutoff / low_pass_cutoff | 24000 | First-order low-pass Hz, 20..24000; 24000 bypasses it |
 | ModulationFrequency / modulation_frequency | 0 | Tremolo frequency in Hz, 0..100; zero disables it |

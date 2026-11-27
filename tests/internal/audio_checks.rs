@@ -104,3 +104,27 @@ fn audio_cache_roundtrips_and_rejects_nonfinite_truncated_or_oversized_payloads(
     assert!(matches!(Audio::read_compiled(&mut bytes.as_slice(),bytes.len() as u64),Err(ContentError::InvalidCache(_))));
     assert!(Audio::from_samples(&[],48_000).is_err()); assert!(Audio::from_samples(&[1.1],48_000).is_err());
 }
+
+#[test]
+fn decoded_wav_downmix_and_mp3_samples_contain_the_expected_signal() {
+    use crate::content::ContentManager;
+    use std::{fs, time::{SystemTime,UNIX_EPOCH}};
+    let directory=std::env::temp_dir().join(format!("oxide-audio-signal-{}",SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()));
+    fs::create_dir_all(&directory).unwrap();
+    let mut wav=Vec::new();
+    wav.extend(b"RIFF");wav.extend(&436u32.to_le_bytes());wav.extend(b"WAVEfmt ");wav.extend(&16u32.to_le_bytes());
+    wav.extend(&1u16.to_le_bytes());wav.extend(&2u16.to_le_bytes());wav.extend(&44100u32.to_le_bytes());wav.extend(&176400u32.to_le_bytes());
+    wav.extend(&4u16.to_le_bytes());wav.extend(&16u16.to_le_bytes());wav.extend(b"data");wav.extend(&400u32.to_le_bytes());
+    for _ in 0..100 { wav.extend(&16384i16.to_le_bytes());wav.extend(&0i16.to_le_bytes()); }
+    let path=directory.join("signal.wav");fs::write(&path,wav).unwrap();
+    let mut content=ContentManager::with_cache_directory(directory.join("cache"));
+    let decoded=content.load::<Audio>(&path).unwrap();
+    assert_eq!(decoded.sample_count(),100);
+    assert!(decoded.samples.iter().all(|value|(*value-0.25).abs()<1e-6));
+    let hex:String=include_str!("../fixtures/tone_mp3.hex").split_whitespace().collect();
+    let mp3:Vec<u8>=(0..hex.len()).step_by(2).map(|i|u8::from_str_radix(&hex[i..i+2],16).unwrap()).collect();
+    let path=directory.join("signal.mp3");fs::write(&path,mp3).unwrap();
+    let decoded=content.load::<Audio>(&path).unwrap();
+    assert!(energy(&decoded.samples)>0.001);
+    fs::remove_dir_all(directory).unwrap();
+}

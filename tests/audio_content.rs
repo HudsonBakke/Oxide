@@ -16,7 +16,7 @@ fn wav(path: &Path, frames: usize) {
 }
 #[test]
 fn wav_import_cache_reuse_invalidation_and_corrupt_cache_recovery() {
-    let fixture=Fixture::new();let path=fixture.0.join("tone.wav");wav(&path,100);
+    let fixture=Fixture::new();let path=fixture.0.join("tone-音声.wav");wav(&path,100);
     let mut content=ContentManager::with_cache_directory(fixture.cache());
     let audio=content.load::<Audio>(&path).unwrap();assert_eq!(audio.sample_rate(),44100);assert_eq!(audio.sample_count(),100);
     assert!((audio.duration().as_secs_f64()-100.0/44100.0).abs()<1e-8);

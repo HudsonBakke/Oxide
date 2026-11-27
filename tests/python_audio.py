@@ -58,7 +58,7 @@ class AudioBindingsTests(unittest.TestCase):
     def test_wav_mp3_content_and_cache(self):
         with tempfile.TemporaryDirectory(prefix="oxide-audio-") as directory:
             root=Path(directory)
-            wav_path=root/"tone.wav"
+            wav_path=root/"tone-音声.wav"
             with wave.open(str(wav_path),"wb") as output:
                 output.setparams((2,2,44100,0,"NONE","not compressed"))
                 output.writeframes(struct.pack("<hh",16384,0)*100)
