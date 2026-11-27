@@ -2,6 +2,8 @@
 #![allow(dead_code, unused_imports)]
 #[path = "../src/app/mod.rs"]
 pub mod app;
+#[path = "internal/audio.rs"]
+pub mod audio;
 #[path = "../src/collision/mod.rs"]
 pub mod collision;
 #[path = "../src/content/mod.rs"]

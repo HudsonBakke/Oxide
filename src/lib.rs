@@ -5,6 +5,7 @@
 //! The current renderer requires 64-bit Windows and Direct3D 12.
 
 pub mod app;
+pub mod audio;
 pub mod collision;
 pub mod content;
 pub mod graphics;
