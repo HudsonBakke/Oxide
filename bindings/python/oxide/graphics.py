@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import ctypes
 import math
 import weakref
@@ -14,6 +15,7 @@ from .math import (
     Rect3D,
     Transform,
     Vec3,
+    Vec2,
 )
 from .content import Material, Mesh
 
@@ -139,6 +141,53 @@ Color.YELLOW = Color.rgb(
     1.0,
     0.0,
 )
+
+
+class _NativeDraw2DOptions(ctypes.Structure):
+    _fields_ = [("tint", Color), ("source", Rect), ("rotation", Angle),
+                ("origin", Vec2), ("clip", Rect), ("flags", ctypes.c_uint32)]
+
+
+@dataclass
+class Draw2DOptions:
+    """Captured sprite effects in physical pixels.
+
+    tint is linear RGBA in [0,1]. source is a texture pixel rectangle.
+    rotation is clockwise; origin is a target-relative pivot and does not move
+    an unrotated target. clip uses full-window pixels. Flips mirror UVs only.
+    None source/clip selects the entire image/window respectively.
+    """
+    tint: Color = field(default_factory=lambda: Color(1, 1, 1, 1))
+    source: Rect | None = None
+    rotation: Angle = field(default_factory=lambda: Angle.radians(0))
+    origin: Vec2 = field(default_factory=Vec2)
+    clip: Rect | None = None
+    flip_horizontally: bool = False
+    flip_vertically: bool = False
+
+    def _snapshot(self) -> _NativeDraw2DOptions:
+        flags = int(self.source is not None) | (int(self.clip is not None) << 1)
+        flags |= int(bool(self.flip_horizontally)) << 2 | int(bool(self.flip_vertically)) << 3
+        return _NativeDraw2DOptions(self.tint, self.source or Rect(), self.rotation,
+                                    self.origin, self.clip or Rect(), flags)
+
+
+@dataclass
+class TextOptions(Draw2DOptions):
+    """Unicode menu label controls; installed Segoe UI, 24 physical pixels by default.
+
+    Explicit newlines and system font fallback are supported. Labels must fit
+    2048 by 2048 pixels; source cropping is unsupported. Other sprite effects apply.
+    """
+    font_family: str = "Segoe UI"
+    font_size: float = 24.0
+
+    def _label_bytes(self, text: str) -> tuple[bytes, bytes]:
+        if not isinstance(text, str) or not isinstance(self.font_family, str):
+            raise TypeError("text and font_family must be strings")
+        if not self.font_family:
+            raise ValueError("font_family cannot be empty")
+        return text.encode("utf-8"), self.font_family.encode("utf-8")
 
 
 class Environment:
@@ -777,6 +826,42 @@ class Graphics:
             )
         )
 
+    def draw_2d(self, texture: Texture, target: Rect, options: Draw2DOptions | None = None) -> None:
+        """Draws a straight-alpha texture overlay, independent of camera and exposure.
+
+        Overlays retain submission order. Zero target dimensions or alpha draw
+        nothing. Invalid effects/source bounds raise an exception. State is
+        captured now; the texture may be released after submission.
+        """
+        self._require_valid()
+        if not isinstance(texture, Texture):
+            raise TypeError("texture must be Texture")
+        options = options if options is not None else Draw2DOptions()
+        _native.check(_native.lib.oxide_graphics_draw_2d_with_options(self._handle, texture._handle, target, options._snapshot()))
+
+    def draw_text(self, text: str, position: Vec2, color: Color | None = None, options: TextOptions | None = None) -> None:
+        """Draws a Unicode label at its layout top-left in screen pixels.
+
+        Uses default font/size unless options are supplied. color, when supplied,
+        overrides options.tint for this draw without changing the options object.
+        """
+        self._require_valid()
+        options = options if options is not None else TextOptions()
+        data, family = options._label_bytes(text)
+        draw = options._snapshot()
+        if color is not None:
+            draw.tint = color
+        _native.check(_native.lib.oxide_graphics_draw_text(self._handle, data, len(data), position, family, len(family), options.font_size, draw))
+
+    def measure_text(self, text: str, options: TextOptions | None = None) -> Vec2:
+        """Measures logical layout before rotation, including trailing spaces; empty text has zero size."""
+        self._require_valid()
+        options = options if options is not None else TextOptions()
+        data, family = options._label_bytes(text)
+        result = Vec2()
+        _native.check(_native.lib.oxide_graphics_measure_text(self._handle, data, len(data), family, len(family), options.font_size, options._snapshot(), ctypes.byref(result)))
+        return result
+
     def draw_mesh(
         self,
         mesh: Mesh,
@@ -975,3 +1060,11 @@ _native.lib.oxide_graphics_draw_mesh_with_transparency.argtypes = [
     Transform, ctypes.c_float,
 ]
 _native.lib.oxide_graphics_draw_mesh_with_transparency.restype = ctypes.c_int
+
+
+_native.lib.oxide_graphics_draw_2d_with_options.argtypes = [_native.NativeGraphicsHandle, _native.NativeTextureHandle, Rect, _NativeDraw2DOptions]
+_native.lib.oxide_graphics_draw_2d_with_options.restype = ctypes.c_int
+_native.lib.oxide_graphics_draw_text.argtypes = [_native.NativeGraphicsHandle, ctypes.c_char_p, ctypes.c_size_t, Vec2, ctypes.c_char_p, ctypes.c_size_t, ctypes.c_float, _NativeDraw2DOptions]
+_native.lib.oxide_graphics_draw_text.restype = ctypes.c_int
+_native.lib.oxide_graphics_measure_text.argtypes = [_native.NativeGraphicsHandle, ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t, ctypes.c_float, _NativeDraw2DOptions, ctypes.POINTER(Vec2)]
+_native.lib.oxide_graphics_measure_text.restype = ctypes.c_int

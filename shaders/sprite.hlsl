@@ -15,15 +15,15 @@ struct VertexOutput { float4 position : SV_POSITION; float2 uv : TEXCOORD0; };
 VertexOutput vs_main(uint vertex : SV_VertexID)
 {
     static const uint indices[6]={0,1,2,0,2,3};
-    static const float2 points[4]={float2(0,0),float2(1,0),float2(1,1),float2(0,1)};
-    float2 point=points[indices[vertex]];
-    float2 local=point*target.zw-transform.xy;
+    static const float2 corners[4]={float2(0,0),float2(1,0),float2(1,1),float2(0,1)};
+    float2 corner=corners[indices[vertex]];
+    float2 local=corner*target.zw-transform.xy;
     float2 rotated=float2(local.x*transform.z-local.y*transform.w,local.x*transform.w+local.y*transform.z);
     float2 pixel=target.xy+transform.xy+rotated;
     VertexOutput output;
     output.position=float4(pixel.x/viewport.x*2-1,1-pixel.y/viewport.y*2,0,1);
-    point=float2(viewport.z!=0?1-point.x:point.x,viewport.w!=0?1-point.y:point.y);
-    output.uv=source.xy+point*source.zw;
+    corner=float2(viewport.z!=0?1-corner.x:corner.x,viewport.w!=0?1-corner.y:corner.y);
+    output.uv=source.xy+corner*source.zw;
     return output;
 }
 float4 ps_main(VertexOutput input) : SV_TARGET

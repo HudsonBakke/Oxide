@@ -45,7 +45,12 @@ jobs:
         run: python tests/check_test_layout.py
 
       - name: Compile all embedded HLSL shaders
-        run: ./scripts/build-shaders.ps1
+        id: shader_check
+        run: python tests/run_shader_checks.py
+
+      - name: 'Shader failure: ${{ steps.shader_check.outputs.detail }}'
+        if: failure() && steps.shader_check.outcome == 'failure'
+        run: exit 1
 
       - name: Check Rust library, examples, tests, and benchmarks
         id: rust_check

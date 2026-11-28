@@ -8,6 +8,13 @@ namespace Oxide.Native;
 
 internal static class NativeMethods
 {
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_draw_2d_with_options(NativeGraphicsHandle graphics, NativeTextureHandle texture, Rect target, NativeDraw2DOptions options);
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_draw_text(NativeGraphicsHandle graphics, byte[] text, nuint length, Vec2 position, byte[] family, nuint familyLength, float size, NativeDraw2DOptions options);
+    [DllImport("oxide", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern OxideStatus oxide_graphics_measure_text(NativeGraphicsHandle graphics, byte[] text, nuint length, byte[] family, nuint familyLength, float size, NativeDraw2DOptions options, out Vec2 result);
+
     [DllImport("oxide", CallingConvention=CallingConvention.Cdecl)]
     internal static extern OxideStatus oxide_rect3d_create(Vec3 topLeft, Vec3 topRight, Vec3 bottomRight, Vec3 bottomLeft, Vec3 normal, out Rect3D result);
     [DllImport("oxide", CallingConvention=CallingConvention.Cdecl)]

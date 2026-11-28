@@ -595,6 +595,32 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
     OXIDE_API OxideStatus oxide_spot_light_init(OxideVec3 position, OxideVec3 direction, OxideAngle angle, OxideColor color, float intensity, OxideSpotLight *result);
 
     /** Submits geometry with finite transparency in [0,1]: zero is opaque, one is invisible and casts no shadow. Visible opacity is one minus transparency; the same value controls shadow transmission. State is captured now; rendering occurs at frame end. Up to eight transparent depths are retained per ray. */
+    /** Screen-space effects: linear tint, pixel source/clip, clockwise angle,
+     * target-relative rotation pivot. Flags: 1=source, 2=clip, 4=flip X, 8=flip Y.
+     * Initialize with oxide_draw_2d_options_default (zero bytes means transparent). */
+    typedef struct OxideDraw2DOptions {
+        OxideColor tint;
+        OxideRect source;
+        OxideAngle rotation;
+        OxideVec2 origin;
+        OxideRect clip;
+        uint32_t flags;
+    } OxideDraw2DOptions;
+    /** Writes opaque-white defaults. */
+    OXIDE_API OxideStatus oxide_draw_2d_options_default(OxideDraw2DOptions *result);
+    /** Draws over all 3D content without a camera, in overlay submission order.
+     * Uses full-window physical pixels and ignores 3D exposure/tone mapping. */
+    OXIDE_API OxideStatus oxide_graphics_draw_2d(OxideGraphicsHandle graphics, OxideTextureHandle texture, OxideRect target);
+    /** Captures straight-alpha sprite effects. Source must fit inside texture. */
+    OXIDE_API OxideStatus oxide_graphics_draw_2d_with_options(OxideGraphicsHandle graphics, OxideTextureHandle texture, OxideRect target, OxideDraw2DOptions options);
+    /** Draws UTF-8 text in an installed font; default family when family_length=0.
+     * Lengths exclude NUL. Default em size is 24 pixels (pass explicitly).
+     * Supports newlines and fallback, no automatic wrapping or source crop.
+     * Labels must fit 2048x2048 pixels. Strings are borrowed only during call. */
+    OXIDE_API OxideStatus oxide_graphics_draw_text(OxideGraphicsHandle graphics, const uint8_t *text, size_t length, OxideVec2 position, const uint8_t *family, size_t family_length, float size, OxideDraw2DOptions options);
+    /** Measures logical layout including trailing spaces, before rotation. */
+    OXIDE_API OxideStatus oxide_graphics_measure_text(OxideGraphicsHandle graphics, const uint8_t *text, size_t length, const uint8_t *family, size_t family_length, float size, OxideDraw2DOptions options, OxideVec2 *result);
+
     OXIDE_API OxideStatus oxide_graphics_draw_mesh_with_transparency(OxideGraphicsHandle graphics,
         OxideMeshHandle mesh, OxideMaterialHandle material, OxideTransform transform, float transparency);
 

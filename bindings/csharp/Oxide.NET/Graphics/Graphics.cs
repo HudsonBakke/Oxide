@@ -80,6 +80,50 @@ public sealed class Graphics
         }
     }
 
+    /// <summary>Draws a texture in full-window physical pixels over the 3D scene, independent of camera and exposure.</summary>
+    public void Draw2D(Texture texture, Rect target) => Draw2D(texture, target, new Draw2DOptions());
+
+    /// <summary>Draws a straight-alpha sprite with captured effects, in overlay submission order.</summary>
+    /// <remarks>Zero target dimensions or alpha draw nothing. Invalid effects or out-of-bounds source regions raise an exception.</remarks>
+    public void Draw2D(Texture texture, Rect target, Draw2DOptions options)
+    {
+        EnsureValid();
+        ArgumentNullException.ThrowIfNull(texture);
+        ArgumentNullException.ThrowIfNull(options);
+        NativeMethods.Check(NativeMethods.oxide_graphics_draw_2d_with_options(_handle, texture.Handle, target, options.Snapshot()));
+    }
+
+    /// <summary>Draws a label in the default Segoe UI font at 24 physical pixels.</summary>
+    public void DrawText(string text, Vec2 position, Color color) => DrawText(text, position, new TextOptions { Tint = color });
+
+    /// <summary>Draws a Unicode label with installed-font and sprite controls. Position is the layout top-left.</summary>
+    /// <remarks>Explicit newlines are supported. Each label must fit 2048 by 2048 pixels. SourceRectangle is unsupported.</remarks>
+    public void DrawText(string text, Vec2 position, TextOptions? options = null)
+    {
+        EnsureValid();
+        options ??= new TextOptions();
+        var (bytes, family) = LabelBytes(text, options);
+        NativeMethods.Check(NativeMethods.oxide_graphics_draw_text(_handle, bytes, (nuint)bytes.Length, position, family, (nuint)family.Length, options.FontSize, options.Snapshot()));
+    }
+
+    /// <summary>Measures the logical font layout in pixels before rotation, including trailing spaces; empty text has zero size.</summary>
+    public Vec2 MeasureText(string text, TextOptions? options = null)
+    {
+        EnsureValid();
+        options ??= new TextOptions();
+        var (bytes, family) = LabelBytes(text, options);
+        NativeMethods.Check(NativeMethods.oxide_graphics_measure_text(_handle, bytes, (nuint)bytes.Length, family, (nuint)family.Length, options.FontSize, options.Snapshot(), out Vec2 result));
+        return result;
+    }
+
+    private static (byte[], byte[]) LabelBytes(string text, TextOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(options.FontFamily);
+        if (options.FontFamily.Length == 0) throw new ArgumentException("FontFamily cannot be empty.");
+        return (System.Text.Encoding.UTF8.GetBytes(text), System.Text.Encoding.UTF8.GetBytes(options.FontFamily));
+    }
+
     /// <summary>Sets ambient lighting, image-based lighting, and the independent visible background.</summary>
     public void SetEnvironment(Environment environment)
     {

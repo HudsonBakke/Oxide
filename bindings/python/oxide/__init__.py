@@ -46,6 +46,8 @@ from .content import (
 )
 
 from .graphics import (
+    Draw2DOptions,
+    TextOptions,
     Camera,
     Color,
     DirectionalLight,
@@ -58,6 +60,7 @@ from .graphics import (
 )
 
 __all__ = [
+    "Draw2DOptions", "TextOptions",
     "Audio", "AudioSettings", "AudioSource", "AudioListener", "PlaybackState", "AudioError",
     "Keyboard",
     "KeyboardState",
