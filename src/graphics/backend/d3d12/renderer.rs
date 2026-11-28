@@ -85,10 +85,21 @@ struct CameraGroup {
 const SPRITE_VERTEX_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/sprite_vs.dxil");
 const SPRITE_PIXEL_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/sprite_ps.dxil");
 #[derive(Clone,Copy)]
-struct QueuedSprite { constants: u64, texture: D3D12_GPU_DESCRIPTOR_HANDLE, clip: Option<Rect> }
+struct QueuedSprite {
+    constants: u64,
+    texture: D3D12_GPU_DESCRIPTOR_HANDLE,
+    clip: Option<Rect>,
+}
 #[repr(C)]
 #[derive(Clone,Copy)]
-struct SpriteConstants { target:[f32;4], source:[f32;4], tint:[f32;4], transform:[f32;4], viewport:[f32;4], uv_clamp:[f32;4] }
+struct SpriteConstants {
+    target: [f32; 4],
+    source: [f32; 4],
+    tint: [f32; 4],
+    transform: [f32; 4],
+    viewport: [f32; 4],
+    uv_clamp: [f32; 4],
+}
 
 type MeshKey = (MeshId, u64, u64);
 
@@ -902,44 +913,84 @@ impl D3D12Renderer {
         }
     }
 
-    pub(crate) fn draw_2d(&mut self, device: &D3D12Device, texture: &Texture, target: Rect, options: Draw2DOptions) -> Result<()> {
-        crate::graphics::draw2d::validate_rect(target).and_then(|_|options.validate()).map_err(|e|invalid_shadow_order(&e.to_string()))?;
-        let source=options.source.unwrap_or(Rect::new(0.0,0.0,texture.width() as f32,texture.height() as f32));
-        if source.x+source.width>texture.width() as f32 || source.y+source.height>texture.height() as f32 {
+    pub(crate) fn draw_2d(
+        &mut self,
+        device: &D3D12Device,
+        texture: &Texture,
+        target: Rect,
+        options: Draw2DOptions,
+    ) -> Result<()> {
+        crate::graphics::draw2d::validate_rect(target)
+            .and_then(|_| options.validate())
+            .map_err(|error| invalid_shadow_order(&error.to_string()))?;
+        let source = options.source.unwrap_or(Rect::new(
+            0.0, 0.0, texture.width() as f32, texture.height() as f32,
+        ));
+        if source.x + source.width > texture.width() as f32
+            || source.y + source.height > texture.height() as f32
+        {
             return Err(invalid_shadow_order("2D source rectangle extends outside the texture"));
         }
-        if self.frame_size.0==0 || self.frame_size.1==0 { return Err(invalid_shadow_order("2D drawing requires an active frame")); }
-        if target.width==0.0 || target.height==0.0 || options.tint.a==0.0 || options.clip.is_some_and(|r|r.width==0.0||r.height==0.0) { return Ok(()); }
-        let descriptor=self.ensure_texture(device,texture)?;
-        let width=texture.width() as f32;let height=texture.height() as f32;
-        let half_x=0.5_f32.min(source.width*0.5);let half_y=0.5_f32.min(source.height*0.5);
-        let angle=options.rotation.as_radians();
-        let constants=SpriteConstants {
-            target:[target.x,target.y,target.width,target.height],source:[source.x/width,source.y/height,source.width/width,source.height/height],
-            tint:[options.tint.r,options.tint.g,options.tint.b,options.tint.a],
-            transform:[options.origin.x,options.origin.y,angle.cos(),angle.sin()],
-            viewport:[self.frame_size.0 as f32,self.frame_size.1 as f32,options.flip_horizontally as u8 as f32,options.flip_vertically as u8 as f32],
-            uv_clamp:[(source.x+half_x)/width,(source.y+half_y)/height,(source.x+source.width-half_x)/width,(source.y+source.height-half_y)/height],
+        if self.frame_size.0 == 0 || self.frame_size.1 == 0 {
+            return Err(invalid_shadow_order("2D drawing requires an active frame"));
+        }
+        if target.width == 0.0 || target.height == 0.0 || options.tint.a == 0.0
+            || options.clip.is_some_and(|rect| rect.width == 0.0 || rect.height == 0.0)
+        {
+            return Ok(());
+        }
+        let descriptor = self.ensure_texture(device, texture)?;
+        let width = texture.width() as f32;
+        let height = texture.height() as f32;
+        // Atlas crops sample only within their own texel centers, including
+        // subpixel crops smaller than a texel. This avoids adjacent-cell bleed.
+        let half_x = 0.5_f32.min(source.width * 0.5);
+        let half_y = 0.5_f32.min(source.height * 0.5);
+        let angle = options.rotation.as_radians();
+        let constants = SpriteConstants {
+            target: [target.x, target.y, target.width, target.height],
+            source: [source.x / width, source.y / height, source.width / width, source.height / height],
+            tint: [options.tint.r, options.tint.g, options.tint.b, options.tint.a],
+            transform: [options.origin.x, options.origin.y, angle.cos(), angle.sin()],
+            viewport: [
+                self.frame_size.0 as f32, self.frame_size.1 as f32,
+                options.flip_horizontally as u8 as f32, options.flip_vertically as u8 as f32,
+            ],
+            uv_clamp: [
+                (source.x + half_x) / width, (source.y + half_y) / height,
+                (source.x + source.width - half_x) / width,
+                (source.y + source.height - half_y) / height,
+            ],
         };
-        let address=self.constant_buffer.write(device,&constants)?;
-        let mut handle=unsafe {self.texture_heap.GetGPUDescriptorHandleForHeapStart()};handle.ptr+=descriptor as u64*self.texture_descriptor_size as u64;
-        self.overlays.push(QueuedSprite {constants:address,texture:handle,clip:options.clip});Ok(())
+        let address = self.constant_buffer.write(device, &constants)?;
+        let mut handle = unsafe { self.texture_heap.GetGPUDescriptorHandleForHeapStart() };
+        handle.ptr += descriptor as u64 * self.texture_descriptor_size as u64;
+        self.overlays.push(QueuedSprite { constants: address, texture: handle, clip: options.clip });
+        Ok(())
     }
 
-    fn render_overlays(&self,width:u32,height:u32) {
-        self.set_viewport(Rect::new(0.0,0.0,width as f32,height as f32));
+    // All 2D commands share full-window coordinates and one painter-ordered
+    // stream, independent of camera groups and the preceding 3D submission order.
+    fn render_overlays(&self, width: u32, height: u32) {
+        self.set_viewport(Rect::new(0.0, 0.0, width as f32, height as f32));
         for sprite in &self.overlays {
-            let clip=sprite.clip.unwrap_or(Rect::new(0.0,0.0,width as f32,height as f32));
-            let rect=RECT {left:clip.x.max(0.0).ceil() as i32,top:clip.y.max(0.0).ceil() as i32,
-                right:(clip.x+clip.width).min(width as f32).ceil() as i32,bottom:(clip.y+clip.height).min(height as f32).ceil() as i32};
-            if rect.right<=rect.left || rect.bottom<=rect.top {continue;}
+            let clip = sprite.clip.unwrap_or(Rect::new(0.0, 0.0, width as f32, height as f32));
+            let rect = RECT {
+                left: clip.x.max(0.0).ceil() as i32,
+                top: clip.y.max(0.0).ceil() as i32,
+                right: (clip.x + clip.width).min(width as f32).ceil() as i32,
+                bottom: (clip.y + clip.height).min(height as f32).ceil() as i32,
+            };
+            if rect.right <= rect.left || rect.bottom <= rect.top {
+                continue;
+            }
             unsafe {
                 self.command_list.RSSetScissorRects(&[rect]);
                 self.command_list.SetGraphicsRootSignature(self.sprite_pipeline.root_signature());
                 self.command_list.SetPipelineState(self.sprite_pipeline.pipeline_state());
-                self.command_list.SetGraphicsRootConstantBufferView(0,sprite.constants);
-                self.command_list.SetGraphicsRootDescriptorTable(1,sprite.texture);
-                self.command_list.DrawInstanced(6,1,0,0);
+                self.command_list.SetGraphicsRootConstantBufferView(0, sprite.constants);
+                self.command_list.SetGraphicsRootDescriptorTable(1, sprite.texture);
+                self.command_list.DrawInstanced(6, 1, 0, 0);
             }
         }
     }

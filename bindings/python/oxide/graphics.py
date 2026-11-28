@@ -17,7 +17,7 @@ from .math import (
     Vec3,
     Vec2,
 )
-from .content import Material, Mesh
+from .content import Material, Mesh, Texture
 
 
 class Color(ctypes.Structure):

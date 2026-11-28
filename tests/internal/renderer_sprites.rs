@@ -10,14 +10,14 @@ fn render(exposure:f32,draw:impl FnOnce(&mut D3D12Renderer,&D3D12Device))->Vec<[
     // Exercise drawing without any bound camera and with dropped CPU assets.
     renderer.reset_frame_state();renderer.frame_size=(64,64);renderer.set_exposure(exposure);
     draw(&mut renderer,&device);
-    let mut output=None;let mut heap=None;let mut readback=None;
+    let mut output=None;let heap;let mut readback=None;
     unsafe {
         device.device().CreateCommittedResource(&D3D12_HEAP_PROPERTIES {Type:D3D12_HEAP_TYPE_DEFAULT,..Default::default()},D3D12_HEAP_FLAG_NONE,
             &D3D12_RESOURCE_DESC {Dimension:D3D12_RESOURCE_DIMENSION_TEXTURE2D,Width:64,Height:64,DepthOrArraySize:1,MipLevels:1,Format:DXGI_FORMAT_R8G8B8A8_TYPELESS,
                 SampleDesc:DXGI_SAMPLE_DESC {Count:1,Quality:0},Flags:D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,..Default::default()},D3D12_RESOURCE_STATE_RENDER_TARGET,None,&mut output).unwrap();
-        heap=Some(device.device().CreateDescriptorHeap::<ID3D12DescriptorHeap>(&D3D12_DESCRIPTOR_HEAP_DESC {Type:D3D12_DESCRIPTOR_HEAP_TYPE_RTV,NumDescriptors:1,..Default::default()}).unwrap());
+        heap=device.device().CreateDescriptorHeap::<ID3D12DescriptorHeap>(&D3D12_DESCRIPTOR_HEAP_DESC {Type:D3D12_DESCRIPTOR_HEAP_TYPE_RTV,NumDescriptors:1,..Default::default()}).unwrap();
     }
-    let output:ID3D12Resource=output.unwrap();let heap=heap.unwrap();let rtv=unsafe {heap.GetCPUDescriptorHandleForHeapStart()};
+    let output:ID3D12Resource=output.unwrap();let rtv=unsafe {heap.GetCPUDescriptorHandleForHeapStart()};
     unsafe {
         device.device().CreateRenderTargetView(&output,Some(&D3D12_RENDER_TARGET_VIEW_DESC {Format:DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,ViewDimension:D3D12_RTV_DIMENSION_TEXTURE2D,..Default::default()}),rtv);
         let hdr=renderer.hdr_target.as_ref().unwrap();

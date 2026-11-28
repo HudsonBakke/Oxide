@@ -47,7 +47,7 @@ pub use error::{GraphicsError, GraphicsResult};
 
 pub use light::{DirectionalLight, LightSource, PointLight, SpotLight};
 
-pub use draw2d::{Draw2DOptions,TextOptions};
+pub use draw2d::{Draw2DOptions, TextOptions};
 
 #[path = "draw2d_checks.rs"]
 mod draw2d_checks;
