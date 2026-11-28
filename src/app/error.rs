@@ -25,11 +25,11 @@ pub enum AppStage {
 #[derive(Debug)]
 pub struct AppError {
     stage: AppStage,
-    source: Box<dyn Error>,
+    source: Box<dyn Error + Send + Sync>,
 }
 
 impl AppError {
-    pub(crate) fn new(stage: AppStage, source: impl Error + 'static) -> Self {
+    pub(crate) fn new(stage: AppStage, source: impl Error + Send + Sync + 'static) -> Self {
         Self { stage, source: Box::new(source) }
     }
 

@@ -4,6 +4,8 @@ static STATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
 fn invalid_configuration_is_reported_before_creating_an_event_loop() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<AppError>();
     struct Unreachable;
     impl Game for Unreachable { fn initialize(&mut self) { panic!("must not initialize"); } }
     for config in [AppConfig {width:0,..Default::default()},AppConfig {height:0,..Default::default()},AppConfig {title:"bad\0title".into(),..Default::default()}] {
