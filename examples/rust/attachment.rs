@@ -133,7 +133,7 @@ fn create_box(half_width: f32, half_height: f32, half_depth: f32) -> Mesh {
     Mesh::new(vertices, indices)
 }
 
-fn main() {
+fn main() -> Result<(), oxide::app::AppError> {
     let mut torso = create_box(0.75, 1.0, 0.35);
 
     let mut arm = create_box(0.30, 0.75, 0.10);
@@ -196,5 +196,5 @@ fn main() {
         height: 720,
     };
 
-    run(game, config);
+    run(game, config)
 }

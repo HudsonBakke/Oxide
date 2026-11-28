@@ -11,22 +11,12 @@ use super::D3D12Device;
 pub(crate) struct ShadowMap {
     pub resource: ID3D12Resource,
     _dsv_heap: ID3D12DescriptorHeap,
-    pub dsv: D3D12_CPU_DESCRIPTOR_HANDLE,
     pub dsvs: Vec<D3D12_CPU_DESCRIPTOR_HANDLE>,
     pub faces: u32,
     pub resolution: u32,
 }
 
 impl ShadowMap {
-    // Also creates a valid null descriptor before any shadow pass is requested.
-    pub fn write_srv(device: &D3D12Device, resource: Option<&ID3D12Resource>, handle: D3D12_CPU_DESCRIPTOR_HANDLE) {
-        super::transmission_map::array_srv(device, resource, DXGI_FORMAT_R32_FLOAT, 0, 1, handle);
-    }
-
-    pub fn new(device: &D3D12Device, resolution: u32, srv: D3D12_CPU_DESCRIPTOR_HANDLE) -> Result<Self> {
-        Self::new_array(device, resolution, 1, srv)
-    }
-
     pub fn new_array(device: &D3D12Device, resolution: u32, faces: u32, srv: D3D12_CPU_DESCRIPTOR_HANDLE) -> Result<Self> {
         let desc = D3D12_RESOURCE_DESC {
             Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D,
@@ -77,6 +67,6 @@ impl ShadowMap {
             dsvs.push(handle);
         }
         super::transmission_map::array_srv(device, Some(&resource), DXGI_FORMAT_R32_FLOAT, 0, faces, srv);
-        Ok(Self { resource, _dsv_heap: heap, dsv, dsvs, faces, resolution })
+        Ok(Self { resource, _dsv_heap: heap, dsvs, faces, resolution })
     }
 }

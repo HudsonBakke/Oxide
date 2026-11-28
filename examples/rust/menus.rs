@@ -60,4 +60,4 @@ impl Game for Menus {
         g.draw_text_with_options("Mouse or Up/Down + Enter\nF: flip   C: clip   Escape: quit\nUI ignores scene exposure",Vec2::new(40.0,395.0),&help).unwrap();
     }
 }
-fn main(){app::run(Menus::new(),AppConfig {title:"Oxide Menus".into(),width:900,height:600});}
+fn main() -> Result<(), oxide::app::AppError> {app::run(Menus::new(),AppConfig {title:"Oxide Menus".into(),width:900,height:600})}

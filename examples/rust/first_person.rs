@@ -374,7 +374,7 @@ fn cube() -> Mesh {
     Mesh::new(v, i)
 }
 
-fn main() {
+fn main() -> Result<(), oxide::app::AppError> {
     oxide::app::run(
         Demo::new(),
         AppConfig {
@@ -382,7 +382,7 @@ fn main() {
             width: 1280,
             height: 720,
         },
-    );
+    )
 }
 
 fn sphere(segments: u32, rings: u32) -> Mesh {

@@ -68,17 +68,7 @@ fn adapter_name(description: &DXGI_ADAPTER_DESC1) -> String {
 
 impl D3D12Device {
     pub(crate) fn new() -> Result<Self> {
-        #[cfg(debug_assertions)]
-        unsafe {
-            let mut debug: Option<ID3D12Debug> = None;
-
-            D3D12GetDebugInterface(&mut debug)?;
-
-            let debug =
-                debug.expect("D3D12GetDebugInterface succeeded but returned no debug interface");
-
-            debug.EnableDebugLayer();
-        }
+        enable_debug_layer();
 
         let adapter = select_adapter()?;
 
@@ -88,7 +78,8 @@ impl D3D12Device {
             D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_11_0, &mut device)?;
         }
 
-        let device = device.expect("D3D12CreateDevice succeeded but returned no device");
+        let device = device.ok_or_else(|| windows::core::Error::new(
+            windows::Win32::Foundation::E_FAIL, "D3D12CreateDevice returned no device"))?;
 
         let queue_desc = D3D12_COMMAND_QUEUE_DESC {
             Type: D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -114,4 +105,18 @@ impl D3D12Device {
     pub(crate) fn device(&self) -> &ID3D12Device {
         &self.device
     }
+}
+
+// Debug diagnostics are optional. Initialize once, before any device is created;
+// enabling the layer a second time could invalidate existing D3D12 devices.
+fn enable_debug_layer() {
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        if cfg!(debug_assertions) {
+            let mut debug: Option<ID3D12Debug> = None;
+            if unsafe { D3D12GetDebugInterface(&mut debug) }.is_ok() {
+                if let Some(debug) = debug { unsafe { debug.EnableDebugLayer() }; }
+            }
+        }
+    });
 }

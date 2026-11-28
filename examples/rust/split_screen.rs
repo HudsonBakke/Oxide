@@ -80,7 +80,7 @@ impl Game for SplitScreenGame {
     }
 }
 
-fn main() {
+fn main() -> Result<(), oxide::app::AppError> {
     let material = Material::solid(Color::WHITE);
 
     let triangle = Mesh::new(
@@ -143,5 +143,5 @@ fn main() {
         height: 720,
     };
 
-    run(game, config);
+    run(game, config)
 }

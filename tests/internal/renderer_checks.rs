@@ -9,7 +9,7 @@ fn directional_shadow_pipelines_and_depth_views_are_valid_on_d3d12() {
     let mut srv = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
     srv.ptr += renderer.texture_descriptor_size as usize;
     for resolution in [128, 1024] {
-        let map = ShadowMap::new(&device, resolution, srv).unwrap();
+        let map = ShadowMap::new_array(&device, resolution, 1, srv).unwrap();
         assert_eq!(map.resolution, resolution);
         assert_eq!(unsafe { map.resource.GetDesc() }.Width, resolution as u64);
     }

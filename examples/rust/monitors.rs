@@ -69,4 +69,4 @@ impl Game for Monitors {
         else { self.draw_screen(graphics);self.draw_feeds(graphics); }
     }
 }
-fn main() { app::run(Monitors::new(),AppConfig { title:"Oxide Monitors".into(),..Default::default() }); }
+fn main() -> Result<(), oxide::app::AppError> { app::run(Monitors::new(),AppConfig { title:"Oxide Monitors".into(),..Default::default() }) }

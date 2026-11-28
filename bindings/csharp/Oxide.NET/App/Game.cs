@@ -134,6 +134,9 @@ public abstract class Game : IDisposable
             throw new InvalidOperationException("An Oxide Game instance can only be run once.");
         }
 
+        ArgumentNullException.ThrowIfNull(config.Title);
+        if (config.Width == 0 || config.Height == 0 || config.Title.Contains('\0'))
+            throw new ArgumentException("Window dimensions must be positive and title must not contain NUL.", nameof(config));
         _hasRun = true;
 
         IntPtr title = Marshal.StringToCoTaskMemUTF8(config.Title);
@@ -260,6 +263,9 @@ public abstract class Game : IDisposable
 
     private void CaptureCallbackException(Exception exception)
     {
-        _callbackException ??= ExceptionDispatchInfo.Capture(exception);
+        if (_callbackException is not null) return;
+        _callbackException = ExceptionDispatchInfo.Capture(exception);
+        // Preserve the original exception even if requesting exit reports an error.
+        _ = NativeMethods.oxide_app_exit();
     }
 }

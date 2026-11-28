@@ -168,21 +168,24 @@ class Game:
         if self._has_run:
             raise RuntimeError("An Oxide Game instance can only be run once.")
 
-        self._has_run = True
-
         if config is None:
             config = AppConfig()
 
+        if not isinstance(config, AppConfig):
+            raise TypeError("config must be AppConfig")
         if not isinstance(config.title, str):
             raise TypeError("title must be a string")
 
-        if not 1 <= config.width <= 0xFFFFFFFF:
+        if not isinstance(config.width, int) or not 1 <= config.width <= 0xFFFFFFFF:
             raise ValueError("width must be between 1 and 4294967295")
 
-        if not 1 <= config.height <= 0xFFFFFFFF:
+        if not isinstance(config.height, int) or not 1 <= config.height <= 0xFFFFFFFF:
             raise ValueError("height must be between 1 and 4294967295")
 
+        if "\0" in config.title:
+            raise ValueError("title must not contain NUL")
         title = config.title.encode("utf-8")
+        self._has_run = True
 
         callback_exception: BaseException | None = None
 
@@ -194,6 +197,8 @@ class Game:
 
             if callback_exception is None:
                 callback_exception = exception
+                # Do not replace the original exception with an exit status error.
+                _native.lib.oxide_app_exit()
 
         @_native.InitializeCallback
         def on_initialize(

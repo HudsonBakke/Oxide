@@ -23,7 +23,11 @@ impl fmt::Display for GraphicsError {
     }
 }
 
-impl Error for GraphicsError {}
+impl Error for GraphicsError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self { Self::Windows(error) => Some(error), Self::Io(error) => Some(error) }
+    }
+}
 
 impl From<windows::core::Error> for GraphicsError {
     fn from(error: windows::core::Error) -> Self {

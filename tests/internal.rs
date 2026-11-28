@@ -1,6 +1,6 @@
 //! Internal integration coverage compiled against the production source modules.
 #![allow(dead_code, unused_imports)]
-#[path = "../src/app/mod.rs"]
+#[path = "internal/app.rs"]
 pub mod app;
 #[path = "internal/audio.rs"]
 pub mod audio;

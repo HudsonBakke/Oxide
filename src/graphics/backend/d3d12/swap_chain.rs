@@ -13,7 +13,7 @@ use windows::{
             },
             Dxgi::{
                 Common::{DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SAMPLE_DESC},
-                CreateDXGIFactory2, DXGI_CREATE_FACTORY_DEBUG, DXGI_CREATE_FACTORY_FLAGS,
+                CreateDXGIFactory2, DXGI_CREATE_FACTORY_FLAGS,
                 DXGI_PRESENT, DXGI_SCALING_STRETCH, DXGI_SWAP_CHAIN_DESC1, DXGI_SWAP_CHAIN_FLAG,
                 DXGI_SWAP_EFFECT_FLIP_DISCARD, DXGI_USAGE_RENDER_TARGET_OUTPUT, IDXGIFactory4,
                 IDXGISwapChain1, IDXGISwapChain3,
@@ -93,8 +93,8 @@ impl D3D12SwapChain {
             )?;
         }
 
-        let depth_buffer =
-            depth_buffer.expect("CreateCommittedResource succeeded but returned no depth buffer");
+        let depth_buffer = depth_buffer.ok_or_else(|| windows::core::Error::new(
+            windows::Win32::Foundation::E_FAIL, "CreateCommittedResource returned no depth buffer"))?;
 
         let dsv_heap_desc = D3D12_DESCRIPTOR_HEAP_DESC {
             Type: D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
@@ -125,13 +125,9 @@ impl D3D12SwapChain {
     }
 
     pub(crate) fn new(device: &D3D12Device, hwnd: HWND, width: u32, height: u32) -> Result<Self> {
-        let factory_flags = if cfg!(debug_assertions) {
-            DXGI_CREATE_FACTORY_DEBUG
-        } else {
-            DXGI_CREATE_FACTORY_FLAGS(0)
-        };
-
-        let factory: IDXGIFactory4 = unsafe { CreateDXGIFactory2(factory_flags)? };
+        // DXGI's optional debug component must not be required to create a window.
+        // D3D12 device diagnostics are enabled separately when installed.
+        let factory: IDXGIFactory4 = unsafe { CreateDXGIFactory2(DXGI_CREATE_FACTORY_FLAGS(0))? };
 
         let description = DXGI_SWAP_CHAIN_DESC1 {
             Width: width,

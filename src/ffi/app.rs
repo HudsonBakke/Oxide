@@ -91,8 +91,19 @@ pub unsafe extern "C" fn oxide_run(
 
         let game = ForeignGame { callbacks };
 
-        app::run(game, config);
-
-        OxideStatus::Ok
+        match app::run(game, config) {
+            Ok(()) => OxideStatus::Ok,
+            Err(error) => {
+                let status = match error.stage() {
+                    app::AppStage::Configuration => OxideStatus::InvalidArgument,
+                    app::AppStage::AlreadyRunning => OxideStatus::InvalidOperation,
+                    app::AppStage::GraphicsInitialization | app::AppStage::BeginFrame
+                    | app::AppStage::EndFrame | app::AppStage::Resize => OxideStatus::GraphicsError,
+                    _ => OxideStatus::InternalError,
+                };
+                set_last_error(error.to_string());
+                status
+            }
+        }
     })
 }

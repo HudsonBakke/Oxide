@@ -84,7 +84,7 @@ fn check_light_transmission(kind: usize) {
     // This separate descriptor is not sampled by any shader.
     let mut unused = cpu;
     unused.ptr += (FIRST_TEXTURE_DESCRIPTOR - 1) as usize * renderer.texture_descriptor_size as usize;
-    let depth = ShadowMap::new(&device, 64, unused).unwrap();
+    let depth = ShadowMap::new_array(&device, 64, 1, unused).unwrap();
     let mut light = DirectionalLight::new(Vec3::new(-1.0, 0.0, -1.0), Color::WHITE, 1.0).unwrap();
     let settings = ShadowSettings { size: 12.0, depth: 16.0, resolution: 128, normal_bias: 0.0, depth_bias: 0.001, ..Default::default() };
     light.set_shadow_settings(settings).unwrap();
@@ -120,7 +120,7 @@ fn check_light_transmission(kind: usize) {
         let hdr = renderer.hdr_target.as_ref().unwrap();
         transition_resource(&renderer.command_list, &hdr.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
         unsafe {
-            renderer.command_list.ClearDepthStencilView(depth.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+            renderer.command_list.ClearDepthStencilView(depth.dsvs[0], D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
             renderer.command_list.ClearRenderTargetView(hdr.rtv, &[0.0; 4], None);
         }
         renderer.bind_camera(&device, &camera, Rect::new(0.0, 0.0, 64.0, 64.0)).unwrap();
@@ -172,8 +172,8 @@ fn check_light_transmission(kind: usize) {
         }
         let shadow = renderer.render_shadows(&device).unwrap();
         let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
-        unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
-        renderer.render_scene(shadow, depth.dsv);
+        unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsvs[0])); }
+        renderer.render_scene(shadow, depth.dsvs[0]);
         unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
         let readback = copy_hdr(&renderer, &device);
         unsafe {
@@ -222,7 +222,7 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
     renderer.hdr_target = Some(HdrTarget::new(&device, 64, 64, cpu).unwrap());
     let mut unused = cpu;
     unused.ptr += (FIRST_TEXTURE_DESCRIPTOR - 1) as usize * renderer.texture_descriptor_size as usize;
-    let depth = ShadowMap::new(&device, 64, unused).unwrap();
+    let depth = ShadowMap::new_array(&device, 64, 1, unused).unwrap();
     renderer.set_environment(crate::graphics::Environment::new(Color::BLACK, 0.0, None, 0.0, None, Color::BLACK).unwrap());
     let mut mesh = quad();
     // Duplicate the winding to let opposing cameras see the same test planes.
@@ -252,7 +252,7 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
         let hdr = renderer.hdr_target.as_ref().unwrap();
         transition_resource(&renderer.command_list, &hdr.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
         unsafe {
-            renderer.command_list.ClearDepthStencilView(depth.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+            renderer.command_list.ClearDepthStencilView(depth.dsvs[0], D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
             renderer.command_list.ClearRenderTargetView(hdr.rtv, &[0.0; 4], None);
         }
         renderer.bind_camera(&device, &camera, Rect::new(0.0, 0.0, if frame == 6 { 32.0 } else { 64.0 }, 64.0)).unwrap();
@@ -283,8 +283,8 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
         }
         let shadow = renderer.render_shadows(&device).unwrap();
         let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
-        unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
-        renderer.render_scene(shadow, depth.dsv);
+        unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsvs[0])); }
+        renderer.render_scene(shadow, depth.dsvs[0]);
         unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
         let readback = copy_hdr(&renderer, &device);
         unsafe {
@@ -357,7 +357,7 @@ pub(super) fn headless_renderer(device: &D3D12Device) -> (D3D12Renderer, ShadowM
     renderer.hdr_target = Some(HdrTarget::new(device, 64, 64, cpu).unwrap());
     let mut unused = cpu;
     unused.ptr += (FIRST_TEXTURE_DESCRIPTOR - 1) as usize * renderer.texture_descriptor_size as usize;
-    let depth = ShadowMap::new(device, 64, unused).unwrap();
+    let depth = ShadowMap::new_array(device, 64, 1, unused).unwrap();
     renderer.set_environment(crate::graphics::Environment::new(Color::BLACK, 0.0, None, 0.0, None, Color::BLACK).unwrap());
     (renderer, depth)
 }
@@ -378,7 +378,7 @@ pub(super) fn start_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12D
     let hdr = renderer.hdr_target.as_ref().unwrap();
     transition_resource(&renderer.command_list, &hdr.resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
     unsafe {
-        renderer.command_list.ClearDepthStencilView(depth.dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
+        renderer.command_list.ClearDepthStencilView(depth.dsvs[0], D3D12_CLEAR_FLAG_DEPTH, 1.0, 0, None);
         renderer.command_list.ClearRenderTargetView(hdr.rtv, &[0.0; 4], None);
     }
     let mut camera = Camera::new();
@@ -391,8 +391,8 @@ pub(super) fn finish_headless_frame_samples(renderer: &mut D3D12Renderer, device
     let shadow = renderer.render_shadows(device).unwrap();
     renderer.render_camera_surfaces(device, shadow);
     let rtv = renderer.hdr_target.as_ref().unwrap().rtv;
-    unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsv)); }
-    renderer.render_scene(shadow, depth.dsv);
+    unsafe { renderer.command_list.OMSetRenderTargets(1, Some(&rtv), false, Some(&depth.dsvs[0])); }
+    renderer.render_scene(shadow, depth.dsvs[0]);
     unsafe { renderer.command_list.OMSetRenderTargets(0, None, false, None); }
     let readback = copy_hdr(renderer, device);
     unsafe {

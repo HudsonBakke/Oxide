@@ -2,13 +2,7 @@ include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/backend/d3d12/device
 
 impl D3D12Device {
     pub(crate) fn warp_for_test() -> Result<Self> {
-        static DEBUG_INIT: std::sync::Once = std::sync::Once::new();
-        DEBUG_INIT.call_once(|| unsafe {
-            let mut debug: Option<ID3D12Debug> = None;
-            if D3D12GetDebugInterface(&mut debug).is_ok() {
-                if let Some(debug) = debug { debug.EnableDebugLayer(); }
-            }
-        });
+        enable_debug_layer();
         let factory: IDXGIFactory6 = unsafe { CreateDXGIFactory2(DXGI_CREATE_FACTORY_FLAGS(0))? };
         let adapter: IDXGIAdapter1 = unsafe { factory.EnumWarpAdapter()? };
         let mut device: Option<ID3D12Device> = None;

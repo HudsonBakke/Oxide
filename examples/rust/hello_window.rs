@@ -51,7 +51,7 @@ impl Game for HelloGame {
     }
 }
 
-fn main() {
+fn main() -> Result<(), oxide::app::AppError> {
     let mut transform = Transform::new();
 
     transform.set_position(Vec3::new(0.0, 0.0, -3.0));
@@ -93,5 +93,5 @@ fn main() {
         height: 720,
     };
 
-    run(game, config);
+    run(game, config)
 }

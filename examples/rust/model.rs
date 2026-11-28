@@ -41,7 +41,7 @@ impl Game for ModelGame {
     }
 }
 
-fn main() {
+fn main() -> Result<(), oxide::app::AppError> {
     let mut content = ContentManager::new();
 
     // This is the important part of the example:
@@ -78,5 +78,5 @@ fn main() {
         height: 720,
     };
 
-    run(game, config);
+    run(game, config)
 }

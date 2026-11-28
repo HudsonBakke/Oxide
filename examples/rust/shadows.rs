@@ -119,6 +119,6 @@ fn cube() -> Mesh {
     Mesh::new(vertices, indices)
 }
 
-fn main() {
-    oxide::app::run(Shadows::new(), AppConfig { title: "Oxide Shadows".into(), width: 1280, height: 800 });
+fn main() -> Result<(), oxide::app::AppError> {
+    oxide::app::run(Shadows::new(), AppConfig { title: "Oxide Shadows".into(), width: 1280, height: 800 })
 }

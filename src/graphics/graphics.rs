@@ -44,7 +44,7 @@ impl Graphics {
 
         let renderer = D3D12Renderer::new(&device)?;
 
-        let swap_chain = D3D12SwapChain::new(&device, window.hwnd(), size.width, size.height)?;
+        let swap_chain = D3D12SwapChain::new(&device, window.hwnd()?, size.width, size.height)?;
 
         Ok(Self {
             text_cache: Default::default(),

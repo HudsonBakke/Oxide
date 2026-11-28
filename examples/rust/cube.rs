@@ -101,7 +101,7 @@ fn create_cube() -> Mesh {
     Mesh::new(vertices, indices)
 }
 
-fn main() {
+fn main() -> Result<(), oxide::app::AppError> {
     let light = SpotLight::new(
         Vec3::new(0.0, 0.0, -1.0),
         Vec3::new(0.0, 0.0, -1.0),
@@ -141,5 +141,5 @@ fn main() {
         height: 720,
     };
 
-    run(game, config);
+    run(game, config)
 }
