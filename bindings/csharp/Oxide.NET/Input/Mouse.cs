@@ -18,7 +18,7 @@ public enum MouseButtons
     Forward = 4,
 }
 
-/// <summary>Access to button, cursor-motion, and scroll snapshots.</summary>
+/// <summary>Access to mouse snapshots. Focus loss releases buttons and clears motion/scroll; unfocused input is ignored.</summary>
 public static class Mouse
 {
     /// <summary>Returns an input snapshot; pressed/released queries compare with the previous frame.</summary>

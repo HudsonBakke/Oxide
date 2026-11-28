@@ -2,7 +2,7 @@ using Oxide.Native;
 
 namespace Oxide.Input;
 
-/// <summary>Access to snapshots of physical keyboard state.</summary>
+/// <summary>Access to physical keyboard snapshots. Focus loss clears held keys and exposes releases until the next update completes; synthetic focus presses are ignored.</summary>
 public static class Keyboard
 {
     /// <summary>Returns an input snapshot; pressed/released queries compare with the previous frame.</summary>

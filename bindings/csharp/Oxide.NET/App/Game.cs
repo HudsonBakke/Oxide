@@ -19,7 +19,7 @@ public abstract class Game : IDisposable
     /// <summary>Called once after the window and graphics are ready; load persistent resources here.</summary>
     protected virtual void Initialize() {}
 
-    /// <summary>Called once before drawing each frame with elapsed time in seconds; update game logic and read input here.</summary>
+    /// <summary>Updates logic/input for drawable frames; pauses while minimized, occluded, or suspended. Focus loss alone does not pause gameplay.</summary>
     protected virtual void Update(GameTime time) {}
 
     /// <summary>Called each frame to bind cameras, set lighting, and submit draw calls.</summary>
@@ -106,7 +106,7 @@ public abstract class Game : IDisposable
             NativeMethods.oxide_app_set_cursor_visible(visible ? (byte)1 : (byte)0));
     }
 
-    /// <summary>Requests cursor locking, falling back to confinement when locking is unavailable.</summary>
+    /// <summary>Requests cursor locking, falling back to confinement. Temporarily releases capture and shows the cursor while unfocused or paused; restores preferences on return.</summary>
     public void SetCursorGrabbed(bool grabbed)
     {
         NativeMethods.Check(

@@ -27,8 +27,8 @@ class GameTime:
     """Frame timing in seconds; delta time varies with actual frame duration.
 
     Attributes:
-        delta_seconds: Seconds elapsed since the previous frame's update.
-        total_seconds: Seconds elapsed since the application clock started."""
+        delta_seconds: Active simulation step, capped at 0.1 seconds; zero on the first update after a pause.
+        total_seconds: Sum of delivered steps; excludes initialization, paused time, and capped stall excess."""
 
     delta_seconds: float
     total_seconds: float
@@ -49,7 +49,10 @@ class Game:
         self,
         time: GameTime,
     ) -> None:
-        """Called once before drawing each frame with elapsed time in seconds; update game logic and read input here."""
+        """Updates logic/input for drawable frames; pauses while minimized, occluded, or suspended.
+
+        Focus loss alone does not pause gameplay; input is released and ignored until focus returns.
+        """
         pass
 
     def draw(

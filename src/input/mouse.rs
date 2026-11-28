@@ -24,6 +24,8 @@ pub enum MouseButton {
 }
 
 /// Snapshot of mouse buttons, cursor motion, and scroll motion for the current frame.
+/// Focus loss clears held buttons, raw motion and scroll; releases remain visible
+/// until the next update completes. Unfocused device events are ignored.
 #[derive(Debug, Clone)]
 pub struct MouseState {
     current: HashSet<MouseButton>,
@@ -75,7 +77,7 @@ impl MouseState {
         self.position
     }
 
-    /// Cursor motion accumulated this frame.
+    /// Focused raw device motion accumulated this frame, in device-reported units.
     pub fn delta(&self) -> Vec2 {
         self.delta
     }

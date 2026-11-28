@@ -150,3 +150,5 @@ Draw textures and Unicode labels over a scene with `Draw2D` and `DrawText`, or u
 ## Application errors
 
 Rust `app::run` returns `Result<(), AppError>` with the operation and original cause on failure. C#/Python callback exceptions request exit promptly and retain their original stack/traceback. The optional D3D12 debug layer is not required to run a development build. See [application lifecycle and errors](docs/application-lifecycle.md).
+
+See the [1.0 readiness checklist](docs/release-checklist.md) for the agreed implementation order and [focus/suspension behavior](docs/application-lifecycle.md#focus-suspension-and-simulation-time) for input, timing, cursor capture, and interactive checks.

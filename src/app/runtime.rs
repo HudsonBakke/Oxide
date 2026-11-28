@@ -50,7 +50,7 @@ impl Default for AppConfig {
 pub trait Game {
     /// Called once after the window and graphics are ready; load persistent resources here.
     fn initialize(&mut self) {}
-    /// Called once before drawing each frame with elapsed time in seconds; update game logic and read input here.
+    /// Updates game logic and input for a drawable frame. Paused while minimized, occluded, or suspended; focus loss alone does not pause it.
     fn update(&mut self, _time: &GameTime) {}
     /// Called each frame to bind cameras, set lighting, and submit draw calls.
     fn draw(&mut self, _graphics: &mut Graphics) {}
@@ -65,12 +65,12 @@ pub struct GameTime {
 }
 
 impl GameTime {
-    /// Seconds elapsed since the previous frame's update.
+    /// Active simulation step in seconds, capped at 0.1; zero on the first update after a pause.
     pub fn delta_seconds(&self) -> f64 {
         self.delta_seconds
     }
 
-    /// Seconds elapsed since the application clock started.
+    /// Sum of delivered simulation steps; excludes initialization, paused time, and capped stall excess.
     pub fn total_seconds(&self) -> f64 {
         self.total_seconds
     }

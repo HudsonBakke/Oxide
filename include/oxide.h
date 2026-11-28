@@ -316,9 +316,9 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
     /** Frame timing in seconds; delta time varies with actual frame duration. */
     typedef struct OxideGameTime
     {
-        /** Seconds elapsed since the previous frame's update. */
+        /** Active simulation step, capped at 0.1 seconds; zero on first update after a pause. */
         double delta_seconds;
-        /** Seconds elapsed since the application clock started. */
+        /** Sum of delivered steps; excludes initialization, paused time, and capped stall excess. */
         double total_seconds;
     } OxideGameTime;
 
@@ -1420,7 +1420,7 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
         uint64_t previous[2];
     } OxideKeyboardState;
 
-    /** Mouse snapshot with held buttons, per-frame transitions, position, raw motion, and scrolling. */
+    /** Mouse snapshot; focus loss releases held buttons and clears motion/scroll. Unfocused input is ignored. */
     typedef struct OxideMouseState
     {
         /** Current button bits: named buttons use bits 0 through 4; additional indices 0 through 58 use bits 5 through 63. */

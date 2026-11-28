@@ -221,7 +221,10 @@ class KeyboardState:
 
 
 class Keyboard:
-    """Access to snapshots of physical keyboard state."""
+    """Physical-key snapshots. Focus loss releases held keys until the next update completes.
+
+    Synthetic focus presses and auto-repeat do not create fresh press events.
+    """
 
     @staticmethod
     def get_state() -> KeyboardState:
@@ -342,7 +345,7 @@ class MouseState:
 
 
 class Mouse:
-    """Access to button, cursor-motion, and scroll snapshots."""
+    """Mouse snapshots. Focus loss releases buttons and clears motion/scroll; unfocused input is ignored."""
 
     @staticmethod
     def get_state() -> MouseState:

@@ -48,6 +48,7 @@ internal sealed class FirstPersonGame : Game
 
     protected override void Update(GameTime time)
     {
+        SetWindowName($"Oxide First Person | dt {time.DeltaSeconds:0.000}s | active {time.TotalSeconds:0.0}s | {WindowWidth}x{WindowHeight} | focused {IsWindowFocused}");
         KeyboardState keyboard = Keyboard.GetState();
         MouseState mouse = Mouse.GetState();
 

@@ -125,6 +125,7 @@ class FirstPersonGame(Game):
         self.set_window_name("Oxide First Person Camera")
 
     def update(self, time: GameTime) -> None:
+        self.set_window_name(f"Oxide First Person | dt {time.delta_seconds:.3f}s | active {time.total_seconds:.1f}s | {self.window_width}x{self.window_height} | focused {self.is_window_focused}")
         keyboard = Keyboard.get_state()
         mouse = Mouse.get_state()
 

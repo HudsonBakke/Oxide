@@ -91,6 +91,8 @@ impl Game for Demo {
     }
 
     fn update(&mut self, time: &GameTime) {
+        app::set_window_name(format!("Oxide First Person | dt {:.3}s | active {:.1}s | {}x{} | focused {}",
+            time.delta_seconds(), time.total_seconds(), app::window_width(), app::window_height(), app::is_window_focused()));
         let keyboard = Keyboard::get_state();
         let mouse = Mouse::get_state();
 
