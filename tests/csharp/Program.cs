@@ -6,6 +6,7 @@ internal static class Program
     private static void Main()
     {
         AudioChecks.Run();
+        MonitorChecks.Run();
         if (System.Runtime.InteropServices.Marshal.SizeOf<ShadowSettings>() != 40 ||
             System.Runtime.InteropServices.Marshal.SizeOf<PointLight>() != 76 ||
             System.Runtime.InteropServices.Marshal.SizeOf<DirectionalLight>() != 76 ||

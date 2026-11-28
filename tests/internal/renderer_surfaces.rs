@@ -72,6 +72,7 @@ fn camera_surface_rebinds_resize_reuse_descriptors_and_validate_before_submissio
     let device=D3D12Device::warp_for_test().unwrap();let (mut renderer,depth)=headless_renderer(&device);
     let mut camera=Camera::new();camera.set_position(Vec3::new(0.0,0.0,5.0));
     let surface=rectangle(1.0);
+    let mut original_descriptor=None;
     for (frame,size) in [32,64,32].into_iter().enumerate() {
         start_headless_frame(&mut renderer,&device,&depth,frame==0);
         let before=renderer.commands.len();
@@ -81,6 +82,8 @@ fn camera_surface_rebinds_resize_reuse_descriptors_and_validate_before_submissio
         renderer.set_environment(Environment::new(Color::BLACK,0.0,None,0.0,None,Color::rgb(2.0,0.25,0.0)).unwrap());
         renderer.bind_camera_3d(&device,&camera,surface,size,size).unwrap();
         let descriptor=renderer.camera_surfaces[0].descriptor;
+        if let Some(original)=original_descriptor { assert_eq!(descriptor,original); }
+        original_descriptor=Some(descriptor);
         // Rebinding the same rectangle reuses the target; a later background wins.
         renderer.draw_background(&device).unwrap();renderer.background_drawn=true;
         renderer.set_environment(Environment::new(Color::BLACK,0.0,None,0.0,None,Color::rgb(3.0,0.5,0.0)).unwrap());
@@ -95,4 +98,38 @@ fn camera_surface_rebinds_resize_reuse_descriptors_and_validate_before_submissio
         assert_eq!(renderer.camera_surfaces[0].descriptor,descriptor);
         assert_eq!((renderer.camera_surfaces[0].color.width,renderer.camera_surfaces[0].color.height),(size,size));
     }
+}
+
+#[test]
+fn independent_camera_images_do_not_bleed_and_surface_capacity_recovers_after_retirement() {
+    let device=D3D12Device::warp_for_test().unwrap();let (mut renderer,depth)=headless_renderer(&device);
+    let mut camera=Camera::new();camera.set_position(Vec3::new(0.0,0.0,5.0));
+    start_headless_frame(&mut renderer,&device,&depth,true);
+    for (left,color) in [(-2.0,Color::rgb(2.0,0.0,0.0)),(0.2,Color::rgb(0.0,1.5,0.0))] {
+        renderer.set_environment(Environment::new(Color::BLACK,0.0,None,0.0,None,color).unwrap());
+        let rect=Rect3D::new(Vec3::new(left,1.0,1.0),Vec3::new(left+1.8,1.0,1.0),Vec3::new(left+1.8,-1.0,1.0),Vec3::new(left,-1.0,1.0),Vec3::new(0.0,0.0,1.0)).unwrap();
+        renderer.bind_camera_3d(&device,&camera,rect,32,32).unwrap();
+        renderer.draw_background(&device).unwrap();renderer.background_drawn=true;
+    }
+    renderer.set_environment(Environment::new(Color::BLACK,0.0,None,0.0,None,Color::BLUE).unwrap());
+    renderer.bind_camera(&device,&camera,Rect::new(0.0,0.0,64.0,64.0)).unwrap();
+    let colors=finish_headless_frame_samples(&mut renderer,&device,&depth,&[(17,32),(47,32)]);
+    assert_color(colors[0],[2.0,0.0,0.0]);assert_color(colors[1],[0.0,1.5,0.0]);
+    start_headless_frame(&mut renderer,&device,&depth,false);
+    for index in 0..MAX_CAMERA_SURFACES {
+        let x=index as f32*4.0;
+        let rect=Rect3D::new(Vec3::new(x,1.0,0.0),Vec3::new(x+2.0,1.0,0.0),Vec3::new(x+2.0,-1.0,0.0),Vec3::new(x,-1.0,0.0),Vec3::new(0.0,0.0,1.0)).unwrap();
+        renderer.bind_camera_3d(&device,&camera,rect,16,16).unwrap();
+    }
+    let count=renderer.commands.len();
+    assert!(renderer.bind_camera_3d(&device,&camera,rectangle(1.0),16,16).unwrap_err().to_string().contains("16 distinct Rect3D"));
+    assert_eq!(renderer.commands.len(),count);
+    renderer.bind_camera(&device,&camera,Rect::new(0.0,0.0,64.0,64.0)).unwrap();
+    finish_headless_frame_samples(&mut renderer,&device,&depth,&[(32,32)]);
+    assert_eq!(renderer.camera_surfaces.len(),MAX_CAMERA_SURFACES);
+    let used=renderer.descriptors.used();
+    start_headless_frame(&mut renderer,&device,&depth,false);
+    finish_headless_frame_samples(&mut renderer,&device,&depth,&[(32,32)]);
+    assert!(renderer.camera_surfaces.is_empty());
+    assert_eq!(renderer.descriptors.used(),used-MAX_CAMERA_SURFACES as u32);
 }

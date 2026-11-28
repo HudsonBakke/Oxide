@@ -13,6 +13,7 @@ cargo build --locked --lib
 python tests/python_math.py
 python tests/python_shadows.py
 python tests/python_audio.py
+python tests/python_monitors.py
 dotnet run --project tests/csharp/Oxide.Tests.csproj
 ```
 
@@ -59,3 +60,11 @@ checks need no playback endpoint. All listening checks are the audio examples;
 run them on a machine with an active Windows output device. The hex MP3 fixture
 is a generated sine wave, not third-party music. The Rust runner's --doc option
 captures documentation failures as well as --check compile failures.
+
+Rect3D math/ABI tests validate rectangle geometry and normal selection. Camera
+surface WARP tests validate current-frame scheduling, independent feeds and screen
+viewports, UV orientation, depth/alpha behavior, HDR preservation, resource reuse,
+resizing, capacity errors, and retirement. Python tests exercise the native value
+layout and actual example controls; the C# test program checks native construction
+and all camera overloads. Interactive demos live under examples, with all test
+assertions and helpers kept here.

@@ -76,3 +76,6 @@ blend back to front per camera with depth testing and no depth writes. Blending
 happens in linear RGBA16F before exposure and tone mapping. A value of one is
 invisible and contributes no color or depth. See [shadows and transparency](shadows.md)
 for the shared API and the mesh-sorting limitations.
+
+Camera feeds can be bound to world-space rectangles. Their HDR images are sampled
+without an intermediate display conversion. See [camera surfaces](camera-surfaces.md).

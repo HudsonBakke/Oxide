@@ -40,3 +40,9 @@ slots, release unused CPU assets and finish the current frame before retrying.
 The C ABI returns the renderer error through its normal status/error channel;
 C# and Python surface their existing exceptions. The rendering API does not need
 an explicit resource-cache cleanup call.
+
+Rect3D camera targets have independent HDR/depth storage and reusable descriptor
+slots. Unused targets retire after GPU completion; frame registrations are cleared
+each frame. The default image's longest edge is 512 pixels, explicit sizes are
+limited to 2048 per dimension, and a frame supports 16 distinct surfaces. See
+[camera surfaces](camera-surfaces.md) for scheduling and lifetime rules.

@@ -32,9 +32,9 @@ If Windows blocks local PowerShell scripts, invoke it with a process-only policy
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-shaders.ps1
 ```
 
-The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus `vs_main` and `ps_main` in `shadow.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, `shadow_vs.dxil`, and `shadow_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
+The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus `vs_main` and `ps_main` in `shadow.hlsl` and `camera_surface.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, `shadow_vs.dxil`, `shadow_ps.dxil`, `camera_surface_vs.dxil`, and `camera_surface_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
 
-Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, `shadows`, and `audio`. Run from the repository root so relative asset paths resolve correctly.
+Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, `shadows`, `audio`, and `monitors`. Run from the repository root so relative asset paths resolve correctly.
 
 ### C#
 
@@ -45,7 +45,7 @@ cargo build --locked --lib
 dotnet run --project examples/csharp/Materials/Materials.csproj
 ```
 
-`HelloWindow`, `FirstPerson`, `Shadows`, and `Audio` are also available under `examples/csharp`.
+`HelloWindow`, `FirstPerson`, `Shadows`, `Audio`, and `Monitors` are also available under `examples/csharp`.
 
 ### Python
 
@@ -102,9 +102,10 @@ python -c "import oxide; import oxide.app; import oxide.collision; import oxide.
 python tests/python_math.py
 python tests/python_shadows.py
 python tests/python_audio.py
+python tests/python_monitors.py
 ```
 
-[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all eight shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow rendering and HDR readback on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, math checks, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
+[Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all ten shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow rendering and HDR readback on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, math checks, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
 
 CI checks rendered HDR output through headless WARP readbacks; it does not launch interactive windows. Run the materials, first-person, and shadows scenes locally to check rendering and input on a D3D12-capable GPU.
 
@@ -129,3 +130,9 @@ Both omnidirectional and cone emission use distance attenuation. Volume, pitch,
 looping, low-pass filtering, and amplitude modulation are supported. Occlusion
 is application-controlled. See [the audio guide](docs/audio.md) for API examples,
 ownership, limits, and matching Rust/C#/Python listening demos.
+
+## Camera surfaces
+
+Bind a camera to a validated world-space `Rect3D` to create a live monitor image
+that appears automatically in screen-bound cameras. See [camera surfaces](docs/camera-surfaces.md)
+for matching Rust/C#/Python APIs, image sizing, front-face behavior, and monitor demos.
