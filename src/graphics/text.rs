@@ -76,7 +76,7 @@ unsafe fn rasterize(text:&str,family:&str,size:f32)->Result<TextImage> { unsafe 
     let brush=target.CreateSolidColorBrush(&D2D1_COLOR_F {r:1.0,g:1.0,b:1.0,a:1.0},None)?;
     target.SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
     target.BeginDraw();target.Clear(Some(&D2D1_COLOR_F::default()));
-    target.DrawTextLayout(D2D_POINT_2F {x:left,y:top},&layout,&brush,D2D1_DRAW_TEXT_OPTIONS_NONE);
+    target.DrawTextLayout(windows_numerics::Vector2 {X:left,Y:top},&layout,&brush,D2D1_DRAW_TEXT_OPTIONS_NONE);
     target.EndDraw(None,None)?;
     let mut pixels=vec![0u8;width as usize*height as usize*4];bitmap.CopyPixels(std::ptr::null(),width*4,&mut pixels)?;
     // D2D returns premultiplied white. Preserve coverage as alpha and restore

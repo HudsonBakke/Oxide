@@ -32,9 +32,9 @@ If Windows blocks local PowerShell scripts, invoke it with a process-only policy
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-shaders.ps1
 ```
 
-The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus `vs_main` and `ps_main` in `shadow.hlsl` and `camera_surface.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, `shadow_vs.dxil`, `shadow_ps.dxil`, `camera_surface_vs.dxil`, and `camera_surface_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
+The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus `vs_main` and `ps_main` in `shadow.hlsl` `camera_surface.hlsl`, and `sprite.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, `shadow_vs.dxil`, `shadow_ps.dxil`, `camera_surface_vs.dxil`, and `camera_surface_ps.dxil`, `sprite_vs.dxil`, and `sprite_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
 
-Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, `shadows`, `audio`, and `monitors`. Run from the repository root so relative asset paths resolve correctly.
+Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, `shadows`, `audio`, `monitors`, and `menus`. Run from the repository root so relative asset paths resolve correctly.
 
 ### C#
 
@@ -45,7 +45,7 @@ cargo build --locked --lib
 dotnet run --project examples/csharp/Materials/Materials.csproj
 ```
 
-`HelloWindow`, `FirstPerson`, `Shadows`, `Audio`, and `Monitors` are also available under `examples/csharp`.
+`HelloWindow`, `FirstPerson`, `Shadows`, `Audio`, `Monitors`, and `Menus` are also available under `examples/csharp`.
 
 ### Python
 
@@ -103,6 +103,7 @@ python tests/python_math.py
 python tests/python_shadows.py
 python tests/python_audio.py
 python tests/python_monitors.py
+python tests/python_sprites.py
 ```
 
 [Windows CI](https://github.com/HudsonBakke/Oxide/actions/workflows/windows.yml) runs on pushes, pull requests, and manual dispatch. It compiles all ten shader stages, checks every Rust target, runs Rust tests (including D3D12 shadow rendering and HDR readback on WARP), builds the native library and all Rust/C# examples, compiles and links the C example, and checks Python syntax, imports, math checks, and the shadow ABI and example controls against the freshly built DLL. Python is checked at the package's minimum supported version, 3.11.
@@ -136,3 +137,7 @@ ownership, limits, and matching Rust/C#/Python listening demos.
 Bind a camera to a validated world-space `Rect3D` to create a live monitor image
 that appears automatically in screen-bound cameras. See [camera surfaces](docs/camera-surfaces.md)
 for matching Rust/C#/Python APIs, image sizing, front-face behavior, and monitor demos.
+
+## Screen-space graphics
+
+Draw textures and Unicode labels over a scene with `Draw2D` and `DrawText`, or use them alone for a 2D menu. See [2D drawing](docs/drawing-2d.md) and the matching `menus` examples in Rust, C#, and Python.

@@ -21,7 +21,8 @@ impl Graphics {
     /// Linear exposure multiplier for the final display pass; defaults to one.
     ///
     /// Persists across frames. The last value set during draw applies to the
-    /// entire surface, including all camera viewports and backgrounds.
+    /// entire 3D surface, including all camera viewports and backgrounds.
+    /// Screen-space sprites and text are unaffected.
     pub fn exposure(&self) -> f32 {
         self.renderer.exposure()
     }

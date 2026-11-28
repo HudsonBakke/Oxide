@@ -2,11 +2,14 @@
 
 Oxide accumulates scene lighting, emission, and visible backgrounds in a
 full-resolution RGBA16F render target. At frame end, a fullscreen pass applies
-exposure, Reinhard tone mapping (`x / (1 + x)`), and the piecewise linear-to-sRGB
-transfer function. The swap chain remains an ordinary 8-bit SDR surface.
+exposure and Reinhard tone mapping (`x / (1 + x)`). An sRGB render-target
+view applies the final transfer function in hardware. The swap chain remains
+an ordinary 8-bit SDR surface.
 This supports HDR scene values without requiring an HDR monitor.
 
-There is one display transform per frame, after all camera viewports. Background
+There is one display transform per frame, after all camera viewports.
+[2D overlays and text](drawing-2d.md) compose afterward, using linear-space
+alpha blending through that sRGB view; they ignore exposure and tone mapping. Background
 shaders do not tone-map independently. The HDR surface follows the window size
 and is recreated after resize when the previous frame has finished on the GPU.
 

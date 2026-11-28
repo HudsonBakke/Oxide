@@ -717,7 +717,7 @@ class Graphics:
     def exposure(self) -> float:
         """Linear exposure multiplier; defaults to one and persists across frames.
 
-        The last value set during draw applies to all viewports and backgrounds.
+        The last value set during draw applies to all 3D viewports and backgrounds; 2D overlays are unaffected.
         """
         self._require_valid()
         result = ctypes.c_float()

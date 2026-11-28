@@ -14,7 +14,7 @@ public sealed class Graphics
     private bool _valid;
 
     /// <summary>Finite non-negative linear exposure multiplier; defaults to one. Zero produces black.</summary>
-    /// <remarks>Persists across frames. The last value set during Draw applies to the entire surface and all viewports.</remarks>
+    /// <remarks>Persists across frames. The last value set during Draw applies to the entire 3D surface and all viewports; 2D overlays are unaffected.</remarks>
     public float Exposure
     {
         get

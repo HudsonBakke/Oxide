@@ -1,5 +1,6 @@
 //! Real sRGB output and overlay readbacks, including the display pass.
 use super::*;
+use crate::{graphics::{Color,TextOptions},math::Vec2};
 use super::readback::{headless_renderer,start_headless_frame};
 use windows::Win32::Graphics::{Direct3D12::*,Dxgi::Common::*};
 
@@ -88,4 +89,22 @@ fn sprite_crop_flip_rotation_and_clip_use_physical_pixels() {
     near(pixel(&image,15,15),[255,0,0]); // Crop clamps avoid adjacent atlas cells.
     near(pixel(&image,17,1),[255,255,255]);near(pixel(&image,46,30),[255,0,0]);
     near(pixel(&image,9,38),[255,255,255]);near(pixel(&image,6,38),[0,0,0]);near(pixel(&image,13,44),[0,0,0]);
+}
+
+#[test]
+fn text_coverage_is_straight_alpha_and_zero_sprites_are_noops() {
+    let image=render(0.0,|r,d| {
+        let mut cache=crate::graphics::text::TextCache::default();
+        let label=cache.get("Ox",&TextOptions {font_size:20.0,..Default::default()}).unwrap();
+        r.draw_2d(d,&label.texture,Rect::new(2.0,2.0,label.texture.width() as f32,label.texture.height() as f32),
+            Draw2DOptions {tint:Color::rgba(0.0,1.0,1.0,0.5),..Default::default()}).unwrap();
+        let white=Texture::solid(Color::WHITE);let count=r.overlays.len();
+        r.draw_2d(d,&white,Rect::new(0.0,0.0,0.0,10.0),Draw2DOptions::default()).unwrap();
+        r.draw_2d(d,&white,Rect::new(0.0,0.0,64.0,64.0),Draw2DOptions {tint:Color::rgba(1.0,1.0,1.0,0.0),..Default::default()}).unwrap();
+        r.draw_2d(d,&white,Rect::new(0.0,0.0,64.0,64.0),Draw2DOptions {clip:Some(Rect::default()),..Default::default()}).unwrap();
+        assert_eq!(r.overlays.len(),count);
+    });
+    assert!(image.iter().any(|p|p[1]>=185),"glyph interiors did not reach half opacity");
+    assert!(image.iter().any(|p|p[1]>0&&p[1]<180),"missing glyph antialias coverage");
+    assert!(image.iter().all(|p|p[0]==0&&p[1]==p[2]&&p[1]<=189),"text tint/coverage blend is incorrect");
 }

@@ -1515,6 +1515,7 @@ dependencies = [
  "raw-window-handle",
  "urlencoding",
  "windows",
+ "windows-numerics",
  "winit",
 ]
 

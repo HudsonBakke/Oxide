@@ -44,10 +44,10 @@ use super::{
 
 use crate::{
     graphics::{
-        Camera, DirectionalLight, ShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight, Texture, Draw2DOptions, TextOptions, Color,
+        Camera, DirectionalLight, ShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight, Texture, Draw2DOptions,
         SpotLight, mesh::MeshId, texture::TextureId,
     },
-    math::{Mat4, Rect, Rect3D, Transform, Vec2, Vec3},
+    math::{Mat4, Rect, Rect3D, Transform, Vec3},
 };
 
 const TRIANGLE_VERTEX_SHADER: &[u8] =

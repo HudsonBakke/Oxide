@@ -68,3 +68,5 @@ resizing, capacity errors, and retirement. Python tests exercise the native valu
 layout and actual example controls; the C# test program checks native construction
 and all camera overloads. Interactive demos live under examples, with all test
 assertions and helpers kept here.
+
+The sprite checks read back the actual sRGB display and overlay passes under WARP. They cover linear alpha blending, scene exposure isolation, ordering, crops, flips, pivot rotation, clipping, text coverage, and dropped CPU assets. Font cache and binding checks cover Unicode, measurement, validation, ABI layout and the menu example controls. Run `python tests/python_sprites.py` alongside the other Python checks.
