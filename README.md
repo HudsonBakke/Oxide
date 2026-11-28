@@ -146,3 +146,7 @@ for matching Rust/C#/Python APIs, image sizing, front-face behavior, and monitor
 ## Screen-space graphics
 
 Draw textures and Unicode labels over a scene with `Draw2D` and `DrawText`, or use them alone for a 2D menu. See [2D drawing](docs/drawing-2d.md) and the matching `menus` examples in Rust, C#, and Python.
+
+## Application errors
+
+Rust `app::run` returns `Result<(), AppError>` with the operation and original cause on failure. C#/Python callback exceptions request exit promptly and retain their original stack/traceback. The optional D3D12 debug layer is not required to run a development build. See [application lifecycle and errors](docs/application-lifecycle.md).

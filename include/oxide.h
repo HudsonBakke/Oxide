@@ -360,7 +360,12 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
  * @brief Runs the blocking event loop, invoking initialize once and update/draw each frame. Callback function pointers and user_data must remain valid until return.
  * @param config Window configuration; title is a NUL-terminated UTF-8 string.
  * @param callbacks Callback table; a NULL callback is skipped.
- * @return OXIDE_STATUS_OK on success; otherwise a status code with a thread-local diagnostic.
+ * @return OXIDE_STATUS_OK on clean exit; invalid configuration/overlapping runs
+ * return INVALID_ARGUMENT/INVALID_OPERATION; graphics failures return GRAPHICS_ERROR;
+ * window/event-loop failures return INTERNAL_ERROR, with a thread-local diagnostic.
+ * @note Run on the main event-loop thread, once per process. A callback that cannot
+ * continue must call oxide_app_exit and return normally; never unwind across the ABI.
+ * An exit during update skips draw, and an exit during draw skips frame submission.
  */
     OXIDE_API OxideStatus oxide_run(OxideAppConfig config, OxideGameCallbacks callbacks);
 

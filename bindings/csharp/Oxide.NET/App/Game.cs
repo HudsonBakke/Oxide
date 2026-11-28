@@ -113,13 +113,15 @@ public abstract class Game : IDisposable
             NativeMethods.oxide_app_set_cursor_grabbed(grabbed ? (byte)1 : (byte)0));
     }
 
-    /// <summary>Runs the blocking event loop on the calling thread. A Game instance can run only once.</summary>
+    /// <summary>Runs the blocking event loop on the main thread. A Game instance can run only once.</summary>
+    /// <remarks>Engine failures raise OxideException with the failed operation. Callback exceptions request exit and are rethrown with their original stack after native teardown.</remarks>
     public void Run()
     {
         Run(new AppConfig());
     }
 
-    /// <summary>Runs the blocking event loop on the calling thread. A Game instance can run only once.</summary>
+    /// <summary>Runs the blocking event loop on the main thread. A Game instance can run only once.</summary>
+    /// <remarks>Engine failures raise OxideException with the failed operation. Callback exceptions request exit and are rethrown with their original stack after native teardown.</remarks>
     public void Run(AppConfig config)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -266,6 +268,7 @@ public abstract class Game : IDisposable
         if (_callbackException is not null) return;
         _callbackException = ExceptionDispatchInfo.Capture(exception);
         // Preserve the original exception even if requesting exit reports an error.
-        _ = NativeMethods.oxide_app_exit();
+        try { _ = NativeMethods.oxide_app_exit(); }
+        catch { /* Never let a secondary interop failure escape the callback. */ }
     }
 }

@@ -164,7 +164,12 @@ class Game:
         self,
         config: AppConfig | None = None,
     ) -> None:
-        """Runs the blocking event loop on the calling thread; a Game instance can run only once."""
+        """Runs on the main event-loop thread; each Game can attempt a native run once.
+
+        Engine failures raise binding errors with operation/cause. Callback
+        exceptions request exit immediately and are rethrown with their original
+        traceback after native teardown. Invalid config does not consume the run.
+        """
         if self._has_run:
             raise RuntimeError("An Oxide Game instance can only be run once.")
 
@@ -198,7 +203,10 @@ class Game:
             if callback_exception is None:
                 callback_exception = exception
                 # Do not replace the original exception with an exit status error.
-                _native.lib.oxide_app_exit()
+                try:
+                    _native.lib.oxide_app_exit()
+                except BaseException:
+                    pass  # Retain the first callback error if interop itself fails.
 
         @_native.InitializeCallback
         def on_initialize(

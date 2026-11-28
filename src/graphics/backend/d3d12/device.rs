@@ -8,7 +8,7 @@ use windows::{
         },
         Dxgi::{
             CreateDXGIFactory2, DXGI_ADAPTER_DESC1, DXGI_ADAPTER_FLAG_SOFTWARE,
-            DXGI_CREATE_FACTORY_FLAGS, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IDXGIAdapter1,
+            DXGI_CREATE_FACTORY_FLAGS, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, DXGI_ERROR_NOT_FOUND, IDXGIAdapter1,
             IDXGIFactory6,
         },
     },
@@ -26,8 +26,15 @@ fn select_adapter() -> Result<IDXGIAdapter1> {
     let mut index = 0;
 
     loop {
-        let adapter: IDXGIAdapter1 = unsafe {
-            factory.EnumAdapterByGpuPreference(index, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE)?
+        let adapter: IDXGIAdapter1 = match unsafe {
+            factory.EnumAdapterByGpuPreference(index, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE)
+        } {
+            Ok(adapter) => adapter,
+            Err(error) if error.code() == DXGI_ERROR_NOT_FOUND => {
+                return Err(windows::core::Error::new(error.code(),
+                    "no Direct3D 12-capable hardware graphics adapter was found"));
+            }
+            Err(error) => return Err(error),
         };
 
         let description = unsafe { adapter.GetDesc1()? };

@@ -14,6 +14,7 @@ python tests/python_math.py
 python tests/python_shadows.py
 python tests/python_audio.py
 python tests/python_monitors.py
+python tests/python_lifecycle.py
 dotnet run --project tests/csharp/Oxide.Tests.csproj
 ```
 
@@ -70,3 +71,5 @@ and all camera overloads. Interactive demos live under examples, with all test
 assertions and helpers kept here.
 
 The sprite checks read back the actual sRGB display and overlay passes under WARP. They cover linear alpha blending, scene exposure isolation, ordering, crops, flips, pivot rotation, clipping, text coverage, and dropped CPU assets. Font cache and binding checks cover Unicode, measurement, validation, ABI layout and the menu example controls. Run `python tests/python_sprites.py` alongside the other Python checks.
+
+Application lifecycle checks cover exit between callbacks, callback panic payloads, first graphics failure/cause, invalid startup configuration and per-run cleanup. Managed binding tests preserve callback exception identity/stack/traceback and invalidate graphics on failed draws. See [the lifecycle guide](../docs/application-lifecycle.md).

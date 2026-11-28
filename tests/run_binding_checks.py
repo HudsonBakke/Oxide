@@ -28,5 +28,5 @@ if '--dotnet' in sys.argv:
 else:
     run([sys.executable, '-m', 'compileall', '-q', 'bindings/python/oxide', 'examples/python', 'tests'])
     run([sys.executable, '-c', 'import oxide; import oxide.app; import oxide.collision; import oxide.content; import oxide.graphics; import oxide.input; import oxide.math'])
-    for path in ['python_math.py', 'python_shadows.py', 'python_audio.py', 'python_monitors.py', 'python_sprites.py']:
+    for path in ['python_math.py', 'python_shadows.py', 'python_audio.py', 'python_monitors.py', 'python_sprites.py', 'python_lifecycle.py']:
         run([sys.executable, str(Path('tests') / path)])

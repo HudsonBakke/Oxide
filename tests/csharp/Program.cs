@@ -8,6 +8,7 @@ internal static class Program
         AudioChecks.Run();
         MonitorChecks.Run();
         SpriteChecks.Run();
+        LifecycleChecks.Run();
         if (System.Runtime.InteropServices.Marshal.SizeOf<ShadowSettings>() != 40 ||
             System.Runtime.InteropServices.Marshal.SizeOf<PointLight>() != 76 ||
             System.Runtime.InteropServices.Marshal.SizeOf<DirectionalLight>() != 76 ||

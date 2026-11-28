@@ -16,14 +16,17 @@ result = subprocess.run(
     errors="replace",
 )
 print(result.stdout, end="")
-if result.returncode and os.environ.get("GITHUB_OUTPUT"):
+plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+# Keep the engine and examples warning-free; do not change dependency lint levels.
+failed = result.returncode or ("--check" in sys.argv and bool(re.search(r"^warning: `oxide`", plain, re.MULTILINE)))
+if failed and os.environ.get("GITHUB_OUTPUT"):
     plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
     lines = plain.splitlines()
     details = [line for line in lines if any(term in line for term in (
-        "error:", "error[", "fatal error", " -->", "panicked at", "wrong transmission", "receiver must be lit", "opposing camera sort",
+        "warning:", "error:", "error[", "fatal error", " -->", "panicked at", "wrong transmission", "receiver must be lit", "opposing camera sort",
         "assertion", "left:", "right:", " != ", "FAILED", "GPU CHECK", "called `Result", "D3D12 validation",
     ))]
     detail = " | ".join((details or lines[-12:])[-12:])[:1800]
     with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
         output.write("detail=" + detail + "\n")
-sys.exit(result.returncode)
+sys.exit(int(failed))

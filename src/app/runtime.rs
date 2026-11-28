@@ -376,6 +376,12 @@ impl<G: Game> App<G> {
 }
 
 impl<G: Game> ApplicationHandler for App<G> {
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        self.lifecycle.stopped = true;
+        drop(self.graphics.take());
+        drop(self.window.take());
+    }
+
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.stop_if_requested(event_loop) || self.window.is_some() {
             return;
@@ -506,6 +512,8 @@ pub fn run<G: Game>(game: G, config: AppConfig) -> Result<(), AppError> {
     }
     // Make teardown precede returning errors or resuming a user panic.
     let lifecycle = std::mem::take(&mut app.lifecycle);
+    drop(app.graphics.take());
+    drop(app.window.take());
     drop(app);
     drop(session);
     lifecycle.finish()
