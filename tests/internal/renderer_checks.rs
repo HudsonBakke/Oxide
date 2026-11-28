@@ -5,7 +5,7 @@ fn directional_shadow_pipelines_and_depth_views_are_valid_on_d3d12() {
     let device = D3D12Device::warp_for_test().unwrap();
     // Creating the real PSOs checks shader/root-signature compatibility,
     // including comparison sampling and the depth-only output layout.
-    let mut renderer = D3D12Renderer::new(&device).unwrap();
+    let renderer = D3D12Renderer::new(&device).unwrap();
     let mut srv = unsafe { renderer.texture_heap.GetCPUDescriptorHandleForHeapStart() };
     srv.ptr += renderer.texture_descriptor_size as usize;
     for resolution in [128, 1024] {
