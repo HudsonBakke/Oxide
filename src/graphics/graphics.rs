@@ -44,7 +44,7 @@ impl Graphics {
 
         let renderer = D3D12Renderer::new(&device)?;
 
-        let swap_chain = D3D12SwapChain::new(&device, window.hwnd()?, size.width, size.height)?;
+        let swap_chain = D3D12SwapChain::new(&device, window.hwnd()?, size.width.max(1), size.height.max(1))?;
 
         Ok(Self {
             text_cache: Default::default(),
@@ -148,7 +148,7 @@ impl Graphics {
 
     /// Resizes the graphics presentation surface.
     pub(crate) fn resize(&mut self, width: u32, height: u32) -> GraphicsResult<()> {
-        if width == 0 || height == 0 {
+        if width == 0 || height == 0 || (width == self.swap_chain.width() && height == self.swap_chain.height()) {
             return Ok(());
         }
 

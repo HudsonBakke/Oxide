@@ -16,11 +16,11 @@ use winit::{
     window::{CursorGrabMode, Fullscreen, Icon, WindowAttributes, WindowId},
 };
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::graphics::{Graphics, Texture};
 use crate::input::{
-    advance_keyboard_frame, advance_mouse_frame, handle_cursor_moved, handle_keyboard_input,
+    advance_keyboard_frame, advance_mouse_frame, clear_mouse_motion, release_input, reset_input, handle_cursor_moved, handle_keyboard_input,
     handle_mouse_input, handle_mouse_motion, handle_mouse_wheel,
 };
 use crate::platform::window::PlatformWindow;
@@ -208,6 +208,7 @@ fn reset_window_state() {
     WINDOW_HEIGHT.store(0, Ordering::Relaxed);
     WINDOW_FOCUSED.store(false, Ordering::Relaxed);
     WINDOW_FULLSCREEN.store(false, Ordering::Relaxed);
+    reset_input();
 }
 
 #[derive(Default)]
@@ -242,34 +243,119 @@ impl Lifecycle {
     }
 }
 
+// The simulation clock advances only when an update is delivered. Resetting its
+// anchor on suspension excludes paused time; bounding stalls avoids catch-up jumps.
+#[derive(Default)]
+struct FrameClock {
+    last: Option<Instant>,
+    total: Duration,
+}
+impl FrameClock {
+    fn pause(&mut self) { self.last = None; }
+    fn tick(&mut self, now: Instant) -> GameTime {
+        let delta = self.last.replace(now)
+            .map(|last| now.saturating_duration_since(last).min(Duration::from_millis(100)))
+            .unwrap_or_default();
+        self.total += delta;
+        GameTime { delta_seconds: delta.as_secs_f64(), total_seconds: self.total.as_secs_f64() }
+    }
+}
+
+#[derive(Default)]
+struct FrameState {
+    width: u32,
+    height: u32,
+    focused: bool,
+    minimized: bool,
+    occluded: bool,
+    suspended: bool,
+    clock: FrameClock,
+}
+impl FrameState {
+    fn active(&self) -> bool {
+        self.width > 0 && self.height > 0 && !self.minimized && !self.occluded && !self.suspended
+    }
+    fn accepts_input(&self) -> bool { self.focused && self.active() }
+    fn activity_changed(&mut self, was_active: bool) {
+        if was_active != self.active() { self.clock.pause(); }
+        if was_active && !self.active() { release_input(); }
+    }
+    fn size(&mut self, width: u32, height: u32) {
+        let active = self.active();
+        if (self.width, self.height) != (width, height) { self.clock.pause(); }
+        self.width = width; self.height = height;
+        self.activity_changed(active);
+    }
+    fn minimized(&mut self, minimized: bool) {
+        let active = self.active();self.minimized = minimized;self.activity_changed(active);
+    }
+    fn occluded(&mut self, occluded: bool) {
+        let active = self.active();self.occluded = occluded;self.activity_changed(active);
+    }
+    fn suspended(&mut self, suspended: bool) {
+        let active = self.active();self.suspended = suspended;self.activity_changed(active);
+    }
+    fn focus(&mut self, focused: bool) {
+        if self.focused != focused { clear_mouse_motion(); }
+        if !focused { release_input(); }
+        self.focused = focused;
+    }
+    fn keyboard(&self, key: winit::keyboard::PhysicalKey, state: winit::event::ElementState, synthetic: bool, repeat: bool) {
+        // Focus is tracked explicitly, so OS-synthesized presses cannot revive
+        // held movement keys. Repeat events add nothing to physical-key polling.
+        if self.accepts_input() && !synthetic && !repeat { handle_keyboard_input(key, state); }
+    }
+    fn mouse_button(&self, button: winit::event::MouseButton, state: winit::event::ElementState) {
+        if self.accepts_input() { handle_mouse_input(button, state); }
+    }
+    fn mouse_motion(&self, delta: (f64, f64)) {
+        if self.accepts_input() { handle_mouse_motion(delta); }
+    }
+    fn cursor_moved(&self, position: winit::dpi::PhysicalPosition<f64>) {
+        if self.accepts_input() { handle_cursor_moved(position); }
+    }
+    fn mouse_wheel(&self, delta: winit::event::MouseScrollDelta) {
+        if self.accepts_input() { handle_mouse_wheel(delta); }
+    }
+}
+
+struct CursorPolicy {
+    grabbed: bool,
+    visible: bool,
+    attempted: Option<(bool, bool)>,
+}
+impl Default for CursorPolicy {
+    fn default() -> Self { Self { grabbed: false, visible: true, attempted: None } }
+}
+impl CursorPolicy {
+    fn desired(&self, interactive: bool) -> (bool, bool) {
+        (interactive && self.grabbed, !interactive || self.visible)
+    }
+}
+
 struct App<G: Game> {
     game: G,
     lifecycle: Lifecycle,
     config: AppConfig,
     window: Option<PlatformWindow>,
     graphics: Option<Graphics>,
-    start_time: Option<Instant>,
-    last_frame_time: Option<Instant>,
+    frame: FrameState,
+    cursor: CursorPolicy,
 }
 
 impl<G: Game> App<G> {
     fn run_frame(&mut self, event_loop: &ActiveEventLoop) {
         if self.stop_if_requested(event_loop) { return; }
-        let (Some(start_time), Some(last_frame_time)) = (self.start_time, self.last_frame_time) else { return; };
-        let now = Instant::now();
-
-        let time = GameTime {
-            delta_seconds: (now - last_frame_time).as_secs_f64(),
-            total_seconds: (now - start_time).as_secs_f64(),
-        };
-
-        self.last_frame_time = Some(now);
+        self.apply_commands(event_loop);
+        if self.stop_if_requested(event_loop) || !self.prepare_frame(event_loop) { return; }
+        let time = self.frame.clock.tick(Instant::now());
 
         self.lifecycle.callback(|| self.game.update(&time));
         if self.stop_if_requested(event_loop) { return; }
         self.apply_commands(event_loop);
         if self.stop_if_requested(event_loop) { return; }
 
+        if !self.prepare_frame(event_loop) { return; }
         if let Some(graphics) = &mut self.graphics {
             self.lifecycle.graphics(AppStage::BeginFrame, graphics.begin_frame());
         }
@@ -289,18 +375,64 @@ impl<G: Game> App<G> {
         advance_keyboard_frame();
         advance_mouse_frame();
 
+        self.request_redraw();
+    }
+
+    // Size events only update state. Allocate GPU resources just before the next
+    // active frame, coalescing resize storms and never resizing an open list.
+    fn resize(&mut self, width: u32, height: u32) {
+        self.frame.size(width, height);
+        WINDOW_WIDTH.store(width, Ordering::Relaxed);
+        WINDOW_HEIGHT.store(height, Ordering::Relaxed);
+    }
+
+    fn refresh_window_state(&mut self) {
         if let Some(window) = &self.window {
-            window.inner().request_redraw();
+            let size = window.inner().inner_size();
+            let minimized = window.inner().is_minimized().unwrap_or(false);
+            self.resize(size.width, size.height);
+            self.frame.minimized(minimized);
+        }
+        self.sync_cursor();
+    }
+
+    fn prepare_frame(&mut self, event_loop: &ActiveEventLoop) -> bool {
+        self.refresh_window_state();
+        if !self.frame.active() { return false; }
+        if let Some(graphics) = &mut self.graphics {
+            self.lifecycle.graphics(AppStage::Resize, graphics.resize(self.frame.width, self.frame.height));
+        }
+        !self.stop_if_requested(event_loop)
+    }
+
+    fn request_redraw(&self) {
+        if self.frame.active() {
+            if let Some(window) = &self.window { window.inner().request_redraw(); }
         }
     }
 
-    fn resize(&mut self, width: u32, height: u32) {
-        WINDOW_WIDTH.store(width, Ordering::Relaxed);
-        WINDOW_HEIGHT.store(height, Ordering::Relaxed);
-
-        if let Some(graphics) = &mut self.graphics {
-            self.lifecycle.graphics(AppStage::Resize, graphics.resize(width, height));
+    fn sync_cursor(&mut self) {
+        let desired = self.cursor.desired(self.frame.accepts_input());
+        if self.cursor.attempted == Some(desired) { return; }
+        if let Some(window) = &self.window {
+            let result = if desired.0 {
+                window.inner().set_cursor_grab(CursorGrabMode::Locked)
+                    .or_else(|_| window.inner().set_cursor_grab(CursorGrabMode::Confined))
+            } else { window.inner().set_cursor_grab(CursorGrabMode::None) };
+            // Preserve the requested mode for focus/restore retries. If capture
+            // fails, keep the OS cursor visible so the user cannot lose it.
+            let visible = desired.1 || (desired.0 && result.is_err());
+            window.inner().set_cursor_visible(visible);
+            self.cursor.attempted = Some(desired);
         }
+    }
+
+    fn release_cursor(&mut self) {
+        if let Some(window) = &self.window {
+            let _ = window.inner().set_cursor_grab(CursorGrabMode::None);
+            window.inner().set_cursor_visible(true);
+        }
+        self.cursor.attempted = None;
     }
 
     fn stop_if_requested(&mut self, event_loop: &ActiveEventLoop) -> bool {
@@ -338,12 +470,10 @@ impl<G: Game> App<G> {
 
                 AppCommand::SetBackbufferSize(width, height) => {
                     if let Some(window) = &self.window {
-                        let _ = window
-                            .inner()
-                            .request_inner_size(winit::dpi::PhysicalSize::new(width, height));
+                        if let Some(size) = window.inner().request_inner_size(winit::dpi::PhysicalSize::new(width, height)) {
+                            self.resize(size.width, size.height);
+                        }
                     }
-
-                    self.resize(width, height);
                 }
 
                 AppCommand::SetFullscreen(fullscreen) => {
@@ -360,26 +490,15 @@ impl<G: Game> App<G> {
                 }
 
                 AppCommand::SetCursorVisible(visible) => {
-                    if let Some(window) = &self.window {
-                        window.inner().set_cursor_visible(visible);
-                    }
+                    self.cursor.visible = visible;
+                    self.sync_cursor();
                 }
 
                 AppCommand::SetCursorGrabbed(grabbed) => {
-                    if let Some(window) = &self.window {
-                        let result = if grabbed {
-                            window
-                                .inner()
-                                .set_cursor_grab(CursorGrabMode::Locked)
-                                .or_else(|_| {
-                                    window.inner().set_cursor_grab(CursorGrabMode::Confined)
-                                })
-                        } else {
-                            window.inner().set_cursor_grab(CursorGrabMode::None)
-                        };
-
-                        let _ = result;
-                    }
+                    self.cursor.grabbed = grabbed;
+                    self.cursor.attempted = None;
+                    clear_mouse_motion();
+                    self.sync_cursor();
                 }
             }
         }
@@ -389,19 +508,28 @@ impl<G: Game> App<G> {
 impl<G: Game> ApplicationHandler for App<G> {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: ()) {
         if self.stop_if_requested(event_loop) { return; }
-        // Wake sleeping/minimized windows for commands from another thread.
-        if let Some(window) = &self.window { window.inner().request_redraw(); }
+        // Commands and exit remain live even when no redraw is scheduled.
+        self.apply_commands(event_loop);
+        if self.stop_if_requested(event_loop) { return; }
+        self.refresh_window_state();
+        self.request_redraw();
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         self.lifecycle.stopped = true;
+        self.release_cursor();
+        release_input();
         drop(self.graphics.take());
         drop(self.window.take());
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.stop_if_requested(event_loop) || self.window.is_some() {
-            return;
+        if self.stop_if_requested(event_loop) { return; }
+        self.frame.suspended(false);
+        if self.window.is_some() {
+            if let Some(window) = &self.window { self.frame.focus(window.inner().has_focus()); }
+            WINDOW_FOCUSED.store(self.frame.focused, Ordering::Relaxed);
+            self.refresh_window_state();self.request_redraw();return;
         }
 
         let attributes = WindowAttributes::default()
@@ -427,24 +555,26 @@ impl<G: Game> ApplicationHandler for App<G> {
         let size = platform_window.inner().inner_size();
         WINDOW_WIDTH.store(size.width, Ordering::Relaxed);
         WINDOW_HEIGHT.store(size.height, Ordering::Relaxed);
-        WINDOW_FOCUSED.store(platform_window.inner().has_focus(), Ordering::Relaxed);
+        self.frame.size(size.width, size.height);
+        self.frame.focus(platform_window.inner().has_focus());
+        WINDOW_FOCUSED.store(self.frame.focused, Ordering::Relaxed);
 
         self.window = Some(platform_window);
         self.graphics = Some(graphics);
-
-        let now = Instant::now();
-
-        self.start_time = Some(now);
-        self.last_frame_time = Some(now);
 
         self.lifecycle.callback(|| self.game.initialize());
         if self.stop_if_requested(event_loop) { return; }
         self.apply_commands(event_loop);
         if self.stop_if_requested(event_loop) { return; }
 
-        if let Some(window) = &self.window {
-            window.inner().request_redraw();
-        }
+        self.refresh_window_state();
+        self.request_redraw();
+    }
+
+    fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
+        self.frame.suspended(true);
+        WINDOW_FOCUSED.store(false, Ordering::Relaxed);
+        self.sync_cursor();
     }
 
     fn device_event(
@@ -454,17 +584,18 @@ impl<G: Game> ApplicationHandler for App<G> {
         event: DeviceEvent,
     ) {
         if let DeviceEvent::MouseMotion { delta } = event {
-            handle_mouse_motion(delta);
+            self.frame.mouse_motion(delta);
         }
     }
 
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
+        window_id: WindowId,
         event: WindowEvent,
     ) {
         if self.stop_if_requested(event_loop) { return; }
+        if self.window.as_ref().is_none_or(|window| window.inner().id() != window_id) { return; }
         match event {
             WindowEvent::CloseRequested => { self.lifecycle.stopped = true; event_loop.exit(); },
 
@@ -474,27 +605,34 @@ impl<G: Game> ApplicationHandler for App<G> {
 
             WindowEvent::Resized(size) => {
                 self.resize(size.width, size.height);
-                self.stop_if_requested(event_loop);
+                if let Some(window) = &self.window { self.frame.minimized(window.inner().is_minimized().unwrap_or(false)); }
+                self.sync_cursor();self.request_redraw();
+            }
+
+            WindowEvent::Occluded(occluded) => {
+                self.frame.occluded(occluded);self.sync_cursor();self.request_redraw();
             }
 
             WindowEvent::Focused(focused) => {
-                WINDOW_FOCUSED.store(focused, Ordering::Relaxed);
+                self.frame.focus(focused);
+                WINDOW_FOCUSED.store(focused && !self.frame.suspended, Ordering::Relaxed);
+                self.sync_cursor();self.request_redraw();
             }
 
-            WindowEvent::KeyboardInput { event, .. } => {
-                handle_keyboard_input(event.physical_key, event.state);
+            WindowEvent::KeyboardInput { event, is_synthetic, .. } => {
+                self.frame.keyboard(event.physical_key, event.state, is_synthetic, event.repeat);
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
-                handle_mouse_input(button, state);
+                self.frame.mouse_button(button, state);
             }
 
             WindowEvent::CursorMoved { position, .. } => {
-                handle_cursor_moved(position);
+                self.frame.cursor_moved(position);
             }
 
             WindowEvent::MouseWheel { delta, .. } => {
-                handle_mouse_wheel(delta);
+                self.frame.mouse_wheel(delta);
             }
 
             _ => {}
@@ -523,13 +661,14 @@ pub fn run<G: Game>(game: G, config: AppConfig) -> Result<(), AppError> {
     *WAKE.lock().unwrap_or_else(|p| p.into_inner()) = Some(event_loop.create_proxy());
     let mut app = App {
         game, lifecycle: Lifecycle::default(), config, window: None, graphics: None,
-        start_time: None, last_frame_time: None,
+        frame: FrameState::default(), cursor: CursorPolicy::default(),
     };
     if let Err(error) = event_loop.run_app(&mut app) {
         app.lifecycle.fail(AppError::new(AppStage::EventLoop, error));
     }
     // Make teardown precede returning errors or resuming a user panic.
     let lifecycle = std::mem::take(&mut app.lifecycle);
+    app.release_cursor();
     drop(app.graphics.take());
     drop(app.window.take());
     drop(app);

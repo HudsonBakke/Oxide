@@ -13,3 +13,16 @@ pub(crate) use mouse::{
     advance_mouse_frame, handle_cursor_moved, handle_mouse_input, handle_mouse_motion,
     handle_mouse_wheel,
 };
+
+// Shared lifecycle operations keep keyboard and mouse semantics aligned in all bindings.
+pub(crate) fn release_input() {
+    keyboard::release_keyboard();
+    mouse::release_mouse();
+}
+
+pub(crate) fn reset_input() {
+    keyboard::reset_keyboard();
+    mouse::reset_mouse();
+}
+
+pub(crate) use mouse::clear_mouse_motion;

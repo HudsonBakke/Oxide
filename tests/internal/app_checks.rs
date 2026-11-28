@@ -1,6 +1,6 @@
 use super::*;
 use std::{cell::Cell, error::Error};
-static STATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+pub(super) static STATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
 fn invalid_configuration_is_reported_before_creating_an_event_loop() {

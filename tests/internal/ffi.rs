@@ -17,7 +17,7 @@ mod error;
 #[path = "ffi_graphics.rs"]
 mod graphics;
 #[path = "../../src/ffi/input.rs"]
-mod input;
+pub(crate) mod input;
 #[path = "../../src/ffi/registry.rs"]
 mod registry;
 #[path = "../../src/ffi/resources.rs"]

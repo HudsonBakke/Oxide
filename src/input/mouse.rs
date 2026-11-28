@@ -143,6 +143,24 @@ pub(crate) fn handle_mouse_wheel(delta: MouseScrollDelta) {
     mouse.scroll_delta = mouse.scroll_delta + delta;
 }
 
+pub(crate) fn release_mouse() {
+    let mut mouse = lock_mouse();
+    let held = std::mem::take(&mut mouse.current);
+    mouse.previous.extend(held);
+    mouse.delta = Vec2::default();
+    mouse.scroll_delta = Vec2::default();
+}
+
+pub(crate) fn clear_mouse_motion() {
+    let mut mouse = lock_mouse();
+    mouse.delta = Vec2::default();
+    mouse.scroll_delta = Vec2::default();
+}
+
+pub(crate) fn reset_mouse() {
+    *lock_mouse() = MouseState::default();
+}
+
 pub(crate) fn advance_mouse_frame() {
     let mut mouse = lock_mouse();
     mouse.previous = mouse.current.clone();

@@ -221,6 +221,17 @@ pub(crate) fn handle_keyboard_input(physical_key: PhysicalKey, state: ElementSta
     }
 }
 
+// Focus loss synthesizes releases, including keys pressed since the last update.
+pub(crate) fn release_keyboard() {
+    let mut keyboard = lock_keyboard();
+    let held = std::mem::take(&mut keyboard.current);
+    keyboard.previous.extend(held);
+}
+
+pub(crate) fn reset_keyboard() {
+    *lock_keyboard() = KeyboardState::default();
+}
+
 pub(crate) fn advance_keyboard_frame() {
     let mut keyboard = lock_keyboard();
     keyboard.previous = keyboard.current.clone();
