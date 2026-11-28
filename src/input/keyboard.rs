@@ -149,7 +149,7 @@ pub enum Keys {
 }
 
 /// Snapshot of current and previous keyboard state used for level and edge queries.
-/// Focus loss clears held keys and exposes releases until the next update completes.
+/// Focus loss clears held keys and exposes releases through the next active frame.
 /// OS-synthesized focus presses and keyboard repeats do not create new presses.
 #[derive(Debug, Clone, Default)]
 pub struct KeyboardState {

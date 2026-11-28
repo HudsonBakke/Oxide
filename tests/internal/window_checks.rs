@@ -50,11 +50,13 @@ fn nonrenderable_states_gate_frames_clear_input_and_survive_redundant_transition
         let mut frame=focused_frame();press(&frame);
         for _ in 0..2 {match kind {0=>frame.size(0,480),1=>frame.size(640,0),2=>frame.minimized(true),3=>frame.occluded(true),_=>frame.suspended(true)}}
         assert!(!frame.active());assert!(!frame.accepts_input());
+        frame.complete_frame(); // A skipped frame must not consume pending releases.
         assert!(Keyboard::get_state().is_key_released(Keys::W));assert!(Mouse::get_state().is_button_released(MouseButton::Left));
         press(&frame);assert!(Keyboard::get_state().is_key_up(Keys::W));assert_eq!(Mouse::get_state().delta(),Vec2::default());
         frame.size(800,600);frame.minimized(false);frame.occluded(false);frame.suspended(false);
         assert!(frame.active());assert!(frame.accepts_input());
-        advance_keyboard_frame();advance_mouse_frame();
+        frame.complete_frame();
+        assert!(!Keyboard::get_state().is_key_released(Keys::W));
     }
     let mut frame=focused_frame();frame.focus(false);
     assert!(frame.active(),"focus loss alone must not pause gameplay");assert!(!frame.accepts_input());

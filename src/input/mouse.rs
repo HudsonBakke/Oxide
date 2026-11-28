@@ -25,7 +25,7 @@ pub enum MouseButton {
 
 /// Snapshot of mouse buttons, cursor motion, and scroll motion for the current frame.
 /// Focus loss clears held buttons, raw motion and scroll; releases remain visible
-/// until the next update completes. Unfocused device events are ignored.
+/// through the next active frame. Unfocused device events are ignored.
 #[derive(Debug, Clone)]
 pub struct MouseState {
     current: HashSet<MouseButton>,

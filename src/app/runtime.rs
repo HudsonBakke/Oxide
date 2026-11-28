@@ -276,6 +276,12 @@ impl FrameState {
         self.width > 0 && self.height > 0 && !self.minimized && !self.occluded && !self.suspended
     }
     fn accepts_input(&self) -> bool { self.focused && self.active() }
+    fn complete_frame(&self) {
+        if self.active() {
+            advance_keyboard_frame();
+            advance_mouse_frame();
+        }
+    }
     fn activity_changed(&mut self, was_active: bool) {
         if was_active != self.active() { self.clock.pause(); }
         if was_active && !self.active() { release_input(); }
@@ -372,9 +378,7 @@ impl<G: Game> App<G> {
         self.apply_commands(event_loop);
         if self.stop_if_requested(event_loop) { return; }
 
-        advance_keyboard_frame();
-        advance_mouse_frame();
-
+        self.frame.complete_frame();
         self.request_redraw();
     }
 

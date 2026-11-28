@@ -221,7 +221,7 @@ class KeyboardState:
 
 
 class Keyboard:
-    """Physical-key snapshots. Focus loss releases held keys until the next update completes.
+    """Physical-key snapshots. Focus loss releases held keys through the next active frame.
 
     Synthetic focus presses and auto-repeat do not create fresh press events.
     """
