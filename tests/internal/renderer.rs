@@ -8,3 +8,6 @@ mod readback;
 
 #[path = "renderer_surfaces.rs"]
 mod surfaces;
+
+#[path = "renderer_sprites.rs"]
+mod sprites;

@@ -1,7 +1,7 @@
 //! Mesh drawing, materials, cameras, textures, and lighting for Direct3D 12.
 
 #[path="../../src/graphics/draw2d.rs"]
-mod draw2d;
+pub(crate) mod draw2d;
 #[path="../../src/graphics/text.rs"]
 mod text;
 #[path = "backend.rs"]
@@ -48,3 +48,6 @@ pub use error::{GraphicsError, GraphicsResult};
 pub use light::{DirectionalLight, LightSource, PointLight, SpotLight};
 
 pub use draw2d::{Draw2DOptions,TextOptions};
+
+#[path = "draw2d_checks.rs"]
+mod draw2d_checks;

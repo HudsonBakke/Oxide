@@ -107,6 +107,7 @@ fn check_light_transmission(kind: usize) {
             for vertex in mesh.vertices_mut() { vertex.position.x -= 100.0; }
         }
         renderer.reset_frame_state();
+    renderer.frame_size = (64, 64);
         unsafe {
             renderer.command_allocators[0].Reset().unwrap();
             renderer.command_list.Reset(&renderer.command_allocators[0], None).unwrap();
@@ -238,6 +239,7 @@ fn visible_transparency_blends_in_depth_order_per_camera() {
     camera.set_position(Vec3::new(0.0, 0.0, 5.0));
     for frame in 0..8 {
         renderer.reset_frame_state();
+    renderer.frame_size = (64, 64);
         unsafe {
             renderer.command_allocators[0].Reset().unwrap();
             renderer.command_list.Reset(&renderer.command_allocators[0], None).unwrap();
@@ -363,6 +365,7 @@ pub(super) fn headless_renderer(device: &D3D12Device) -> (D3D12Renderer, ShadowM
 pub(super) fn start_headless_frame(renderer: &mut D3D12Renderer, device: &D3D12Device, depth: &ShadowMap, first: bool) {
     renderer.reclaim_unused_assets();
     renderer.reset_frame_state();
+    renderer.frame_size = (64, 64);
     unsafe {
         renderer.command_allocators[0].Reset().unwrap();
         renderer.command_list.Reset(&renderer.command_allocators[0], None).unwrap();

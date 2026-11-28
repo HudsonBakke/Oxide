@@ -159,7 +159,7 @@ class Draw2DOptions:
     """
     tint: Color = field(default_factory=lambda: Color(1, 1, 1, 1))
     source: Rect | None = None
-    rotation: Angle = field(default_factory=lambda: Angle.radians(0))
+    rotation: Angle = field(default_factory=lambda: Angle.from_radians(0))
     origin: Vec2 = field(default_factory=Vec2)
     clip: Rect | None = None
     flip_horizontally: bool = False

@@ -21,3 +21,19 @@ fn rect3d_native_constructor_and_bind_reject_invalid_values_and_null_handles() {
     let zero:Rect3D=unsafe {std::mem::zeroed()};
     assert_eq!(oxide_graphics_bind_camera_3d(OxideGraphicsHandle(std::ptr::null_mut()),OxideCameraHandle(0),zero),OxideStatus::InvalidArgument);
 }
+
+#[test]
+fn sprite_c_layout_defaults_and_text_validation_are_stable() {
+    use crate::math::{Angle,Vec2};
+    let mut options=OxideDraw2DOptions {tint:crate::graphics::Color::BLACK,source:Rect::default(),rotation:Angle::radians(0.0),origin:Vec2::default(),clip:Rect::default(),flags:0};
+    assert_eq!(std::mem::size_of::<OxideDraw2DOptions>(),64);
+    assert_eq!(std::mem::offset_of!(OxideDraw2DOptions,flags),60);
+    assert_eq!(oxide_draw_2d_options_default(&mut options),OxideStatus::Ok);
+    assert_eq!(options.tint,crate::graphics::Color::WHITE);
+    assert_eq!(oxide_draw_2d_options_default(std::ptr::null_mut()),OxideStatus::InvalidArgument);
+    options.flags=16;assert!(options.decoded().is_err());options.flags=0;
+    assert!(unsafe {label_options([255u8].as_ptr(),1,std::ptr::null(),0,24.0,options)}.is_err());
+    assert!(unsafe {label_options(std::ptr::null(),1,std::ptr::null(),0,24.0,options)}.is_err());
+    assert!(unsafe {label_options(std::ptr::null(),0,std::ptr::null(),0,24.0,options)}.is_ok());
+    assert!(unsafe {label_options(b"bad\0text".as_ptr(),8,std::ptr::null(),0,24.0,options)}.is_err());
+}

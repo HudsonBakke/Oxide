@@ -62,7 +62,7 @@ unsafe fn rasterize(text:&str,family:&str,size:f32)->Result<TextImage> { unsafe 
     let utf16:Vec<u16>=text.encode_utf16().collect();
     let layout=write.CreateTextLayout(&utf16,&format,2048.0,2048.0)?;
     let mut metrics=DWRITE_TEXT_METRICS::default();layout.GetMetrics(&mut metrics)?;
-    let mut overhang=DWRITE_OVERHANG_METRICS::default();layout.GetOverhangMetrics(&mut overhang)?;
+    let overhang=layout.GetOverhangMetrics()?;
     let left=2.0+overhang.left.max(0.0);let top=2.0+overhang.top.max(0.0);
     let width=(metrics.widthIncludingTrailingWhitespace+left+overhang.right.max(0.0)+2.0).ceil().max(1.0) as u32;
     let height=(metrics.height+top+overhang.bottom.max(0.0)+2.0).ceil().max(1.0) as u32;

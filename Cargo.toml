@@ -60,3 +60,7 @@ path = "examples/rust/audio.rs"
 [[example]]
 name = "monitors"
 path = "examples/rust/monitors.rs"
+
+[[example]]
+name = "menus"
+path = "examples/rust/menus.rs"
