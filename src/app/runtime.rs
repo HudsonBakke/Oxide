@@ -385,6 +385,11 @@ impl<G: Game> App<G> {
     // Size events only update state. Allocate GPU resources just before the next
     // active frame, coalescing resize storms and never resizing an open list.
     fn resize(&mut self, width: u32, height: u32) {
+        if self.cursor.grabbed && (self.frame.width, self.frame.height) != (width, height) {
+            // Confinement uses screen coordinates; refresh it for the new bounds.
+            self.cursor.attempted = None;
+            clear_mouse_motion();
+        }
         self.frame.size(width, height);
         WINDOW_WIDTH.store(width, Ordering::Relaxed);
         WINDOW_HEIGHT.store(height, Ordering::Relaxed);
@@ -611,6 +616,14 @@ impl<G: Game> ApplicationHandler for App<G> {
                 self.resize(size.width, size.height);
                 if let Some(window) = &self.window { self.frame.minimized(window.inner().is_minimized().unwrap_or(false)); }
                 self.sync_cursor();self.request_redraw();
+            }
+
+            WindowEvent::Moved(_) => {
+                if self.cursor.grabbed {
+                    self.cursor.attempted = None;
+                    clear_mouse_motion();
+                    self.sync_cursor();
+                }
             }
 
             WindowEvent::Occluded(occluded) => {
