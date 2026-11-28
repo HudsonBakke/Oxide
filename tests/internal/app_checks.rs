@@ -50,3 +50,17 @@ fn frame_and_resize_errors_keep_stage_cause_and_first_failure() {
         assert!(error.source().unwrap().source().is_some());
     }
 }
+
+#[test]
+fn event_loop_thread_failure_returns_an_error_instead_of_unwinding_platform_code() {
+    let _lock=STATE.lock().unwrap();
+    let (stage,message)=std::thread::spawn(|| {
+        struct EmptyGame;
+        impl Game for EmptyGame {}
+        let error=run(EmptyGame,AppConfig::default()).unwrap_err();
+        (error.stage(),error.to_string())
+    }).join().expect("startup panic escaped app::run");
+    assert_eq!(stage,AppStage::EventLoop);
+    assert!(message.contains("event loop"));
+    assert!(!RUNNING.load(Ordering::Acquire));
+}

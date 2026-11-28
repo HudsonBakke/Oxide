@@ -12,7 +12,7 @@ use winit::platform::windows::WindowAttributesExtWindows;
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId, WindowEvent},
-    event_loop::{ActiveEventLoop, EventLoop},
+    event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     window::{CursorGrabMode, Fullscreen, Icon, WindowAttributes, WindowId},
 };
 
@@ -93,6 +93,8 @@ enum AppCommand {
 static RUNNING: AtomicBool = AtomicBool::new(false);
 static EXIT_REQUESTED: AtomicBool = AtomicBool::new(false);
 
+static WAKE: Mutex<Option<EventLoopProxy<()>>> = Mutex::new(None);
+
 static COMMANDS: OnceLock<Mutex<Vec<AppCommand>>> = OnceLock::new();
 static WINDOW_WIDTH: AtomicU32 = AtomicU32::new(0);
 static WINDOW_HEIGHT: AtomicU32 = AtomicU32::new(0);
@@ -108,11 +110,19 @@ fn commands() -> MutexGuard<'static, Vec<AppCommand>> {
 
 fn push_command(command: AppCommand) {
     commands().push(command);
+    wake_event_loop();
+}
+
+fn wake_event_loop() {
+    if let Some(proxy) = WAKE.lock().unwrap_or_else(|p| p.into_inner()).as_ref() {
+        let _ = proxy.send_event(());
+    }
 }
 
 /// Requests that the running Oxide application exit.
 pub fn exit() {
     EXIT_REQUESTED.store(true, Ordering::Release);
+    wake_event_loop();
 }
 
 /// Changes the window title.
@@ -192,6 +202,7 @@ impl Drop for RunSession {
 }
 fn reset_window_state() {
     commands().clear();
+    *WAKE.lock().unwrap_or_else(|p| p.into_inner()) = None;
     EXIT_REQUESTED.store(false, Ordering::Release);
     WINDOW_WIDTH.store(0, Ordering::Relaxed);
     WINDOW_HEIGHT.store(0, Ordering::Relaxed);
@@ -376,6 +387,12 @@ impl<G: Game> App<G> {
 }
 
 impl<G: Game> ApplicationHandler for App<G> {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: ()) {
+        if self.stop_if_requested(event_loop) { return; }
+        // Wake sleeping/minimized windows for commands from another thread.
+        if let Some(window) = &self.window { window.inner().request_redraw(); }
+    }
+
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         self.lifecycle.stopped = true;
         drop(self.graphics.take());
@@ -503,6 +520,7 @@ pub fn run<G: Game>(game: G, config: AppConfig) -> Result<(), AppError> {
             .unwrap_or_else(|| "event loop creation panicked".into());
         AppError::new(AppStage::EventLoop, std::io::Error::other(message))
     })?.map_err(|error| AppError::new(AppStage::EventLoop, error))?;
+    *WAKE.lock().unwrap_or_else(|p| p.into_inner()) = Some(event_loop.create_proxy());
     let mut app = App {
         game, lifecycle: Lifecycle::default(), config, window: None, graphics: None,
         start_time: None, last_frame_time: None,

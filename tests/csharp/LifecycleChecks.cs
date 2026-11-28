@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using Oxide.App;
 using Oxide.Graphics;
@@ -11,6 +12,7 @@ internal static class LifecycleChecks
         internal readonly CallbackFailure Original = new();
         internal readonly List<string> Calls = [];
         internal Graphics? Retained;
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private void OriginalThrow() => throw Original;
         protected override void Initialize() { Calls.Add("initialize"); if (phase=="initialize") OriginalThrow(); }
         protected override void Update(GameTime time) { Calls.Add("update"); if (phase=="update") OriginalThrow(); }
