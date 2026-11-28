@@ -44,10 +44,10 @@ use super::{
 
 use crate::{
     graphics::{
-        Camera, DirectionalLight, ShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight,
+        Camera, DirectionalLight, ShadowSettings, Environment, GraphicsResult, Material, Mesh, PointLight, Texture, Draw2DOptions, TextOptions, Color,
         SpotLight, mesh::MeshId, texture::TextureId,
     },
-    math::{Mat4, Rect, Rect3D, Transform, Vec3},
+    math::{Mat4, Rect, Rect3D, Transform, Vec2, Vec3},
 };
 
 const TRIANGLE_VERTEX_SHADER: &[u8] =
@@ -81,6 +81,14 @@ struct CameraGroup {
     constants: u64, texture: D3D12_GPU_DESCRIPTOR_HANDLE, destination: Rect,
     view: u64, position: Vec3, target: Option<usize>,
 }
+
+const SPRITE_VERTEX_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/sprite_vs.dxil");
+const SPRITE_PIXEL_SHADER: &[u8] = include_bytes!("../../../../shaders/compiled/sprite_ps.dxil");
+#[derive(Clone,Copy)]
+struct QueuedSprite { constants: u64, texture: D3D12_GPU_DESCRIPTOR_HANDLE, clip: Option<Rect> }
+#[repr(C)]
+#[derive(Clone,Copy)]
+struct SpriteConstants { target:[f32;4], source:[f32;4], tint:[f32;4], transform:[f32;4], viewport:[f32;4], uv_clamp:[f32;4] }
 
 type MeshKey = (MeshId, u64, u64);
 
@@ -352,6 +360,9 @@ pub(crate) struct D3D12Renderer {
     display_pipeline: D3D12Pipeline,
     hdr_target: Option<HdrTarget>,
     surface_pipeline: D3D12Pipeline,
+    sprite_pipeline: D3D12Pipeline,
+    overlays: Vec<QueuedSprite>,
+    frame_size: (u32,u32),
     camera_surfaces: Vec<CameraSurfaceTarget>,
     surface_bindings: Vec<SurfaceBinding>,
     camera_target: Option<usize>,
@@ -442,7 +453,7 @@ impl D3D12Renderer {
             device,
             &D3D12Shader::from_bytes(TONEMAP_VERTEX_SHADER),
             &D3D12Shader::from_bytes(TONEMAP_PIXEL_SHADER),
-            DXGI_FORMAT_R8G8B8A8_UNORM,
+            windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
         )?;
         let shadow_pipeline = D3D12Pipeline::new_shadow(device, &D3D12Shader::from_bytes(SHADOW_VERTEX_SHADER))?;
         let transmission_pipeline = D3D12Pipeline::new_transmission(
@@ -451,6 +462,7 @@ impl D3D12Renderer {
         let surface_pipeline = D3D12Pipeline::new_camera_surface(device,
             &D3D12Shader::from_bytes(CAMERA_SURFACE_VERTEX_SHADER),
             &D3D12Shader::from_bytes(CAMERA_SURFACE_PIXEL_SHADER))?;
+        let sprite_pipeline = D3D12Pipeline::new_sprite(device,&D3D12Shader::from_bytes(SPRITE_VERTEX_SHADER),&D3D12Shader::from_bytes(SPRITE_PIXEL_SHADER))?;
         let constant_buffer = D3D12ConstantBuffer::new(device)?;
 
         let texture_heap_desc = D3D12_DESCRIPTOR_HEAP_DESC {
@@ -496,6 +508,9 @@ impl D3D12Renderer {
             display_pipeline,
             hdr_target: None,
             surface_pipeline,
+            sprite_pipeline,
+            overlays: Vec::new(),
+            frame_size: (0,0),
             camera_surfaces: Vec::new(),
             surface_bindings: Vec::new(),
             camera_target: None,
@@ -541,6 +556,7 @@ impl D3D12Renderer {
 
     fn reset_frame_state(&mut self) {
         self.commands.clear();
+        self.overlays.clear();
         self.surface_bindings.clear();
         self.camera_target = None;
         self.shadow_requests.clear();
@@ -560,6 +576,7 @@ impl D3D12Renderer {
     ) -> Result<()> {
         self.reclaim_unused_assets();
         self.reset_frame_state();
+        self.frame_size = (swap_chain.width(),swap_chain.height());
         let frame_index = swap_chain.current_frame_index();
         let command_allocator = &self.command_allocators[frame_index];
 
@@ -885,6 +902,48 @@ impl D3D12Renderer {
         }
     }
 
+    pub(crate) fn draw_2d(&mut self, device: &D3D12Device, texture: &Texture, target: Rect, options: Draw2DOptions) -> Result<()> {
+        crate::graphics::draw2d::validate_rect(target).and_then(|_|options.validate()).map_err(|e|invalid_shadow_order(&e.to_string()))?;
+        let source=options.source.unwrap_or(Rect::new(0.0,0.0,texture.width() as f32,texture.height() as f32));
+        if source.x+source.width>texture.width() as f32 || source.y+source.height>texture.height() as f32 {
+            return Err(invalid_shadow_order("2D source rectangle extends outside the texture"));
+        }
+        if self.frame_size.0==0 || self.frame_size.1==0 { return Err(invalid_shadow_order("2D drawing requires an active frame")); }
+        if target.width==0.0 || target.height==0.0 || options.tint.a==0.0 || options.clip.is_some_and(|r|r.width==0.0||r.height==0.0) { return Ok(()); }
+        let descriptor=self.ensure_texture(device,texture)?;
+        let width=texture.width() as f32;let height=texture.height() as f32;
+        let half_x=0.5_f32.min(source.width*0.5);let half_y=0.5_f32.min(source.height*0.5);
+        let angle=options.rotation.as_radians();
+        let constants=SpriteConstants {
+            target:[target.x,target.y,target.width,target.height],source:[source.x/width,source.y/height,source.width/width,source.height/height],
+            tint:[options.tint.r,options.tint.g,options.tint.b,options.tint.a],
+            transform:[options.origin.x,options.origin.y,angle.cos(),angle.sin()],
+            viewport:[self.frame_size.0 as f32,self.frame_size.1 as f32,options.flip_horizontally as u8 as f32,options.flip_vertically as u8 as f32],
+            uv_clamp:[(source.x+half_x)/width,(source.y+half_y)/height,(source.x+source.width-half_x)/width,(source.y+source.height-half_y)/height],
+        };
+        let address=self.constant_buffer.write(device,&constants)?;
+        let mut handle=unsafe {self.texture_heap.GetGPUDescriptorHandleForHeapStart()};handle.ptr+=descriptor as u64*self.texture_descriptor_size as u64;
+        self.overlays.push(QueuedSprite {constants:address,texture:handle,clip:options.clip});Ok(())
+    }
+
+    fn render_overlays(&self,width:u32,height:u32) {
+        self.set_viewport(Rect::new(0.0,0.0,width as f32,height as f32));
+        for sprite in &self.overlays {
+            let clip=sprite.clip.unwrap_or(Rect::new(0.0,0.0,width as f32,height as f32));
+            let rect=RECT {left:clip.x.max(0.0).ceil() as i32,top:clip.y.max(0.0).ceil() as i32,
+                right:(clip.x+clip.width).min(width as f32).ceil() as i32,bottom:(clip.y+clip.height).min(height as f32).ceil() as i32};
+            if rect.right<=rect.left || rect.bottom<=rect.top {continue;}
+            unsafe {
+                self.command_list.RSSetScissorRects(&[rect]);
+                self.command_list.SetGraphicsRootSignature(self.sprite_pipeline.root_signature());
+                self.command_list.SetPipelineState(self.sprite_pipeline.pipeline_state());
+                self.command_list.SetGraphicsRootConstantBufferView(0,sprite.constants);
+                self.command_list.SetGraphicsRootDescriptorTable(1,sprite.texture);
+                self.command_list.DrawInstanced(6,1,0,0);
+            }
+        }
+    }
+
     pub(crate) fn draw_mesh(
         &mut self,
         device: &D3D12Device,
@@ -1123,6 +1182,7 @@ impl D3D12Renderer {
         }
 
 
+        self.render_overlays(self.frame_size.0,self.frame_size.1);
         transition_resource(
             &self.command_list,
             render_target,
@@ -1468,6 +1528,7 @@ impl D3D12Renderer {
     fn finish_completed_frame(&mut self, device: &D3D12Device) {
         let transmission_used = self.commands.iter().any(|command| matches!(command, SceneCommand::Mesh(draw) if draw.transparency > 0.0 && draw.transparency < 1.0));
         self.commands.clear();
+        self.overlays.clear();
         self.reclaim_unused_assets();
         let used = self.surface_bindings.len().min(self.camera_surfaces.len());
         for surface in self.camera_surfaces.drain(used..) { self.descriptors.release(surface.descriptor, 1); }

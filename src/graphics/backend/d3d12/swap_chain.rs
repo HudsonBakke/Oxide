@@ -196,7 +196,7 @@ impl D3D12SwapChain {
             unsafe {
                 device
                     .device()
-                    .CreateRenderTargetView(render_targets[i].as_ref(), None, handle);
+                    .CreateRenderTargetView(render_targets[i].as_ref(), Some(&windows::Win32::Graphics::Direct3D12::D3D12_RENDER_TARGET_VIEW_DESC { Format: windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, ViewDimension: windows::Win32::Graphics::Direct3D12::D3D12_RTV_DIMENSION_TEXTURE2D, ..Default::default() }), handle);
             }
         }
 
@@ -253,7 +253,11 @@ impl D3D12SwapChain {
             unsafe {
                 device
                     .device()
-                    .CreateRenderTargetView(&resource, None, handle);
+                    .CreateRenderTargetView(&resource, Some(&windows::Win32::Graphics::Direct3D12::D3D12_RENDER_TARGET_VIEW_DESC {
+                        Format: windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+                        ViewDimension: windows::Win32::Graphics::Direct3D12::D3D12_RTV_DIMENSION_TEXTURE2D,
+                        ..Default::default()
+                    }), handle);
             }
 
             self.render_targets[i] = Some(resource);

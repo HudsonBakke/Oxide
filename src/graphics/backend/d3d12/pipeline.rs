@@ -498,14 +498,18 @@ impl D3D12Pipeline {
     }
 
     pub(crate) fn new_fullscreen(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader, output_format: DXGI_FORMAT) -> Result<Self> {
-        Self::new_fullscreen_pipeline(device, vertex_shader, pixel_shader, output_format, false)
+        Self::new_fullscreen_pipeline(device, vertex_shader, pixel_shader, output_format, false, false)
     }
 
     pub(crate) fn new_camera_surface(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader) -> Result<Self> {
-        Self::new_fullscreen_pipeline(device, vertex_shader, pixel_shader, DXGI_FORMAT_R16G16B16A16_FLOAT, true)
+        Self::new_fullscreen_pipeline(device, vertex_shader, pixel_shader, DXGI_FORMAT_R16G16B16A16_FLOAT, true, false)
     }
 
-    fn new_fullscreen_pipeline(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader, output_format: DXGI_FORMAT, surface: bool) -> Result<Self> {
+    pub(crate) fn new_sprite(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader) -> Result<Self> {
+        Self::new_fullscreen_pipeline(device, vertex_shader, pixel_shader, windows::Win32::Graphics::Dxgi::Common::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, false, true)
+    }
+
+    fn new_fullscreen_pipeline(device: &D3D12Device, vertex_shader: &D3D12Shader, pixel_shader: &D3D12Shader, output_format: DXGI_FORMAT, surface: bool, sprite: bool) -> Result<Self> {
         let range = [D3D12_DESCRIPTOR_RANGE {
             RangeType: D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
             NumDescriptors: 1,
@@ -544,7 +548,7 @@ impl D3D12Pipeline {
         }
         let sampler = [D3D12_STATIC_SAMPLER_DESC {
             Filter: D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-            AddressU: if surface { windows::Win32::Graphics::Direct3D12::D3D12_TEXTURE_ADDRESS_MODE_CLAMP } else { D3D12_TEXTURE_ADDRESS_MODE_WRAP },
+            AddressU: if surface || sprite { windows::Win32::Graphics::Direct3D12::D3D12_TEXTURE_ADDRESS_MODE_CLAMP } else { D3D12_TEXTURE_ADDRESS_MODE_WRAP },
             AddressV: windows::Win32::Graphics::Direct3D12::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
             AddressW: D3D12_TEXTURE_ADDRESS_MODE_WRAP,
             MipLODBias: 0.0,
@@ -594,6 +598,13 @@ impl D3D12Pipeline {
                 AlphaToCoverageEnable: false.into(),
                 IndependentBlendEnable: false.into(),
                 RenderTarget: [D3D12_RENDER_TARGET_BLEND_DESC {
+                    BlendEnable: sprite.into(),
+                    SrcBlend: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_SRC_ALPHA,
+                    DestBlend: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_INV_SRC_ALPHA,
+                    BlendOp: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_OP_ADD,
+                    SrcBlendAlpha: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_ONE,
+                    DestBlendAlpha: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_INV_SRC_ALPHA,
+                    BlendOpAlpha: windows::Win32::Graphics::Direct3D12::D3D12_BLEND_OP_ADD,
                     RenderTargetWriteMask: D3D12_COLOR_WRITE_ENABLE_ALL.0 as u8,
                     ..Default::default()
                 }; 8],

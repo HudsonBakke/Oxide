@@ -15,13 +15,6 @@ float4 vs_main(uint vertex_id : SV_VertexID) : SV_POSITION
     return float4(positions[vertex_id], 0.0, 1.0);
 }
 
-float linear_to_srgb(float value)
-{
-    return value <= 0.0031308
-        ? 12.92 * value
-        : 1.055 * pow(value, 1.0 / 2.4) - 0.055;
-}
-
 float4 ps_main(float4 position : SV_POSITION) : SV_TARGET
 {
     float4 scene = scene_color.Load(int3(int2(position.xy), 0));
@@ -29,9 +22,6 @@ float4 ps_main(float4 position : SV_POSITION) : SV_TARGET
     float3 exposed = exposure == 0.0 ? float3(0.0, 0.0, 0.0)
                                     : min(max(scene.rgb, 0.0) * exposure, 1.0e20);
     float3 mapped = exposed / (1.0 + exposed);
-    return float4(
-        linear_to_srgb(mapped.r),
-        linear_to_srgb(mapped.g),
-        linear_to_srgb(mapped.b),
-        saturate(scene.a));
+    // The sRGB render-target view encodes after linear-space blending.
+    return float4(mapped, saturate(scene.a));
 }

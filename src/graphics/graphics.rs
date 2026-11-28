@@ -1,7 +1,7 @@
-use crate::{math::{Rect, Rect3D}, math::Transform, platform::window::PlatformWindow};
+use crate::{math::{Rect, Rect3D, Vec2}, math::Transform, platform::window::PlatformWindow};
 
 use super::{
-    Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
+    Color, Texture, Draw2DOptions, TextOptions, Camera, DirectionalLight, Environment, GraphicsResult, LightSource, Material, Mesh, PointLight,
     SpotLight,
     backend::d3d12::{D3D12Device, D3D12Renderer, D3D12SwapChain},
 };
@@ -11,6 +11,7 @@ use super::{
 /// `Graphics` owns the active graphics backend and coordinates
 /// rendering, presentation, and surface resizing.
 pub struct Graphics {
+    text_cache: super::text::TextCache,
     device: D3D12Device,
     renderer: D3D12Renderer,
     swap_chain: D3D12SwapChain,
@@ -45,6 +46,7 @@ impl Graphics {
         let swap_chain = D3D12SwapChain::new(&device, window.hwnd(), size.width, size.height)?;
 
         Ok(Self {
+            text_cache: Default::default(),
             device,
             renderer,
             swap_chain,
@@ -61,6 +63,47 @@ impl Graphics {
         self.renderer.end_frame(&self.device, &self.swap_chain)?;
 
         Ok(())
+    }
+
+    /// Draws a texture over the 3D scene in full-window physical pixels.
+    /// No camera is required. Overlays retain submission order and ignore exposure.
+    pub fn draw_2d(&mut self, texture: &Texture, target: Rect) -> GraphicsResult<()> {
+        self.draw_2d_with_options(texture, target, Draw2DOptions::default())
+    }
+
+    /// Draws a straight-alpha sprite with captured tint, crop, rotation and clip.
+    /// Source pixels must lie inside the texture. Invalid values return an error;
+    /// zero target dimensions or alpha draw nothing. Assets may be dropped after submission.
+    pub fn draw_2d_with_options(&mut self, texture: &Texture, target: Rect, options: Draw2DOptions) -> GraphicsResult<()> {
+        self.renderer.draw_2d(&self.device, texture, target, options)?;
+        Ok(())
+    }
+
+    /// Draws a label using the default installed font at 24 physical pixels.
+    pub fn draw_text(&mut self, text: &str, position: Vec2, color: Color) -> GraphicsResult<()> {
+        let mut options = TextOptions::default(); options.draw.tint = color;
+        self.draw_text_with_options(text, position, &options)
+    }
+
+    /// Draws UTF-8 text in an installed font using screen-space sprite effects.
+    /// Position is the layout top-left. Newlines are supported; wrapping is explicit.
+    /// Labels must fit 2048 by 2048 pixels. Source cropping is unsupported for text.
+    pub fn draw_text_with_options(&mut self, text: &str, position: Vec2, options: &TextOptions) -> GraphicsResult<()> {
+        let image = self.text_cache.get(text, options)?;
+        let mut draw = options.draw;
+        draw.origin = draw.origin - image.offset;
+        self.draw_2d_with_options(&image.texture, Rect::new(position.x + image.offset.x, position.y + image.offset.y, image.texture.width() as f32, image.texture.height() as f32), draw)
+    }
+
+    /// Measures the default font's logical layout in physical pixels, including trailing spaces.
+    pub fn measure_text(&mut self, text: &str) -> GraphicsResult<Vec2> {
+        self.measure_text_with_options(text, &TextOptions::default())
+    }
+
+    /// Measures a label with the same font and size used by drawing, before rotation.
+    /// Empty text has zero size. Measurement shares a bounded cache with drawing.
+    pub fn measure_text_with_options(&mut self, text: &str, options: &TextOptions) -> GraphicsResult<Vec2> {
+        Ok(self.text_cache.get(text, options)?.size)
     }
 
     /// Submits a mesh with opaque rendering and shadows, capturing its current draw state.

@@ -1,5 +1,7 @@
 //! Mesh drawing, materials, cameras, textures, and lighting for Direct3D 12.
 
+mod draw2d;
+mod text;
 pub(crate) mod backend;
 pub(crate) mod mesh;
 pub(crate) mod texture;
@@ -29,3 +31,5 @@ pub use shadow::{DirectionalShadowSettings, ShadowSettings};
 pub use error::{GraphicsError, GraphicsResult};
 
 pub use light::{DirectionalLight, LightSource, PointLight, SpotLight};
+
+pub use draw2d::{Draw2DOptions,TextOptions};

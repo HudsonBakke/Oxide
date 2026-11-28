@@ -403,3 +403,78 @@ pub extern "C" fn oxide_graphics_bind_camera_3d_with_resolution(graphics: OxideG
         match result { Ok(()) => OxideStatus::Ok, Err(error) => { set_last_error(error.to_string()); OxideStatus::GraphicsError } }
     })
 }
+
+#[repr(C)]
+#[derive(Clone,Copy)]
+pub struct OxideDraw2DOptions {
+    pub tint: crate::graphics::Color,
+    pub source: Rect,
+    pub rotation: crate::math::Angle,
+    pub origin: crate::math::Vec2,
+    pub clip: Rect,
+    pub flags: u32,
+}
+impl OxideDraw2DOptions {
+    fn decoded(self)->Result<crate::graphics::Draw2DOptions,String> {
+        if self.flags & !15 != 0 {return Err("unknown 2D option flags".into());}
+        let options=crate::graphics::Draw2DOptions {
+            tint:self.tint,source:if self.flags&1!=0 {Some(self.source)} else {None},rotation:self.rotation,origin:self.origin,
+            clip:if self.flags&2!=0 {Some(self.clip)} else {None},flip_horizontally:self.flags&4!=0,flip_vertically:self.flags&8!=0,
+        };
+        options.validate().map_err(|e|e.to_string())?;Ok(options)
+    }
+}
+fn draw2d_invalid(message:impl ToString)->OxideStatus {set_last_error(message.to_string());OxideStatus::InvalidArgument}
+fn draw2d_status<T>(result:crate::graphics::GraphicsResult<T>,output:impl FnOnce(T))->OxideStatus {
+    match result {Ok(value)=>{output(value);OxideStatus::Ok},Err(e)=>{set_last_error(e.to_string());OxideStatus::GraphicsError}}
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_draw_2d_options_default(result:*mut OxideDraw2DOptions)->OxideStatus {
+    ffi_boundary(|| {if result.is_null(){return draw2d_invalid("result is null");}
+        unsafe {*result=OxideDraw2DOptions {tint:crate::graphics::Color::WHITE,source:Rect::default(),rotation:crate::math::Angle::radians(0.0),origin:crate::math::Vec2::default(),clip:Rect::default(),flags:0};}OxideStatus::Ok
+    })
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_draw_2d(graphics:OxideGraphicsHandle,texture:OxideTextureHandle,target:Rect)->OxideStatus {
+    let options=OxideDraw2DOptions {tint:crate::graphics::Color::WHITE,source:Rect::default(),rotation:crate::math::Angle::radians(0.0),origin:crate::math::Vec2::default(),clip:Rect::default(),flags:0};
+    oxide_graphics_draw_2d_with_options(graphics,texture,target,options)
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_draw_2d_with_options(graphics:OxideGraphicsHandle,texture:OxideTextureHandle,target:Rect,options:OxideDraw2DOptions)->OxideStatus {
+    ffi_boundary(|| {
+        let options=match options.decoded(){Ok(v)=>v,Err(e)=>return draw2d_invalid(e)};
+        if let Err(e)=crate::graphics::draw2d::validate_rect(target){return draw2d_invalid(e);}
+        let Some(graphics)=graphics_from_handle(graphics) else {return draw2d_invalid("graphics is null");};
+        let Some(result)=with_texture(texture,|texture| {
+            if let Some(source)=options.source {if source.x+source.width>texture.width() as f32 || source.y+source.height>texture.height() as f32 {return Err("source exceeds texture dimensions".to_string());}}
+            Ok(graphics.draw_2d_with_options(texture,target,options))
+        }) else {return draw2d_invalid("texture handle is invalid");};
+        match result {Ok(result)=>draw2d_status(result,|_|{}),Err(e)=>draw2d_invalid(e)}
+    })
+}
+// UTF-8 strings are borrowed only for this call. Lengths exclude terminators.
+unsafe fn label_options(text:*const u8,length:usize,family:*const u8,family_length:usize,size:f32,draw:OxideDraw2DOptions)->Result<(String,crate::graphics::TextOptions),String> {
+    if (text.is_null()&&length!=0)||(family.is_null()&&family_length!=0)||length>65536||family_length>256 {return Err("invalid text or font pointer/length".into());}
+    let text=if length==0 {""} else {std::str::from_utf8(unsafe {std::slice::from_raw_parts(text,length)}).map_err(|_|"text is not UTF-8")?};
+    let family=if family_length==0 {"Segoe UI"} else {std::str::from_utf8(unsafe {std::slice::from_raw_parts(family,family_length)}).map_err(|_|"font is not UTF-8")?};
+    let options=crate::graphics::TextOptions {font_family:family.into(),font_size:size,draw:draw.decoded()?};
+    options.validate(text).map_err(|e|e.to_string())?;Ok((text.into(),options))
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_draw_text(graphics:OxideGraphicsHandle,text:*const u8,length:usize,position:crate::math::Vec2,family:*const u8,family_length:usize,size:f32,draw:OxideDraw2DOptions)->OxideStatus {
+    ffi_boundary(|| {
+        let (text,options)=match unsafe {label_options(text,length,family,family_length,size,draw)} {Ok(v)=>v,Err(e)=>return draw2d_invalid(e)};
+        if let Err(e)=crate::graphics::draw2d::validate_rect(Rect::new(position.x,position.y,0.0,0.0)){return draw2d_invalid(e);}
+        let Some(graphics)=graphics_from_handle(graphics) else {return draw2d_invalid("graphics is null");};
+        draw2d_status(graphics.draw_text_with_options(&text,position,&options),|_|{})
+    })
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn oxide_graphics_measure_text(graphics:OxideGraphicsHandle,text:*const u8,length:usize,family:*const u8,family_length:usize,size:f32,draw:OxideDraw2DOptions,result:*mut crate::math::Vec2)->OxideStatus {
+    ffi_boundary(|| {
+        let (text,options)=match unsafe {label_options(text,length,family,family_length,size,draw)} {Ok(v)=>v,Err(e)=>return draw2d_invalid(e)};
+        if result.is_null(){return draw2d_invalid("result is null");}
+        let Some(graphics)=graphics_from_handle(graphics) else {return draw2d_invalid("graphics is null");};
+        draw2d_status(graphics.measure_text_with_options(&text,&options),|value|unsafe {*result=value})
+    })
+}

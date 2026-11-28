@@ -10,7 +10,7 @@ crate-type = ["rlib", "cdylib"]
 gltf = { version = "1.4.1", features = ["import"] }
 image = "0.25.10"
 raw-window-handle = "0.6.2"
-windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Media_Audio_XAudio2", "Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D12", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Security", "Win32_System_Threading"] }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Media_Audio_XAudio2", "Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_Graphics_Direct2D", "Win32_Graphics_Direct2D_Common", "Win32_Graphics_DirectWrite", "Win32_Graphics_Imaging", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D12", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Security", "Win32_System_Threading"] }
 urlencoding = "2.1.3"
 winit = "0.30.13"
 
