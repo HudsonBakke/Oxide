@@ -38,9 +38,14 @@ class SpriteChecks(unittest.TestCase):
             self.assertEqual(args[2], len(args[1]))
             self.assertEqual(args[-1].tint, Color(1,0,0))
             self.assertEqual(options.tint, Color(0,1,0))
+        texture = Texture.solid(Color.WHITE)
+        with patch.object(_native.lib, 'oxide_graphics_draw_2d_with_options', return_value=0) as draw_sprite:
+            graphics.draw_2d(texture, Rect(1,2,30,40), Draw2DOptions(tint=Color(1,1,1,0.5)))
+            self.assertEqual(draw_sprite.call_args.args[-1].tint.a, 0.5)
         graphics._invalidate()
         with self.assertRaises(RuntimeError): graphics.draw_text('label', Vec2())
         with self.assertRaises(RuntimeError): graphics.measure_text('label')
+        with self.assertRaises(RuntimeError): graphics.draw_2d(texture, Rect())
 
     def test_menu_controls_and_draws_stay_connected(self):
         demo = Menus()

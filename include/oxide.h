@@ -599,11 +599,17 @@ OXIDE_API OxideStatus oxide_graphics_set_exposure(OxideGraphicsHandle graphics, 
      * target-relative rotation pivot. Flags: 1=source, 2=clip, 4=flip X, 8=flip Y.
      * Initialize with oxide_draw_2d_options_default (zero bytes means transparent). */
     typedef struct OxideDraw2DOptions {
+        /** Linear RGBA multiplier in [0,1], initially opaque white. */
         OxideColor tint;
+        /** Positive source region in texture pixels, enabled by flag 1. */
         OxideRect source;
+        /** Clockwise screen-space angle, initially zero. */
         OxideAngle rotation;
+        /** Target-relative rotation pivot in pixels; does not move an unrotated target. */
         OxideVec2 origin;
+        /** Screen-space clip in physical pixels, enabled by flag 2; empty clips draw nothing. */
         OxideRect clip;
+        /** Bits 1/2 enable source/clip; bits 4/8 flip sampled X/Y. Other bits are invalid. */
         uint32_t flags;
     } OxideDraw2DOptions;
     /** Writes opaque-white defaults. */

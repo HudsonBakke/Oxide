@@ -32,7 +32,12 @@ If Windows blocks local PowerShell scripts, invoke it with a process-only policy
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-shaders.ps1
 ```
 
-The script compiles both `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`, and `tonemap.hlsl`, plus `vs_main` and `ps_main` in `shadow.hlsl` `camera_surface.hlsl`, and `sprite.hlsl`, using Shader Model 6.0. It writes `triangle_vs.dxil`, `triangle_ps.dxil`, `background_vs.dxil`, `background_ps.dxil`, `tonemap_vs.dxil`, `tonemap_ps.dxil`, `shadow_vs.dxil`, `shadow_ps.dxil`, `camera_surface_vs.dxil`, and `camera_surface_ps.dxil`, `sprite_vs.dxil`, and `sprite_ps.dxil` to `shaders/compiled`. These generated files are ignored by Git and embedded into the native library at compile time. **Re-run the shader script and rebuild Rust after changing HLSL.** A failed shader compilation stops the script.
+The script compiles `vs_main` and `ps_main` in `triangle.hlsl`, `background.hlsl`,
+`tonemap.hlsl`, `shadow.hlsl`, `camera_surface.hlsl`, and `sprite.hlsl` using Shader
+Model 6.0. It writes `<name>_vs.dxil` and `<name>_ps.dxil` into `shaders/compiled`.
+These generated files are ignored by Git and embedded into the native library at
+compile time. **Re-run the shader script and rebuild Rust after changing HLSL.**
+A failed shader compilation stops the script.
 
 Rust examples: `hello_window`, `cube`, `model`, `attachment`, `split_screen`, `first_person`, `materials`, `shadows`, `audio`, `monitors`, and `menus`. Run from the repository root so relative asset paths resolve correctly.
 
